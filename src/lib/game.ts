@@ -5,7 +5,9 @@ import { crosswordBank, getCrosswordEntry } from "@/data/crosswordBank";
 import type {
   CrosswordEntry,
   CrosswordLayout,
+  ExperienceProfile,
   FilmLocation,
+  GamePayload,
   LocationQuestion,
   PlacedWord,
 } from "@/lib/types";
@@ -109,4 +111,12 @@ export function buildLocationQuestions(locs: FilmLocation[]): LocationQuestion[]
     const options = shuffle([location.filmId, ...distractors]);
     return { location, options };
   });
+}
+
+/** Assembles the full game payload from an oracle profile (or debug fixture). */
+export function buildGamePayload(profile: ExperienceProfile): GamePayload {
+  const entries = resolveCrosswordEntries(profile.crosswordWordIds);
+  const crossword = buildCrosswordLayout(entries);
+  const locations = buildLocationQuestions(resolveLocations(profile.locationIds));
+  return { profile, locations, crossword, crosswordWords: entries };
 }

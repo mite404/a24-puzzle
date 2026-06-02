@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import type { OracleUIMessage } from "@/lib/oracle-tools";
 import type { ExperienceProfile } from "@/lib/types";
@@ -26,6 +26,13 @@ export function OracleChat({ onFinalize }: OracleChatProps) {
   const [text, setText] = useState("");
   const finalized = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const lastStatus = useRef(status);
+
+  useEffect(() => {
+    if (lastStatus.current === status) return;
+    console.log("[oracle-chat] status", { from: lastStatus.current, to: status });
+    lastStatus.current = status;
+  }, [status]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -51,10 +58,23 @@ export function OracleChat({ onFinalize }: OracleChatProps) {
 
   const busy = status === "submitted" || status === "streaming";
 
+  const assistantStreamingText = useMemo(() => {
+    if (status !== "streaming") return false;
+    const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+    if (!lastAssistant) return false;
+    return lastAssistant.parts.some(
+      (p) => p.type === "text" && p.text.trim().length > 0,
+    );
+  }, [messages, status]);
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = text.trim();
     if (!trimmed || busy) return;
+    console.log("[oracle-chat] send", {
+      length: trimmed.length,
+      hint: "Watch the dev server terminal for [openrouter] logs.",
+    });
     sendMessage({ text: trimmed });
     setText("");
   }
@@ -124,12 +144,10 @@ export function OracleChat({ onFinalize }: OracleChatProps) {
           </div>
         ))}
 
-        {status === "submitted" && (
-          <div className="a24-prose flex items-center gap-2 text-muted-foreground">
-            <Spinner className="size-3" />
-            <span className="italic">the oracle considers…</span>
-          </div>
-        )}
+        <OracleStatusLine
+          status={status}
+          modelResponding={assistantStreamingText}
+        />
         <div ref={bottomRef} />
       </div>
 
@@ -147,7 +165,9 @@ export function OracleChat({ onFinalize }: OracleChatProps) {
             }}
             rows={2}
             placeholder="Speak plainly…"
-            className="a24-prose min-h-12 flex-1 resize-none rounded-none border border-foreground bg-transparent px-3 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-foreground"
+            disabled={busy}
+            aria-describedby="oracle-compose-status"
+            className="a24-prose min-h-12 flex-1 resize-none rounded-none border border-foreground bg-transparent px-3 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-foreground disabled:opacity-60"
           />
           <Button
             type="submit"
@@ -158,6 +178,7 @@ export function OracleChat({ onFinalize }: OracleChatProps) {
             Send
           </Button>
         </div>
+        <ComposeStatusLine status={status} modelResponding={assistantStreamingText} />
       </form>
     </div>
   );
@@ -209,6 +230,64 @@ function ToolErrorLine({ message }: { message: string }) {
   return (
     <p className="a24-prose text-sm text-destructive" role="status">
       {message}
+    </p>
+  );
+}
+
+type ChatStatus = "ready" | "submitted" | "streaming" | "error";
+
+function OracleStatusLine({
+  status,
+  modelResponding,
+}: {
+  status: ChatStatus;
+  modelResponding: boolean;
+}) {
+  if (status === "ready" || status === "error") return null;
+
+  const label =
+    status === "submitted"
+      ? "Your message reached the oracle. Waiting for the model…"
+      : modelResponding
+        ? "The oracle is responding…"
+        : "The model is thinking — this can take a moment.";
+
+  return (
+    <div
+      className="a24-prose flex items-center gap-2 text-muted-foreground"
+      role="status"
+      aria-live="polite"
+    >
+      <Spinner className="size-3 shrink-0" aria-hidden />
+      <span className="italic">{label}</span>
+    </div>
+  );
+}
+
+function ComposeStatusLine({
+  status,
+  modelResponding,
+}: {
+  status: ChatStatus;
+  modelResponding: boolean;
+}) {
+  if (status === "ready") return null;
+
+  const label =
+    status === "submitted"
+      ? "Sent — delivered to the oracle. Awaiting the first word."
+      : modelResponding
+        ? "Reply in progress."
+        : "The oracle is thinking — this can take a moment.";
+
+  return (
+    <p
+      id="oracle-compose-status"
+      className="a24-eyebrow text-muted-foreground"
+      role="status"
+      aria-live="polite"
+    >
+      {label}
     </p>
   );
 }

@@ -1,12 +1,16 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  buildCrosswordLayout,
-  buildLocationQuestions,
-  resolveCrosswordEntries,
-  resolveLocations,
+  buildGamePayload,
 } from "@/lib/game";
+import {
+  buildDebugPayload,
+  DEBUG_EXPERIENCE_ENABLED,
+  parseDebugJumpTarget,
+  scoresForDebugJump,
+  type DebugJumpTarget,
+} from "@/lib/debug-experience";
 import type {
   ExperienceProfile,
   GamePayload,
@@ -15,6 +19,7 @@ import type {
 } from "@/lib/types";
 import { AppShell } from "@/components/app-shell";
 import { SiteHeader } from "@/components/site-header";
+import { DebugPhaseBar } from "@/components/debug-phase-bar";
 import { OracleChat } from "@/components/intake/oracle-chat";
 import { LocationQuiz } from "@/components/games/location-quiz";
 import { Crossword } from "@/components/games/crossword";
@@ -33,19 +38,23 @@ export function Experience() {
   const [scores, setScores] = useState<Scores>(EMPTY_SCORES);
 
   const handleFinalize = useCallback((profile: ExperienceProfile) => {
-    const entries = resolveCrosswordEntries(profile.crosswordWordIds);
-    const crossword = buildCrosswordLayout(entries);
-    const locations = buildLocationQuestions(resolveLocations(profile.locationIds));
-
-    setPayload({ profile, locations, crossword, crosswordWords: entries });
+    const gamePayload = buildGamePayload(profile);
+    setPayload(gamePayload);
     setScores({
       ...EMPTY_SCORES,
-      locationTotal: locations.length,
-      crosswordTotal: crossword.words.length,
+      locationTotal: gamePayload.locations.length,
+      crosswordTotal: gamePayload.crossword?.words.length ?? 0,
     });
     setPhase("generating");
     // A short, deliberate beat so the handoff from conversation to games feels earned.
     setTimeout(() => setPhase("locationQuiz"), 1900);
+  }, []);
+
+  const jumpToDebug = useCallback((target: DebugJumpTarget) => {
+    const gamePayload = buildDebugPayload();
+    setPayload(gamePayload);
+    setScores(scoresForDebugJump(target, gamePayload));
+    setPhase(target);
   }, []);
 
   const finishLocations = useCallback((correct: number) => {
@@ -64,9 +73,23 @@ export function Experience() {
     setPhase("intake");
   }, []);
 
+  const debugUrlHandled = useRef(false);
+
+  useEffect(() => {
+    if (!DEBUG_EXPERIENCE_ENABLED || debugUrlHandled.current) return;
+    const target = parseDebugJumpTarget(window.location.search);
+    if (!target) return;
+    debugUrlHandled.current = true;
+    jumpToDebug(target);
+  }, [jumpToDebug]);
+
   return (
     <main className="relative flex min-h-dvh flex-col bg-background text-foreground">
       <SiteHeader />
+
+      {DEBUG_EXPERIENCE_ENABLED && (
+        <DebugPhaseBar phase={phase} onJump={jumpToDebug} onReset={restart} />
+      )}
 
       {phase === "intake" && (
         <AppShell hero centered maxWidth="copy">
