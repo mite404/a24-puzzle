@@ -1,31 +1,44 @@
 # Styling standards — A24 Oracle
 
+Reference: [On Location in New York City](https://shop.a24films.com/products/on-location-in-new-york-city) on shop.a24films.com.
+
 ## Typography
 
-| Role | Font | Tailwind | Notes |
-|------|------|----------|--------|
-| UI / body | **Archivo** (Google Fonts stand-in for NB International Web) | `font-sans` | Loaded in `layout.tsx` as `--font-sans` |
-| Oracle voice | Archivo italic | `font-sans italic` | Do not use `font-serif` for oracle copy — that resolves to system Georgia |
-| Labels / meta | Archivo | `font-mono` only where monospace is intentional (scores, grid numbers) | Prefer `text-xs uppercase tracking-widest` for cinematic labels |
+| Role | Font | Class | Notes |
+|------|------|-------|--------|
+| UI / body | **Archivo** (stand-in for NB International Web) | `font-sans` | 1.1rem, line-height 1.19, tracking −0.01em |
+| Page title | Archivo bold | `a24-title` | clamp(3.5rem → 5.775rem), tracking −0.055em |
+| Labels | Archivo semibold caps | `a24-eyebrow` | 0.756rem, tracking 0.04em |
+| Copy column | — | `a24-prose` | max-width 29.7rem (shop description measure) |
 
-If you obtain NB International Web `.woff2` files, add them under `public/fonts/` and swap the `next/font` import in `layout.tsx`.
+## Layout (from shop product hero)
 
-## Layout
+| Token | Value |
+|-------|--------|
+| `--a24-gutter-start` | clamp(1.46rem, **6vw**, 7.2rem) |
+| `--a24-gutter-end` | clamp(0.73rem, **3vw**, 3.6rem) |
+| `--a24-hero-pad-top` | clamp(6.75rem, 10vw, 11.6rem) |
+| `--a24-hero-pad-bottom` | clamp(2.2rem, 3vw, 2.75rem) |
 
-- **Intake chat**: centered in the viewport inside `AppShell` (`max-w-2xl`, capped height `min(720px, 90dvh)`).
-- **Games / end**: full-width within the same shell padding; games may use wider `max-w-*` internally.
-- Prefer `flex` + `gap-*` over `space-x/y-*` (shadcn convention).
+- Apply gutters with `a24-gutter` on `SiteHeader`, `AppShell`, and full-bleed sections.
+- Intake is **left-aligned** in a copy column (`max-w-[45.6rem]`), not centered in the page.
+- Hero phases use `a24-hero-pad` for top spacing below the header.
 
-## Color & theme
+## Color & chrome
 
-- **shadcn preset**: `b5LCAabYm` — radix-rhea, neutral base, sky accent. Re-apply with  
+- Background: `#f1f1f1` (`--background`)
+- Text / rules / borders: black (`--foreground`, `--border`)
+- CTAs: `a24-cta` — square corners, 1px black border, uppercase, generous vertical padding (shop “Preorder” button)
+- No `dark` class on `<html>`; experience matches the shop’s light editorial layout.
+
+## shadcn
+
+- Preset: `b5LCAabYm` — re-apply with  
   `bunx shadcn@latest init --preset b5LCAabYm --force --yes --no-reinstall`
-- **Dark mode**: `className="dark"` on `<html>` so primitives pick up `.dark` CSS variables.
-- **Experience canvas**: `bg-background text-foreground` (`.dark` sets background to true black).
-- **UI primitives**: use semantic tokens (`bg-primary`, `text-muted-foreground`, `border-border`). Avoid raw `bg-white/10` on shadcn `Button` / `Input` when a variant exists.
-- **Oracle chat accents**: `text-muted-foreground`, `border-border`, `bg-muted/50` for bubbles and inputs.
+- `--radius: 0` globally; prefer `a24-cta` for primary actions instead of default filled pills.
 
 ## Components
 
-- Add shadcn pieces via `bunx shadcn@latest add <name>` — do not hand-roll controls that exist in `@/components/ui`.
-- Vendored `components/ui/**` is ESLint-exempt; still follow preset tokens when editing.
+- `SiteHeader` — thin top bar + eyebrow labels
+- `AppShell` — gutters + optional hero padding
+- Add UI via `bunx shadcn@latest add <name>`

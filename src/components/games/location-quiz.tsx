@@ -40,15 +40,15 @@ export function LocationQuiz({ questions, onComplete }: LocationQuizProps) {
   return (
     <div className="flex w-full flex-col py-2">
       <header className="mb-5">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">
+        <p className="a24-eyebrow text-muted-foreground">
           Round 1 — Where Was This Shot
         </p>
-        <p className="mt-1 font-mono text-xs text-muted-foreground/70">
+        <p className="a24-eyebrow mt-2 text-muted-foreground/70">
           {index + 1} / {questions.length}
         </p>
       </header>
 
-      <div className="relative aspect-video w-full overflow-hidden rounded-2xl ring-1 ring-border">
+      <div className="relative aspect-video w-full overflow-hidden ring-1 ring-foreground">
         <Image
           src={question.location.photoUrl}
           alt="A filming location somewhere in New York City"
@@ -63,7 +63,7 @@ export function LocationQuiz({ questions, onComplete }: LocationQuizProps) {
         </div>
       </div>
 
-      <p className="mt-6 mb-3 text-lg text-foreground/90">
+      <p className="a24-prose mt-8 mb-4">
         Which A24 film shot here?
       </p>
 
@@ -94,7 +94,7 @@ export function LocationQuiz({ questions, onComplete }: LocationQuizProps) {
               {question.location.neighborhood}
             </span>
           </p>
-          <Button onClick={next} className="px-5">
+          <Button onClick={next} variant="outline" className="a24-cta h-auto shrink-0">
             {isLast ? "To the crossword" : "Next"}
           </Button>
         </div>
@@ -105,9 +105,9 @@ export function LocationQuiz({ questions, onComplete }: LocationQuizProps) {
 
 function cardClass(answered: boolean, isCorrect: boolean, isPicked: boolean) {
   const base =
-    "rounded-2xl border px-4 py-3 text-left text-base transition-colors";
+    "rounded-none border px-4 py-3 text-left text-base transition-colors";
   if (!answered) {
-    return `${base} border-border bg-muted/30 text-foreground/90 hover:border-ring hover:bg-muted/50`;
+    return `${base} border-foreground bg-transparent hover:bg-foreground hover:text-background`;
   }
   if (isCorrect) {
     return `${base} border-emerald-400/50 bg-emerald-400/10 text-emerald-200`;
@@ -115,5 +115,5 @@ function cardClass(answered: boolean, isCorrect: boolean, isPicked: boolean) {
   if (isPicked) {
     return `${base} border-red-400/40 bg-red-400/10 text-red-200`;
   }
-  return `${base} border-border/50 bg-transparent text-muted-foreground`;
+  return `${base} border-foreground/30 bg-transparent text-muted-foreground`;
 }

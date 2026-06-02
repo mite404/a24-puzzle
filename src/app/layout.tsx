@@ -23,7 +23,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={cn(archivo.variable, "dark font-sans")}
+      className={cn(archivo.variable, "font-sans")}
       suppressHydrationWarning
     >
       <body className="min-h-dvh antialiased">{children}</body>

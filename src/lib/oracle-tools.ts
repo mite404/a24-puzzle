@@ -5,10 +5,15 @@ import {
   type UIDataTypes,
   type UIMessage,
 } from "ai";
+import {
+  validateExperienceProfile,
+  validatePaletteFilmId,
+} from "@/lib/validate-experience";
 
 /**
- * Tools the oracle uses mid-conversation. Neither has an `execute` function:
- * they are resolved on the client (render a palette card / transition phase).
+ * Oracle tools. Each has an `execute` so every tool call gets a result in the
+ * message history (required for multi-turn chat). The UI still renders palette
+ * cards and phase transitions from each tool part's `input`.
  */
 export const oracleTools = {
   showPalette: tool({
@@ -24,6 +29,18 @@ export const oracleTools = {
           "A short, evocative question shown on the card, e.g. 'Does this match how today feels?'",
         ),
     }),
+    execute: async ({ filmId, promptText }) => {
+      const validated = validatePaletteFilmId(filmId);
+      if (!validated.ok) {
+        return { ok: false as const, error: validated.error };
+      }
+      return {
+        ok: true as const,
+        filmId: validated.filmId,
+        promptText,
+        displayed: true,
+      };
+    },
   }),
   finalizeExperience: tool({
     description:
@@ -46,6 +63,13 @@ export const oracleTools = {
         .array(z.string())
         .describe("4-6 location ids to feature in the NYC location quiz."),
     }),
+    execute: async (input) => {
+      const validated = validateExperienceProfile(input);
+      if (!validated.ok) {
+        return { ok: false as const, errors: validated.errors };
+      }
+      return { ok: true as const, profile: validated.profile };
+    },
   }),
 } as const;
 

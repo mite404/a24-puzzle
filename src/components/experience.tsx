@@ -14,6 +14,7 @@ import type {
   Scores,
 } from "@/lib/types";
 import { AppShell } from "@/components/app-shell";
+import { SiteHeader } from "@/components/site-header";
 import { OracleChat } from "@/components/intake/oracle-chat";
 import { LocationQuiz } from "@/components/games/location-quiz";
 import { Crossword } from "@/components/games/crossword";
@@ -65,8 +66,10 @@ export function Experience() {
 
   return (
     <main className="relative flex min-h-dvh flex-col bg-background text-foreground">
+      <SiteHeader />
+
       {phase === "intake" && (
-        <AppShell centered maxWidth="chat">
+        <AppShell hero centered maxWidth="copy">
           <OracleChat onFinalize={handleFinalize} />
         </AppShell>
       )}
@@ -74,19 +77,19 @@ export function Experience() {
       {phase === "generating" && <Generating />}
 
       {phase === "locationQuiz" && payload && (
-        <AppShell maxWidth="game">
+        <AppShell hero maxWidth="game">
           <LocationQuiz questions={payload.locations} onComplete={finishLocations} />
         </AppShell>
       )}
 
       {phase === "crossword" && payload?.crossword && (
-        <AppShell maxWidth="game">
+        <AppShell hero maxWidth="game">
           <Crossword layout={payload.crossword} onComplete={finishCrossword} />
         </AppShell>
       )}
 
       {phase === "end" && (
-        <AppShell centered maxWidth="chat">
+        <AppShell hero centered maxWidth="copy">
           <EndScreen scores={scores} onRestart={restart} />
         </AppShell>
       )}
@@ -96,13 +99,9 @@ export function Experience() {
 
 function Generating() {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
-      <p className="font-sans text-2xl italic text-foreground/80">
-        I think I see you now.
-      </p>
-      <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">
-        composing your experience
-      </p>
+    <div className="a24-gutter a24-hero-pad flex min-h-[50dvh] flex-col justify-center gap-3">
+      <p className="a24-prose text-2xl italic">I think I see you now.</p>
+      <p className="a24-eyebrow text-muted-foreground">Composing your experience</p>
     </div>
   );
 }

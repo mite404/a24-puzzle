@@ -33,12 +33,6 @@ a {
   text-decoration: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
-}
-
 @theme inline {
   --font-heading: var(--font-sans);
   --font-sans: var(--font-sans);
@@ -85,28 +79,34 @@ a {
 }
 
 :root {
+  /* shop.a24films.com — On Location product page @ 390px / 1920px */
+  --a24-gutter-start: clamp(1.4625rem, 6vw, 7.2rem);
+  --a24-gutter-end: clamp(0.73125rem, 3vw, 3.6rem);
+  --a24-hero-pad-top: clamp(6.75rem, 10vw, 11.6rem);
+  --a24-hero-pad-bottom: clamp(2.2rem, 3vw, 2.75rem);
+  --a24-copy-max: 29.7rem;
+  --a24-body-size: 1.1rem;
+  --a24-body-leading: 1.19;
+  --a24-body-tracking: -0.01em;
+  --a24-title-tracking: -0.055em;
+  --a24-label-tracking: 0.04em;
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.5 0.134 242.749);
-  --primary-foreground: oklch(0.977 0.013 236.62);
+  --popover-foreground: oklch(0 0 0);
   --secondary: oklch(0.967 0.001 286.375);
   --secondary-foreground: oklch(0.21 0.006 285.885);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: oklch(0.45 0 0);
   --chart-1: oklch(0.828 0.111 230.318);
   --chart-2: oklch(0.685 0.169 237.323);
   --chart-3: oklch(0.588 0.158 241.966);
   --chart-4: oklch(0.5 0.134 242.749);
   --chart-5: oklch(0.443 0.11 240.79);
-  --radius: 0.625rem;
+  /* Shop uses square corners on CTAs */
+  --radius: 0;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.588 0.158 241.966);
@@ -115,43 +115,15 @@ a {
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-}
-
-.dark {
-  /* A24 canvas: true black, not elevated gray */
-  --background: oklch(0 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.443 0.11 240.79);
-  --primary-foreground: oklch(0.977 0.013 236.62);
-  --secondary: oklch(0.274 0.006 286.033);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.828 0.111 230.318);
-  --chart-2: oklch(0.685 0.169 237.323);
-  --chart-3: oklch(0.588 0.158 241.966);
-  --chart-4: oklch(0.5 0.134 242.749);
-  --chart-5: oklch(0.443 0.11 240.79);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.685 0.169 237.323);
-  --sidebar-primary-foreground: oklch(0.293 0.066 243.157);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* shop.a24films.com body background */
+  --background: oklch(0.961 0 0);
+  --foreground: oklch(0 0 0);
+  --border: oklch(0 0 0);
+  --input: oklch(0 0 0);
+  --muted: oklch(0.94 0 0);
+  --muted-foreground: oklch(0.45 0 0);
+  --primary: oklch(0 0 0);
+  --primary-foreground: oklch(1 0 0);
 }
 
 @layer base {
@@ -160,8 +132,61 @@ a {
   }
   body {
     @apply bg-background text-foreground;
+    font-size: var(--a24-body-size);
+    line-height: var(--a24-body-leading);
+    letter-spacing: var(--a24-body-tracking);
   }
   html {
     @apply font-sans;
+    color-scheme: light;
+  }
+}
+
+@layer components {
+  .a24-gutter {
+    padding-inline-start: var(--a24-gutter-start);
+    padding-inline-end: var(--a24-gutter-end);
+  }
+
+  .a24-hero-pad {
+    padding-block-start: var(--a24-hero-pad-top);
+    padding-block-end: var(--a24-hero-pad-bottom);
+  }
+
+  .a24-eyebrow {
+    font-size: 0.75625rem;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: var(--a24-label-tracking);
+    text-transform: uppercase;
+  }
+
+  .a24-title {
+    font-size: clamp(3.5rem, 8vw, 5.775rem);
+    font-weight: 700;
+    line-height: 0.87;
+    letter-spacing: var(--a24-title-tracking);
+  }
+
+  .a24-prose {
+    max-width: var(--a24-copy-max);
+    font-size: var(--a24-body-size);
+    line-height: var(--a24-body-leading);
+    letter-spacing: var(--a24-body-tracking);
+  }
+
+  .a24-rule {
+    @apply border-t border-foreground;
+  }
+
+  .a24-cta {
+    @apply rounded-none border border-foreground bg-transparent font-normal uppercase;
+    padding: clamp(1.25rem, 4vw, 3.1rem) 1.375rem;
+    font-size: clamp(1rem, 2vw, 1.85rem);
+    line-height: 1;
+  }
+
+  .a24-cta:hover {
+    @apply bg-foreground text-background;
   }
 }

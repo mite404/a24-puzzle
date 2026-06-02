@@ -153,9 +153,7 @@ export function Crossword({ layout, onComplete }: CrosswordProps) {
   return (
     <div className="flex w-full flex-col py-2">
       <header className="mb-5">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">
-          Round 2 — The A24 Crossword
-        </p>
+        <p className="a24-eyebrow text-muted-foreground">Round 2 — The A24 Crossword</p>
       </header>
 
       <div className="flex flex-col gap-8 md:flex-row">
@@ -213,7 +211,12 @@ export function Crossword({ layout, onComplete }: CrosswordProps) {
             {result} of {words.length} entries solved.
           </p>
         )}
-        <Button onClick={check} disabled={result !== null} className="px-5">
+        <Button
+          onClick={check}
+          disabled={result !== null}
+          variant="outline"
+          className="a24-cta h-auto shrink-0"
+        >
           Reveal my tier
         </Button>
       </div>
@@ -225,7 +228,7 @@ function ClueList({ title, words }: { title: string; words: PlacedWord[] }) {
   if (words.length === 0) return null;
   return (
     <div>
-      <h3 className="mb-2 font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">
+      <h3 className="a24-eyebrow mb-2 text-muted-foreground">
         {title}
       </h3>
       <ol className="flex flex-col gap-1.5">
