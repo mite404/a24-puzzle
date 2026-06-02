@@ -151,11 +151,9 @@ export function Crossword({ layout, onComplete }: CrosswordProps) {
   }
 
   return (
-    <div className="mx-auto flex h-full w-full max-w-3xl flex-col px-4 py-8">
+    <div className="flex w-full flex-col py-2">
       <header className="mb-5">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-white/40">
-          Round 2 — The A24 Crossword
-        </p>
+        <p className="a24-eyebrow text-muted-foreground">Round 2 — The A24 Crossword</p>
       </header>
 
       <div className="flex flex-col gap-8 md:flex-row">
@@ -205,18 +203,19 @@ export function Crossword({ layout, onComplete }: CrosswordProps) {
 
       <div className="mt-8 flex items-center justify-between">
         {result === null ? (
-          <p className="font-serif text-sm italic text-white/40">
+          <p className="text-sm italic text-muted-foreground">
             Fill what you can. The oracle rewards instinct over certainty.
           </p>
         ) : (
-          <p className="font-serif text-sm text-white/70">
+          <p className="text-sm text-muted-foreground">
             {result} of {words.length} entries solved.
           </p>
         )}
         <Button
           onClick={check}
           disabled={result !== null}
-          className="rounded-2xl bg-white px-5 text-black hover:bg-white/80"
+          variant="outline"
+          className="a24-cta h-auto shrink-0"
         >
           Reveal my tier
         </Button>
@@ -229,14 +228,14 @@ function ClueList({ title, words }: { title: string; words: PlacedWord[] }) {
   if (words.length === 0) return null;
   return (
     <div>
-      <h3 className="mb-2 font-mono text-xs uppercase tracking-[0.3em] text-white/40">
+      <h3 className="a24-eyebrow mb-2 text-muted-foreground">
         {title}
       </h3>
-      <ol className="space-y-1.5">
+      <ol className="flex flex-col gap-1.5">
         {words.map((w) => (
-          <li key={w.id} className="flex gap-2 text-white/75">
-            <span className="font-mono text-xs text-white/40">{w.position}.</span>
-            <span className="font-serif">{w.clue}</span>
+          <li key={w.id} className="flex gap-2 text-foreground/75">
+            <span className="font-mono text-xs text-muted-foreground">{w.position}.</span>
+            <span>{w.clue}</span>
           </li>
         ))}
       </ol>

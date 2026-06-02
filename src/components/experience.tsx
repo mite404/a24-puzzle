@@ -13,6 +13,8 @@ import type {
   Phase,
   Scores,
 } from "@/lib/types";
+import { AppShell } from "@/components/app-shell";
+import { SiteHeader } from "@/components/site-header";
 import { OracleChat } from "@/components/intake/oracle-chat";
 import { LocationQuiz } from "@/components/games/location-quiz";
 import { Crossword } from "@/components/games/crossword";
@@ -63,33 +65,43 @@ export function Experience() {
   }, []);
 
   return (
-    <main className="dark relative flex min-h-dvh flex-col bg-black text-white">
-      {phase === "intake" && <OracleChat onFinalize={handleFinalize} />}
+    <main className="relative flex min-h-dvh flex-col bg-background text-foreground">
+      <SiteHeader />
+
+      {phase === "intake" && (
+        <AppShell hero centered maxWidth="copy">
+          <OracleChat onFinalize={handleFinalize} />
+        </AppShell>
+      )}
 
       {phase === "generating" && <Generating />}
 
       {phase === "locationQuiz" && payload && (
-        <LocationQuiz questions={payload.locations} onComplete={finishLocations} />
+        <AppShell hero maxWidth="game">
+          <LocationQuiz questions={payload.locations} onComplete={finishLocations} />
+        </AppShell>
       )}
 
       {phase === "crossword" && payload?.crossword && (
-        <Crossword layout={payload.crossword} onComplete={finishCrossword} />
+        <AppShell hero maxWidth="game">
+          <Crossword layout={payload.crossword} onComplete={finishCrossword} />
+        </AppShell>
       )}
 
-      {phase === "end" && <EndScreen scores={scores} onRestart={restart} />}
+      {phase === "end" && (
+        <AppShell hero centered maxWidth="copy">
+          <EndScreen scores={scores} onRestart={restart} />
+        </AppShell>
+      )}
     </main>
   );
 }
 
 function Generating() {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
-      <p className="font-serif text-2xl italic text-white/80">
-        I think I see you now.
-      </p>
-      <p className="font-mono text-xs uppercase tracking-[0.3em] text-white/40">
-        composing your experience
-      </p>
+    <div className="a24-gutter a24-hero-pad flex min-h-[50dvh] flex-col justify-center gap-3">
+      <p className="a24-prose text-2xl italic">I think I see you now.</p>
+      <p className="a24-eyebrow text-muted-foreground">Composing your experience</p>
     </div>
   );
 }
