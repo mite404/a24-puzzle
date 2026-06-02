@@ -15,7 +15,7 @@ export function PaletteCard({ filmId, promptText }: PaletteCardProps) {
   if (!palette) return null;
 
   return (
-    <div className="my-2 overflow-hidden rounded-2xl ring-1 ring-white/10">
+    <div className="my-2 overflow-hidden rounded-2xl ring-1 ring-border">
       <div className="flex h-28 w-full">
         {palette.swatches.map((swatch) => (
           <div
@@ -30,7 +30,7 @@ export function PaletteCard({ filmId, promptText }: PaletteCardProps) {
           </div>
         ))}
       </div>
-      <p className="bg-black/40 px-4 py-3 font-serif text-sm italic text-white/70">
+      <p className="bg-muted/50 px-4 py-3 text-sm italic text-muted-foreground">
         {promptText}
       </p>
     </div>

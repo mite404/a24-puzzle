@@ -55,8 +55,8 @@ export function OracleChat({ onFinalize }: OracleChatProps) {
   }
 
   return (
-    <div className="mx-auto flex h-full w-full max-w-2xl flex-col">
-      <div className="flex-1 space-y-6 overflow-y-auto px-4 py-8">
+    <div className="flex h-full w-full flex-col">
+      <div className="flex flex-1 flex-col gap-6 overflow-y-auto py-2">
         {/* Oracle's hardcoded opening so the screen is never empty. */}
         <OracleLine>{OPENING_LINE}</OracleLine>
 
@@ -90,9 +90,9 @@ export function OracleChat({ onFinalize }: OracleChatProps) {
         ))}
 
         {status === "submitted" && (
-          <div className="flex items-center gap-2 text-white/40">
+          <div className="flex items-center gap-2 text-muted-foreground">
             <Spinner className="size-3" />
-            <span className="font-serif text-sm italic">the oracle considers…</span>
+            <span className="text-sm italic">the oracle considers…</span>
           </div>
         )}
         <div ref={bottomRef} />
@@ -100,7 +100,7 @@ export function OracleChat({ onFinalize }: OracleChatProps) {
 
       <form
         onSubmit={handleSubmit}
-        className="flex items-end gap-2 border-t border-white/10 px-4 py-4"
+        className="flex items-end gap-2 border-t border-border pt-4"
       >
         <textarea
           value={text}
@@ -110,13 +110,9 @@ export function OracleChat({ onFinalize }: OracleChatProps) {
           }}
           rows={1}
           placeholder="Speak plainly…"
-          className="max-h-40 min-h-10 flex-1 resize-none rounded-2xl border border-white/15 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
+          className="max-h-40 min-h-10 flex-1 resize-none rounded-2xl border border-input bg-muted/30 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-ring focus:outline-none focus:ring-3 focus:ring-ring/30"
         />
-        <Button
-          type="submit"
-          disabled={busy || !text.trim()}
-          className="h-10 rounded-2xl bg-white px-5 text-black hover:bg-white/80"
-        >
+        <Button type="submit" disabled={busy || !text.trim()} className="h-10 px-5">
           Send
         </Button>
       </form>
@@ -127,7 +123,7 @@ export function OracleChat({ onFinalize }: OracleChatProps) {
 function OracleLine({ children }: { children: React.ReactNode }) {
   return (
     <div className="max-w-[90%]">
-      <p className="font-serif text-lg leading-relaxed text-white/90">
+      <p className="text-lg italic leading-relaxed text-foreground/90">
         {children}
       </p>
     </div>
@@ -136,8 +132,8 @@ function OracleLine({ children }: { children: React.ReactNode }) {
 
 function UserLine({ children }: { children: React.ReactNode }) {
   return (
-    <div className="ml-auto max-w-[80%] rounded-2xl bg-white/10 px-4 py-2.5">
-      <p className="text-sm text-white/80">{children}</p>
+    <div className="ml-auto max-w-[80%] rounded-2xl bg-muted px-4 py-2.5">
+      <p className="text-sm text-foreground/90">{children}</p>
     </div>
   );
 }
