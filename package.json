@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^3.0.81",
+    "@ai-sdk/openai": "^3.0.67",
     "@ai-sdk/react": "^3.0.196",
     "ai": "^6.0.194",
     "class-variance-authority": "^0.7.1",
@@ -37,7 +37,8 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
-    "typescript": "^5"
+    "typescript": "^5",
+    "typescript-eslint": "^8.60.1"
   },
   "ignoreScripts": [
     "sharp",

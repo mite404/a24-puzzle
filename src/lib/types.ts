@@ -76,7 +76,12 @@ export interface ExperienceProfile {
   locationIds: string[];
 }
 
-export type Phase = "intake" | "locationQuiz" | "crossword" | "end";
+export type Phase =
+  | "intake"
+  | "generating"
+  | "locationQuiz"
+  | "crossword"
+  | "end";
 
 export interface GamePayload {
   profile: ExperienceProfile | null;
