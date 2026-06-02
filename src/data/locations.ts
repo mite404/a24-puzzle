@@ -1,0 +1,85 @@
+import type { FilmLocation } from "@/lib/types";
+
+/**
+ * NYC filming locations. Photos point at the real stills we have on hand
+ * (uncut-gems + the-backrooms) so the quiz renders real imagery. Coordinates are
+ * real NYC points spread across the map so the explore-mode pins feel populated.
+ */
+export const locations: FilmLocation[] = [
+  {
+    id: "ug-diamond-district",
+    filmId: "uncut-gems",
+    photoUrl: "/a24-assets/uncut-gems-01.jpg",
+    address: "W 47th Street",
+    neighborhood: "Diamond District",
+    lat: 40.7575,
+    lng: -73.9802,
+    hint: "One block, wholesale jewels in every window.",
+  },
+  {
+    id: "ug-midtown",
+    filmId: "uncut-gems",
+    photoUrl: "/a24-assets/uncut-gems-02.jpg",
+    address: "Sixth Avenue",
+    neighborhood: "Midtown",
+    lat: 40.758,
+    lng: -73.9819,
+    hint: "Howard's frantic orbit never leaves Midtown for long.",
+  },
+  {
+    id: "ug-les",
+    filmId: "uncut-gems",
+    photoUrl: "/a24-assets/uncut-gems-03.jpg",
+    address: "The Bowery",
+    neighborhood: "Lower East Side",
+    lat: 40.7227,
+    lng: -73.9925,
+    hint: "Downtown, where the debts finally come due.",
+  },
+  {
+    id: "br-bushwick",
+    filmId: "the-backrooms",
+    photoUrl: "/a24-assets/A24_BACKROOMS_01.jpg",
+    address: "Flushing Avenue",
+    neighborhood: "Bushwick",
+    lat: 40.6944,
+    lng: -73.9213,
+    hint: "An endless office that should not exist.",
+  },
+  {
+    id: "br-lic",
+    filmId: "the-backrooms",
+    photoUrl: "/a24-assets/backrooms-02.jpg",
+    address: "Jackson Avenue",
+    neighborhood: "Long Island City",
+    lat: 40.7447,
+    lng: -73.9485,
+    hint: "Fluorescent hum, no exit in sight.",
+  },
+  {
+    id: "br-gowanus",
+    filmId: "the-backrooms",
+    photoUrl: "/a24-assets/backrooms-03.JPG",
+    address: "Nevins Street",
+    neighborhood: "Gowanus",
+    lat: 40.6745,
+    lng: -73.9889,
+    hint: "Damp yellow walls as far as you can run.",
+  },
+  {
+    id: "br-koreatown",
+    filmId: "the-backrooms",
+    photoUrl: "/a24-assets/backrooms-04.JPG",
+    address: "W 32nd Street",
+    neighborhood: "Koreatown",
+    lat: 40.7478,
+    lng: -73.9857,
+    hint: "You noclipped out of reality somewhere near here.",
+  },
+];
+
+const locationsById = new Map(locations.map((l) => [l.id, l]));
+
+export function getLocation(id: string): FilmLocation | undefined {
+  return locationsById.get(id);
+}
