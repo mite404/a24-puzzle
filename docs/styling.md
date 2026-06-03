@@ -42,3 +42,13 @@ Reference: [On Location in New York City](https://shop.a24films.com/products/on-
 - `SiteHeader` — thin top bar + eyebrow labels
 - `AppShell` — gutters + optional hero padding
 - Add UI via `bunx shadcn@latest add <name>`
+
+## After pulling styling changes
+
+Next.js can serve **stale compiled CSS** from `.next` (old Geist/dark tokens) even when source files are correct. If the shop look disappears after a merge:
+
+```bash
+bun run dev:clean
+```
+
+Quick sanity check — `src/app/globals.css` should define `.a24-gutter`, `.a24-title`, etc., and `layout.tsx` should load **Archivo** without a `dark` class on `<html>`.

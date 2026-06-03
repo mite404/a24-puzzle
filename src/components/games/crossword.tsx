@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { CrosswordLayout, PlacedWord } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 
@@ -61,6 +61,22 @@ function wordCells(w: PlacedWord): Array<{ r: number; c: number }> {
   }));
 }
 
+function nextCell(
+  r: number,
+  c: number,
+  direction: Direction,
+): { r: number; c: number } {
+  return direction === "down" ? { r: r + 1, c } : { r, c: c + 1 };
+}
+
+function prevCell(
+  r: number,
+  c: number,
+  direction: Direction,
+): { r: number; c: number } {
+  return direction === "down" ? { r: r - 1, c } : { r, c: c - 1 };
+}
+
 export function Crossword({ layout, onComplete }: CrosswordProps) {
   const { grid, across, down } = useMemo(() => buildGrid(layout), [layout]);
   const { rows, cols, words } = layout;
@@ -70,20 +86,13 @@ export function Crossword({ layout, onComplete }: CrosswordProps) {
   const [direction, setDirection] = useState<Direction>("across");
   const [result, setResult] = useState<number | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  const inputRefs = useRef(new Map<string, HTMLInputElement>());
+  const directionRef = useRef<Direction>(direction);
+  directionRef.current = direction;
 
   const isCell = (r: number, c: number) =>
     r >= 0 && r < rows && c >= 0 && c < cols && Boolean(grid[r][c]);
 
-  // Focus follows the active cell declaratively. Handlers only move `active`;
-  // this effect owns the imperative focus (effects may touch refs, render can't).
-  useEffect(() => {
-    if (!active) return;
-    gridRef.current
-      ?.querySelector<HTMLInputElement>(`[data-cell="${key(active.r, active.c)}"]`)
-      ?.focus();
-  }, [active]);
-
-  // Cells belonging to the active word, for highlighting.
   const activeWordCells = useMemo(() => {
     if (!active) return new Set<string>();
     const match = words.find((w) => {
@@ -94,52 +103,102 @@ export function Crossword({ layout, onComplete }: CrosswordProps) {
     return new Set(wordCells(match).map((p) => key(p.r, p.c)));
   }, [active, direction, words]);
 
-  function selectCell(r: number, c: number) {
-    if (active && active.r === r && active.c === c) {
-      setDirection((d) => (d === "across" ? "down" : "across"));
-    } else {
-      const acrossAvailable = isCell(r, c - 1) || isCell(r, c + 1);
-      const downAvailable = isCell(r - 1, c) || isCell(r + 1, c);
-      setDirection(acrossAvailable ? "across" : downAvailable ? "down" : "across");
-    }
+  function focusCell(r: number, c: number) {
     setActive({ r, c });
+    inputRefs.current.get(key(r, c))?.focus();
   }
 
-  function handleChange(r: number, c: number, raw: string) {
-    const ch = raw.slice(-1).toUpperCase();
-    if (ch && !/[A-Z]/.test(ch)) return;
-    setValues((prev) => ({ ...prev, [key(r, c)]: ch }));
-    if (ch) {
-      const nr = direction === "down" ? r + 1 : r;
-      const nc = direction === "across" ? c + 1 : c;
-      if (isCell(nr, nc)) setActive({ r: nr, c: nc });
-    }
+  function defaultDirectionFor(r: number, c: number): Direction {
+    const acrossAvailable = isCell(r, c - 1) || isCell(r, c + 1);
+    const downAvailable = isCell(r - 1, c) || isCell(r + 1, c);
+    return acrossAvailable ? "across" : downAvailable ? "down" : "across";
+  }
+
+  function setDirectionSync(next: Direction) {
+    directionRef.current = next;
+    setDirection(next);
+  }
+
+  function selectCell(r: number, c: number, preferred?: Direction) {
+    const acrossAvailable = isCell(r, c - 1) || isCell(r, c + 1);
+    const downAvailable = isCell(r - 1, c) || isCell(r + 1, c);
+    let nextDirection = preferred ?? defaultDirectionFor(r, c);
+    if (preferred === "down" && !downAvailable) nextDirection = "across";
+    if (preferred === "across" && !acrossAvailable) nextDirection = "down";
+    setDirectionSync(nextDirection);
+    focusCell(r, c);
+  }
+
+  function toggleDirectionAt(r: number, c: number) {
+    const acrossAvailable = isCell(r, c - 1) || isCell(r, c + 1);
+    const downAvailable = isCell(r - 1, c) || isCell(r + 1, c);
+    const current = directionRef.current;
+    let next = current;
+    if (current === "across" && downAvailable) next = "down";
+    else if (current === "down" && acrossAvailable) next = "across";
+    setDirectionSync(next);
+    focusCell(r, c);
+  }
+
+  function commitLetter(r: number, c: number, ch: string) {
+    const letter = ch.toUpperCase();
+    if (!/[A-Z]/.test(letter)) return;
+
+    console.log("[crossword] input", {
+      row: r + 1,
+      col: c + 1,
+      char: letter,
+      direction: directionRef.current,
+    });
+
+    setValues((prev) => ({ ...prev, [key(r, c)]: letter }));
+
+    const { r: nr, c: nc } = nextCell(r, c, directionRef.current);
+    if (isCell(nr, nc)) focusCell(nr, nc);
   }
 
   function handleKeyDown(r: number, c: number, e: React.KeyboardEvent) {
-    if (e.key === "Backspace" && !values[key(r, c)]) {
-      const pr = direction === "down" ? r - 1 : r;
-      const pc = direction === "across" ? c - 1 : c;
+    if (e.key.length === 1 && /[a-zA-Z]/.test(e.key)) {
+      e.preventDefault();
+      commitLetter(r, c, e.key);
+      return;
+    }
+
+    if (e.key === "Backspace") {
+      e.preventDefault();
+      if (values[key(r, c)]) {
+        setValues((prev) => ({ ...prev, [key(r, c)]: "" }));
+        return;
+      }
+      const { r: pr, c: pc } = prevCell(r, c, directionRef.current);
       if (isCell(pr, pc)) {
         setValues((prev) => ({ ...prev, [key(pr, pc)]: "" }));
-        setActive({ r: pr, c: pc });
+        focusCell(pr, pc);
       }
       return;
     }
-    const moves: Record<string, [number, number]> = {
-      ArrowUp: [r - 1, c],
-      ArrowDown: [r + 1, c],
-      ArrowLeft: [r, c - 1],
-      ArrowRight: [r, c + 1],
+
+    const moves: Record<string, [number, number, Direction]> = {
+      ArrowUp: [r - 1, c, "down"],
+      ArrowDown: [r + 1, c, "down"],
+      ArrowLeft: [r, c - 1, "across"],
+      ArrowRight: [r, c + 1, "across"],
     };
     if (moves[e.key]) {
       e.preventDefault();
-      const [nr, nc] = moves[e.key];
-      if (isCell(nr, nc)) {
-        setDirection(e.key === "ArrowUp" || e.key === "ArrowDown" ? "down" : "across");
-        setActive({ r: nr, c: nc });
-      }
+      const [nr, nc, dir] = moves[e.key];
+      if (isCell(nr, nc)) selectCell(nr, nc, dir);
     }
+  }
+
+  function handleChange(r: number, c: number, raw: string) {
+    // Mobile / IME paste — desktop letters go through onKeyDown.
+    const ch = raw.slice(-1);
+    if (!ch || !/[a-zA-Z]/.test(ch)) {
+      if (!raw) setValues((prev) => ({ ...prev, [key(r, c)]: "" }));
+      return;
+    }
+    commitLetter(r, c, ch);
   }
 
   function check() {
@@ -151,12 +210,12 @@ export function Crossword({ layout, onComplete }: CrosswordProps) {
   }
 
   return (
-    <div className="flex w-full flex-col py-2">
-      <header className="mb-5">
+    <div className="flex w-full flex-col pb-36 py-2">
+      <header className="mb-5 shrink-0">
         <p className="a24-eyebrow text-muted-foreground">Round 2 — The A24 Crossword</p>
       </header>
 
-      <div className="flex flex-col gap-8 md:flex-row">
+      <div className="flex min-h-0 flex-1 flex-col gap-8 md:flex-row">
         <div
           ref={gridRef}
           className="grid shrink-0 gap-px self-start bg-white/10 p-px"
@@ -178,14 +237,33 @@ export function Crossword({ layout, onComplete }: CrosswordProps) {
                     </span>
                   )}
                   <input
+                    ref={(el) => {
+                      const k = key(r, c);
+                      if (el) inputRefs.current.set(k, el);
+                      else inputRefs.current.delete(k);
+                    }}
                     data-cell={key(r, c)}
                     value={values[key(r, c)] ?? ""}
                     onChange={(e) => handleChange(r, c, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(r, c, e)}
-                    onFocus={() => selectCell(r, c)}
-                    onClick={() => selectCell(r, c)}
+                    onFocus={() => {
+                      if (active?.r !== r || active?.c !== c) {
+                        setActive({ r, c });
+                      }
+                    }}
+                    onClick={() => {
+                      if (active?.r === r && active?.c === c) {
+                        toggleDirectionAt(r, c);
+                      } else {
+                        selectCell(r, c);
+                      }
+                    }}
                     maxLength={1}
                     disabled={result !== null}
+                    autoComplete="off"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    inputMode="text"
                     aria-label={`Row ${r + 1}, column ${c + 1}`}
                     className={cellClass(isActive, inWord)}
                   />
@@ -201,7 +279,7 @@ export function Crossword({ layout, onComplete }: CrosswordProps) {
         </div>
       </div>
 
-      <div className="mt-8 flex items-center justify-between">
+      <div className="mt-8 flex shrink-0 items-center justify-between">
         {result === null ? (
           <p className="text-sm italic text-muted-foreground">
             Fill what you can. The oracle rewards instinct over certainty.
@@ -220,6 +298,49 @@ export function Crossword({ layout, onComplete }: CrosswordProps) {
           Reveal my tier
         </Button>
       </div>
+
+      <CrosswordLegend />
+    </div>
+  );
+}
+
+function CrosswordLegend() {
+  return (
+    <div
+      className="fixed inset-x-0 bottom-0 z-20 border-t border-foreground bg-background"
+      aria-label="Crossword controls"
+    >
+      <div className="a24-gutter mx-auto max-w-6xl py-4 text-foreground/80">
+        <div className="a24-prose max-w-none">
+          <p className="a24-eyebrow mb-2 text-muted-foreground">How to play</p>
+          <ul className="flex flex-col gap-1.5 text-sm md:flex-row md:flex-wrap md:gap-x-6 md:gap-y-1.5">
+            <li>
+              <strong className="font-medium text-foreground">A–Z</strong> — type one
+              letter; the cursor moves along the highlighted word (across or down).
+            </li>
+            <li>
+              <strong className="font-medium text-foreground">Backspace</strong> —
+              clears the active square; if it is already empty, moves back and clears
+              the previous letter in that word.
+            </li>
+            <li>
+              <strong className="font-medium text-foreground">Arrow keys</strong> —
+              move between squares; up/down select a down word, left/right an across
+              word.
+            </li>
+            <li>
+              <strong className="font-medium text-foreground">Click a square twice</strong>{" "}
+              — switch between across and down for that cell.
+            </li>
+            <li>
+              Use the clue lists for hints.{" "}
+              <strong className="font-medium text-foreground">Reveal my tier</strong>{" "}
+              scores both rounds and gives you an A24 fan tier — you do not need every
+              answer.
+            </li>
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }
@@ -228,9 +349,7 @@ function ClueList({ title, words }: { title: string; words: PlacedWord[] }) {
   if (words.length === 0) return null;
   return (
     <div>
-      <h3 className="a24-eyebrow mb-2 text-muted-foreground">
-        {title}
-      </h3>
+      <h3 className="a24-eyebrow mb-2 text-muted-foreground">{title}</h3>
       <ol className="flex flex-col gap-1.5">
         {words.map((w) => (
           <li key={w.id} className="flex gap-2 text-foreground/75">

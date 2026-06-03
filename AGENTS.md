@@ -8,6 +8,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ---
 
+this is a bun project. do not use npm or pnpm
+
+---
+
 ## 🧠 Educational Persona: The Senior Mentor
 
 Treat every interaction as a tutoring session for a visual learner with a

@@ -8,6 +8,10 @@ import {
 } from "ai";
 import { oracleTools, type OracleUIMessage } from "@/lib/oracle-tools";
 import { buildSystemPrompt } from "@/lib/oracle-prompt";
+import {
+  logOpenRouter,
+  summarizeIncomingMessages,
+} from "@/lib/openrouter-dev-log";
 
 export const maxDuration = 30;
 
@@ -77,17 +81,54 @@ export async function POST(req: Request) {
     return chatErrorResponse(error, 400);
   }
 
+  logOpenRouter("client → api/chat", {
+    model: MODEL_ID,
+    ...summarizeIncomingMessages(messages),
+  });
+
   try {
+    let receivedFromProvider = false;
+
     const result = streamText({
       model: openrouter.chat(MODEL_ID),
       system: buildSystemPrompt(),
       messages: await convertToModelMessages(messages),
       tools: oracleTools,
       stopWhen: stepCountIs(1),
+      experimental_onStepStart: () => {
+        logOpenRouter("request → OpenRouter (step starting)");
+      },
+      onChunk: ({ chunk }) => {
+        if (receivedFromProvider) return;
+        receivedFromProvider = true;
+        logOpenRouter("OpenRouter → api (first stream chunk)", {
+          chunkType: chunk.type,
+        });
+      },
+      onStepFinish: ({ finishReason, usage }) => {
+        logOpenRouter("OpenRouter step finished", {
+          finishReason,
+          usage,
+        });
+      },
+      onFinish: ({ finishReason, totalUsage, text, toolCalls }) => {
+        logOpenRouter("OpenRouter stream complete", {
+          finishReason,
+          usage: totalUsage,
+          textLength: text.length,
+          toolCallCount: toolCalls.length,
+          toolNames: toolCalls.map((t) => t.toolName),
+        });
+      },
       onError: ({ error }) => {
         console.error("[api/chat] stream", error);
+        logOpenRouter("OpenRouter error", {
+          message: error instanceof Error ? error.message : String(error),
+        });
       },
     });
+
+    logOpenRouter("api → client (UI message stream opened)");
 
     return result.toUIMessageStreamResponse({
       onError: (error) => {
