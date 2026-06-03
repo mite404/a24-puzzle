@@ -6,7 +6,7 @@ import Image from "next/image";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { getFilmTitle } from "@/data/films";
 import type { FilmLocation } from "@/lib/types";
-import { Button } from "@/components/ui/button";
+import { A24CtaButton } from "@/components/a24-cta-button";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -139,13 +139,7 @@ export function LocationMap({
       </div>
 
       <div className="flex justify-end">
-        <Button
-          onClick={onContinue}
-          variant="outline"
-          className="a24-cta h-auto"
-        >
-          To the crossword
-        </Button>
+        <A24CtaButton onClick={onContinue}>To the crossword</A24CtaButton>
       </div>
     </div>
   );

@@ -36,7 +36,7 @@ export function AppShell({
     >
       <div
         className={cn(
-          "flex w-full flex-col",
+          "mx-auto flex w-full flex-col",
           maxWidthClass[maxWidth],
           centered && "min-h-[min(720px,75dvh)]",
         )}

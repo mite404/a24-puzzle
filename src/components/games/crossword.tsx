@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import type { CrosswordLayout, PlacedWord } from "@/lib/types";
-import { Button } from "@/components/ui/button";
+import { A24CtaButton } from "@/components/a24-cta-button";
 
 interface CrosswordProps {
   layout: CrosswordLayout;
@@ -210,7 +210,7 @@ export function Crossword({ layout, onComplete }: CrosswordProps) {
   }
 
   return (
-    <div className="flex w-full flex-col pb-36 py-2">
+    <div className="flex w-full flex-col py-2">
       <header className="mb-5 shrink-0">
         <p className="a24-eyebrow text-muted-foreground">Round 2 — The A24 Crossword</p>
       </header>
@@ -289,14 +289,9 @@ export function Crossword({ layout, onComplete }: CrosswordProps) {
             {result} of {words.length} entries solved.
           </p>
         )}
-        <Button
-          onClick={check}
-          disabled={result !== null}
-          variant="outline"
-          className="a24-cta h-auto shrink-0"
-        >
+        <A24CtaButton onClick={check} disabled={result !== null}>
           Reveal my tier
-        </Button>
+        </A24CtaButton>
       </div>
 
       <CrosswordLegend />
@@ -306,11 +301,11 @@ export function Crossword({ layout, onComplete }: CrosswordProps) {
 
 function CrosswordLegend() {
   return (
-    <div
-      className="fixed inset-x-0 bottom-0 z-20 border-t border-foreground bg-background"
+    <section
+      className="mt-12 border-t border-foreground pt-6"
       aria-label="Crossword controls"
     >
-      <div className="a24-gutter mx-auto max-w-6xl py-4 text-foreground/80">
+      <div className="text-foreground/80">
         <div className="a24-prose max-w-none">
           <p className="a24-eyebrow mb-2 text-muted-foreground">How to play</p>
           <ul className="flex flex-col gap-1.5 text-sm md:flex-row md:flex-wrap md:gap-x-6 md:gap-y-1.5">
@@ -341,7 +336,7 @@ function CrosswordLegend() {
           </ul>
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 

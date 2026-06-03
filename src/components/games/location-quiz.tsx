@@ -6,7 +6,7 @@ import { getFilmTitle } from "@/data/films";
 import { locations as allLocations } from "@/data/locations";
 import { getNearbyLocations } from "@/lib/geo";
 import type { LocationQuestion } from "@/lib/types";
-import { Button } from "@/components/ui/button";
+import { A24CtaButton } from "@/components/a24-cta-button";
 import { LocationMap } from "@/components/games/location-map";
 
 const MAP_THRESHOLD = 3;
@@ -54,28 +54,26 @@ export function LocationQuiz({ questions, onComplete }: LocationQuizProps) {
   return (
     <div className="flex w-full flex-col py-2">
       <header className="mb-5">
-        <p className="a24-eyebrow text-muted-foreground">
-          Round 1 — Where Was This Shot
-        </p>
-        <p className="a24-eyebrow mt-2 text-muted-foreground/70">
+        <p className="a24-eyebrow">Round 1 — Where Was This Shot</p>
+        <p className="a24-meta mt-2">
           {index + 1} / {Math.min(questions.length, MAP_THRESHOLD)}
         </p>
       </header>
 
-      <div className="relative aspect-video w-full overflow-hidden ring-1 ring-foreground">
-        <Image
-          src={question.location.photoUrl}
-          alt="A filming location somewhere in New York City"
-          fill
-          sizes="(max-width: 768px) 100vw, 672px"
-          className="object-cover"
-        />
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-          <p className="text-sm italic text-foreground/80">
-            {question.location.hint}
-          </p>
+      <figure className="w-full">
+        <div className="relative aspect-video w-full overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.08)] ring-1 ring-foreground/10">
+          <Image
+            src={question.location.photoUrl}
+            alt="A filming location somewhere in New York City"
+            fill
+            sizes="(max-width: 768px) 100vw, 672px"
+            className="object-cover"
+          />
         </div>
-      </div>
+        <figcaption className="mt-3">
+          <p className="a24-caption">{question.location.hint}</p>
+        </figcaption>
+      </figure>
 
       <p className="a24-prose mt-8 mb-4">Which A24 film shot here?</p>
 
@@ -108,13 +106,7 @@ export function LocationQuiz({ questions, onComplete }: LocationQuizProps) {
           </p>
 
           {!shouldRevealMap && (
-            <Button
-              onClick={next}
-              variant="outline"
-              className="a24-cta h-auto shrink-0"
-            >
-              Next
-            </Button>
+            <A24CtaButton onClick={next}>Next</A24CtaButton>
           )}
         </div>
       )}

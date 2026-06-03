@@ -22,12 +22,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-* {
-  box-sizing: border-box;
-  padding: 0;
-  margin: 0;
-}
-
 a {
   color: inherit;
   text-decoration: none;
@@ -80,10 +74,16 @@ a {
 
 :root {
   /* shop.a24films.com — On Location product page @ 390px / 1920px */
-  --a24-gutter-start: clamp(1.4625rem, 6vw, 7.2rem);
-  --a24-gutter-end: clamp(0.73125rem, 3vw, 3.6rem);
-  --a24-hero-pad-top: clamp(6.75rem, 10vw, 11.6rem);
-  --a24-hero-pad-bottom: clamp(2.2rem, 3vw, 2.75rem);
+  --a24-gutter-start: clamp(1.75rem, 7vw, 8rem);
+  --a24-gutter-end: clamp(1rem, 4vw, 4rem);
+  --a24-hero-pad-top: clamp(7.5rem, 12vw, 13rem);
+  --a24-hero-pad-bottom: clamp(2.75rem, 4vw, 3.5rem);
+  --a24-footer-spacer: clamp(5rem, 10vw, 6.25rem);
+  --a24-footer-pad-block: clamp(3.5rem, 6vw, 5rem);
+  /* shop footer — symmetric ~20–40px from viewport edges */
+  --a24-footer-inline: clamp(1.25rem, 2.5vw, 2.5rem);
+  /* shop grid “PREORDER” / price line */
+  --a24-meta: oklch(0.62 0 0);
   --a24-copy-max: 29.7rem;
   --a24-body-size: 1.1rem;
   --a24-body-leading: 1.19;
@@ -127,6 +127,14 @@ a {
 }
 
 @layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+  }
+
   * {
     @apply border-border outline-ring/50;
   }
@@ -161,6 +169,39 @@ a {
     text-transform: uppercase;
   }
 
+  /** PREORDER / price — small caps, light gray (shop category rows). */
+  .a24-meta {
+    font-size: 0.625rem;
+    font-weight: 400;
+    line-height: 1.25;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--a24-meta);
+  }
+
+  /** Caption under stills — sentence case, never on-image. */
+  .a24-caption {
+    font-size: 0.75rem;
+    font-style: italic;
+    font-weight: 400;
+    line-height: 1.35;
+    letter-spacing: var(--a24-body-tracking);
+    text-transform: none;
+    color: var(--a24-meta);
+  }
+
+  .a24-footer-spacer {
+    margin-block-start: var(--a24-footer-spacer);
+  }
+
+  .a24-footer-inset {
+    padding-inline: var(--a24-footer-inline);
+  }
+
+  .a24-footer-pad {
+    padding-block: var(--a24-footer-pad-block);
+  }
+
   .a24-title {
     font-size: clamp(3.5rem, 8vw, 5.775rem);
     font-weight: 700;
@@ -168,11 +209,17 @@ a {
     letter-spacing: var(--a24-title-tracking);
   }
 
-  .a24-prose {
-    max-width: var(--a24-copy-max);
+  /** Shared body voice — one type scale (Archivo) for prose, footer, quiz copy. */
+  .a24-prose,
+  .a24-body {
     font-size: var(--a24-body-size);
     line-height: var(--a24-body-leading);
     letter-spacing: var(--a24-body-tracking);
+    font-weight: 400;
+  }
+
+  .a24-prose {
+    max-width: var(--a24-copy-max);
   }
 
   .a24-rule {
@@ -188,6 +235,75 @@ a {
 
   .a24-cta:hover {
     @apply bg-foreground text-background;
+  }
+
+  /** LISTEN NOW–style link (a24films.com .arrow-svg + .link pattern). */
+  .a24-cta-link {
+    --a24-arrow-length: clamp(3.25rem, 10vw, 4.75rem);
+    --a24-arrow-length-hover: clamp(0.85rem, 3.5vw, 1.15rem);
+    --a24-arrow-tip-gap: 0.85em;
+
+    display: inline-flex;
+    align-items: center;
+    gap: var(--a24-arrow-tip-gap);
+    border: none;
+    background: transparent;
+    padding: 0;
+    font-size: var(--a24-body-size);
+    font-weight: 500;
+    line-height: 1;
+    letter-spacing: var(--a24-label-tracking);
+    text-transform: uppercase;
+    color: inherit;
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+  }
+
+  .a24-cta-link:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+
+  .a24-cta-link-label {
+    flex-shrink: 0;
+    line-height: 1;
+  }
+
+  /* Clip window shrinks; full arrow stays right-aligned so the tip hugs the label. */
+  .a24-cta-arrow-wrap {
+    display: flex;
+    flex-shrink: 0;
+    justify-content: flex-end;
+    align-items: center;
+    width: var(--a24-arrow-length);
+    height: 1em;
+    overflow: hidden;
+    transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .a24-cta-link:hover:not(:disabled) .a24-cta-arrow-wrap,
+  .a24-cta-link:focus-visible:not(:disabled) .a24-cta-arrow-wrap {
+    width: var(--a24-arrow-length-hover);
+  }
+
+  .a24-cta-arrow-svg {
+    display: block;
+    width: var(--a24-arrow-length);
+    height: 0.72em;
+    min-width: var(--a24-arrow-length);
+    flex-shrink: 0;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .a24-cta-arrow-wrap {
+      transition-duration: 0.01ms;
+    }
+  }
+
+  .a24-footer-rule-label {
+    margin-block-start: 0.2rem;
+    text-transform: uppercase;
+    color: var(--background);
   }
 }
 
