@@ -19,6 +19,7 @@ import type {
 } from "@/lib/types";
 import { AppShell } from "@/components/app-shell";
 import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
 import { DebugPhaseBar } from "@/components/debug-phase-bar";
 import { OracleChat } from "@/components/intake/oracle-chat";
 import { LocationQuiz } from "@/components/games/location-quiz";
@@ -67,13 +68,21 @@ export function Experience() {
     setPhase("end");
   }, []);
 
+  const [intakeSession, setIntakeSession] = useState(0);
+
   const restart = useCallback(() => {
+    setIntakeSession((n) => n + 1);
     setPayload(null);
     setScores(EMPTY_SCORES);
     setPhase("intake");
   }, []);
 
   const debugUrlHandled = useRef(false);
+
+  useEffect(() => {
+    if (phase !== "intake") return;
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [phase, intakeSession]);
 
   useEffect(() => {
     if (!DEBUG_EXPERIENCE_ENABLED || debugUrlHandled.current) return;
@@ -93,7 +102,7 @@ export function Experience() {
 
       {phase === "intake" && (
         <AppShell hero centered maxWidth="copy">
-          <OracleChat onFinalize={handleFinalize} />
+          <OracleChat key={intakeSession} onFinalize={handleFinalize} />
         </AppShell>
       )}
 
@@ -116,15 +125,19 @@ export function Experience() {
           <EndScreen scores={scores} onRestart={restart} />
         </AppShell>
       )}
+
+      <SiteFooter />
     </main>
   );
 }
 
 function Generating() {
   return (
-    <div className="a24-gutter a24-hero-pad flex min-h-[50dvh] flex-col justify-center gap-3">
-      <p className="a24-prose text-2xl italic">I think I see you now.</p>
-      <p className="a24-eyebrow text-muted-foreground">Composing your experience</p>
+    <div className="a24-gutter a24-hero-pad flex min-h-[50dvh] flex-1 flex-col justify-center">
+      <div className="mx-auto flex w-full max-w-[45.6rem] flex-col gap-3">
+        <p className="a24-prose text-2xl italic">I think I see you now.</p>
+        <p className="a24-meta">Composing your experience</p>
+      </div>
     </div>
   );
 }

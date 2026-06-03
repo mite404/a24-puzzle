@@ -5,6 +5,7 @@ import { useChat } from "@ai-sdk/react";
 import type { OracleUIMessage } from "@/lib/oracle-tools";
 import type { ExperienceProfile } from "@/lib/types";
 import { PaletteCard } from "@/components/intake/palette-card";
+import { A24CtaButton } from "@/components/a24-cta-button";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { formatChatError } from "@/lib/chat-errors";
@@ -35,7 +36,8 @@ export function OracleChat({ onFinalize }: OracleChatProps) {
   }, [status]);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (messages.length === 0) return;
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [messages]);
 
   useEffect(() => {
@@ -82,7 +84,7 @@ export function OracleChat({ onFinalize }: OracleChatProps) {
   return (
     <div className="flex h-full w-full flex-col">
       <header className="mb-10">
-        <p className="a24-eyebrow text-muted-foreground">Consultation</p>
+        <p className="a24-meta">Consultation</p>
         <h1 className="a24-title mt-3 max-w-[14ch]">The Oracle</h1>
       </header>
 
@@ -155,8 +157,8 @@ export function OracleChat({ onFinalize }: OracleChatProps) {
         onSubmit={handleSubmit}
         className="mt-10 flex flex-col gap-4 border-t border-foreground pt-6"
       >
-        <p className="a24-eyebrow text-muted-foreground">Your reply</p>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+        <p className="a24-meta">Your reply</p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:gap-6">
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -169,14 +171,13 @@ export function OracleChat({ onFinalize }: OracleChatProps) {
             aria-describedby="oracle-compose-status"
             className="a24-prose min-h-12 flex-1 resize-none rounded-none border border-foreground bg-transparent px-3 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-foreground disabled:opacity-60"
           />
-          <Button
+          <A24CtaButton
             type="submit"
-            variant="outline"
             disabled={busy || !text.trim()}
-            className="a24-cta h-auto shrink-0 sm:min-w-[9rem]"
+            className="shrink-0 self-start sm:self-end"
           >
             Send
-          </Button>
+          </A24CtaButton>
         </div>
         <ComposeStatusLine status={status} modelResponding={assistantStreamingText} />
       </form>

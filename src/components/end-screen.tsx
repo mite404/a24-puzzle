@@ -2,7 +2,7 @@
 
 import { fanTier } from "@/lib/scoring";
 import type { Scores } from "@/lib/types";
-import { Button } from "@/components/ui/button";
+import { A24CtaButton } from "@/components/a24-cta-button";
 
 interface EndScreenProps {
   scores: Scores;
@@ -16,7 +16,7 @@ export function EndScreen({ scores, onRestart }: EndScreenProps) {
 
   return (
     <div className="flex h-full w-full flex-col justify-center">
-      <p className="a24-eyebrow text-muted-foreground">Your tier</p>
+      <p className="a24-meta">Your tier</p>
       <h1 className="a24-title mt-4 max-w-[12ch]">{tier.title}</h1>
       <p className="a24-prose mt-6 text-muted-foreground">{tier.blurb}</p>
 
@@ -26,9 +26,9 @@ export function EndScreen({ scores, onRestart }: EndScreenProps) {
         <Stat label="Overall" value={`${correct}/${total}`} />
       </div>
 
-      <Button onClick={onRestart} variant="outline" className="a24-cta mt-12 w-full sm:w-auto">
+      <A24CtaButton onClick={onRestart} className="mt-12 w-full sm:w-auto">
         Consult the oracle again
-      </Button>
+      </A24CtaButton>
     </div>
   );
 }
@@ -36,7 +36,7 @@ export function EndScreen({ scores, onRestart }: EndScreenProps) {
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="a24-eyebrow text-muted-foreground">{label}</span>
+      <span className="a24-meta">{label}</span>
       <span className="text-[1.375rem] leading-none">{value}</span>
     </div>
   );

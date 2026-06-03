@@ -9,19 +9,24 @@ Reference: [On Location in New York City](https://shop.a24films.com/products/on-
 | UI / body | **Archivo** (stand-in for NB International Web) | `font-sans` | 1.1rem, line-height 1.19, tracking −0.01em |
 | Page title | Archivo bold | `a24-title` | clamp(3.5rem → 5.775rem), tracking −0.055em |
 | Labels | Archivo semibold caps | `a24-eyebrow` | 0.756rem, tracking 0.04em |
-| Copy column | — | `a24-prose` | max-width 29.7rem (shop description measure) |
+| PREORDER / price | Archivo caps, light gray | `a24-meta` | 0.625rem, `--a24-meta` color |
+| Stills caption | Italic below image | `a24-caption` | Never overlay on photos |
+| Body / UI copy | Archivo regular | `a24-body` | 1.1rem — footer nav, shared with prose |
+| Copy column | — | `a24-prose` | `a24-body` + max-width 29.7rem |
 
 ## Layout (from shop product hero)
 
 | Token | Value |
 |-------|--------|
-| `--a24-gutter-start` | clamp(1.46rem, **6vw**, 7.2rem) |
-| `--a24-gutter-end` | clamp(0.73rem, **3vw**, 3.6rem) |
-| `--a24-hero-pad-top` | clamp(6.75rem, 10vw, 11.6rem) |
-| `--a24-hero-pad-bottom` | clamp(2.2rem, 3vw, 2.75rem) |
+| `--a24-gutter-start` | clamp(1.75rem, **7vw**, 8rem) |
+| `--a24-gutter-end` | clamp(1rem, **4vw**, 4rem) |
+| `--a24-hero-pad-top` | clamp(7.5rem, 12vw, 13rem) |
+| `--a24-hero-pad-bottom` | clamp(2.75rem, 4vw, 3.5rem) |
+| `--a24-footer-spacer` | clamp(5rem, 10vw, 6.25rem) — gap above black footer |
+| `--a24-footer-inline` | clamp(1.25rem, 2.5vw, 2.5rem) — symmetric footer side inset (~20–40px) |
 
 - Apply gutters with `a24-gutter` on `SiteHeader`, `AppShell`, and full-bleed sections.
-- Intake is **left-aligned** in a copy column (`max-w-[45.6rem]`), not centered in the page.
+- Copy/game columns are **centered on the page** (`mx-auto`) with **left-aligned** text inside (`max-w-[45.6rem]` copy, `max-w-6xl` games).
 - Hero phases use `a24-hero-pad` for top spacing below the header.
 
 ## Color & chrome
@@ -39,8 +44,9 @@ Reference: [On Location in New York City](https://shop.a24films.com/products/on-
 
 ## Components
 
-- `SiteHeader` — thin top bar + eyebrow labels
-- `AppShell` — gutters + optional hero padding
+- `SiteHeader` — eyebrow left, vector A24 logo centered (`public/a24-assets/A24-Films-Logo-Vector.png`)
+- `SiteFooter` — black three-column shop footer mockup; use `a24-footer-inset` (not product-page asymmetric gutters)
+- `AppShell` — gutters + optional hero padding + centered column
 - Add UI via `bunx shadcn@latest add <name>`
 
 ## After pulling styling changes
