@@ -190,3 +190,63 @@ a {
     @apply bg-foreground text-background;
   }
 }
+
+/* ── Mapbox pin + popup overrides ─────────────────────────────── */
+
+.hero-pin {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.3);
+  animation: pin-pulse 2s ease-out infinite;
+}
+
+@keyframes pin-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 14px rgba(255, 255, 255, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+.nearby-pin {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.nearby-pin:hover {
+  background: white;
+}
+
+.location-popup .mapboxgl-popup-content {
+  padding: 0;
+  border-radius: 0;
+  background: var(--background);
+  border: 1px solid var(--border);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  font-family: var(--font-sans);
+}
+
+.location-popup .mapboxgl-popup-tip {
+  border-top-color: var(--background);
+}
+
+.location-popup .mapboxgl-popup-close-button {
+  color: var(--muted-foreground);
+  font-size: 16px;
+  padding: 4px 8px;
+}
+
+.location-popup .mapboxgl-popup-close-button:hover {
+  color: var(--foreground);
+  background: transparent;
+}

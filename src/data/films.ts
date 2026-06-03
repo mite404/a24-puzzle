@@ -71,6 +71,13 @@ export const films: Film[] = [
     director: "Daniels",
     genres: ["Sci-Fi", "Comedy"],
   },
+  {
+    id: "materialists",
+    title: "Materialists",
+    year: 2025,
+    director: "Celine Song",
+    genres: ["Romance", "Comedy"],
+  },
 ];
 
 const filmsById = new Map<FilmId, Film>(films.map((f) => [f.id, f]));

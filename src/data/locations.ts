@@ -76,6 +76,36 @@ export const locations: FilmLocation[] = [
     lng: -73.9857,
     hint: "You noclipped out of reality somewhere near here.",
   },
+  {
+    id: "mat-cooper-union",
+    filmId: "materialists",
+    photoUrl: "/a24-assets/materialists/materialists-still-cooper-union.webp",
+    address: "Cooper Square",
+    neighborhood: "East Village",
+    lat: 40.7291,
+    lng: -73.9907,
+    hint: "A college where Lincoln once spoke, now backdrop for modern heartbreak.",
+  },
+  {
+    id: "mat-st-barts",
+    filmId: "materialists",
+    photoUrl: "/a24-assets/materialists/materialists-Saint-Bartholomews-movie-still.webp",
+    address: "Park Avenue",
+    neighborhood: "Midtown East",
+    lat: 40.7541,
+    lng: -73.9718,
+    hint: "Byzantine grandeur on Park Avenue, dressed for a wedding.",
+  },
+  {
+    id: "mat-lotte-palace",
+    filmId: "materialists",
+    photoUrl: "/a24-assets/materialists/materialists-lotties-still.html",
+    address: "Madison Avenue",
+    neighborhood: "Midtown East",
+    lat: 40.7579,
+    lng: -73.9749,
+    hint: "Gilded Age luxury where elite matchmaking feels right at home.",
+  },
 ];
 
 const locationsById = new Map(locations.map((l) => [l.id, l]));

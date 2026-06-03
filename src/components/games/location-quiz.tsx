@@ -1,10 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Image from "next/image";
 import { getFilmTitle } from "@/data/films";
+import { locations as allLocations } from "@/data/locations";
+import { getNearbyLocations } from "@/lib/geo";
 import type { LocationQuestion } from "@/lib/types";
 import { Button } from "@/components/ui/button";
+import { LocationMap } from "@/components/games/location-map";
+
+const MAP_THRESHOLD = 3;
 
 interface LocationQuizProps {
   questions: LocationQuestion[];
@@ -15,26 +20,35 @@ export function LocationQuiz({ questions, onComplete }: LocationQuizProps) {
   const [index, setIndex] = useState(0);
   const [picked, setPicked] = useState<string | null>(null);
   const [correctCount, setCorrectCount] = useState(0);
+  const [showMap, setShowMap] = useState(false);
 
   const question = questions[index];
   const answered = picked !== null;
-  const isLast = index === questions.length - 1;
+  const wasCorrect = picked === question.location.filmId;
+
+  const shouldRevealMap =
+    answered && (!wasCorrect || index + 1 >= MAP_THRESHOLD);
+
+  const nearbyLocations = useMemo(
+    () => getNearbyLocations(question.location, allLocations),
+    [question.location],
+  );
 
   function pick(filmId: string) {
     if (answered) return;
     setPicked(filmId);
-    if (filmId === question.location.filmId) {
-      setCorrectCount((c) => c + 1);
+    const correct = filmId === question.location.filmId;
+    if (correct) setCorrectCount((c) => c + 1);
+
+    if (!correct || index + 1 >= MAP_THRESHOLD) {
+      setTimeout(() => setShowMap(true), 600);
     }
   }
 
   function next() {
-    if (isLast) {
-      onComplete(correctCount);
-      return;
-    }
     setIndex((i) => i + 1);
     setPicked(null);
+    setShowMap(false);
   }
 
   return (
@@ -44,7 +58,7 @@ export function LocationQuiz({ questions, onComplete }: LocationQuizProps) {
           Round 1 — Where Was This Shot
         </p>
         <p className="a24-eyebrow mt-2 text-muted-foreground/70">
-          {index + 1} / {questions.length}
+          {index + 1} / {Math.min(questions.length, MAP_THRESHOLD)}
         </p>
       </header>
 
@@ -63,9 +77,7 @@ export function LocationQuiz({ questions, onComplete }: LocationQuizProps) {
         </div>
       </div>
 
-      <p className="a24-prose mt-8 mb-4">
-        Which A24 film shot here?
-      </p>
+      <p className="a24-prose mt-8 mb-4">Which A24 film shot here?</p>
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {question.options.map((filmId) => {
@@ -87,18 +99,42 @@ export function LocationQuiz({ questions, onComplete }: LocationQuizProps) {
       {answered && (
         <div className="mt-6 flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            {picked === question.location.filmId
+            {wasCorrect
               ? "Correct."
               : `It was ${getFilmTitle(question.location.filmId)}.`}{" "}
             <span className="text-muted-foreground/70">
               {question.location.neighborhood}
             </span>
           </p>
-          <Button onClick={next} variant="outline" className="a24-cta h-auto shrink-0">
-            {isLast ? "To the crossword" : "Next"}
-          </Button>
+
+          {!shouldRevealMap && (
+            <Button
+              onClick={next}
+              variant="outline"
+              className="a24-cta h-auto shrink-0"
+            >
+              Next
+            </Button>
+          )}
         </div>
       )}
+
+      {/* Map reveal — slides in after wrong answer or after 3 correct */}
+      <div
+        className={`mt-8 transition-all duration-700 ease-out ${
+          showMap
+            ? "translate-y-0 opacity-100"
+            : "pointer-events-none translate-y-8 opacity-0"
+        }`}
+      >
+        {showMap && (
+          <LocationMap
+            heroLocation={question.location}
+            nearbyLocations={nearbyLocations}
+            onContinue={() => onComplete(correctCount)}
+          />
+        )}
+      </div>
     </div>
   );
 }
