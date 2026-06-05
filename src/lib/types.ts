@@ -29,6 +29,8 @@ export interface FilmLocation {
   filmId: FilmId;
   photoUrl: string;
   address: string;
+  /** Specific place name on map hover cards (e.g. "St. Barts Cathedral"). */
+  venueLabel?: string;
   neighborhood: string;
   lat: number;
   lng: number;

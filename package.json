@@ -7,7 +7,8 @@
     "dev:clean": "rm -rf .next && bun run dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "doctor": "bunx react-doctor"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.67",
@@ -38,6 +39,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
+    "react-doctor": "^0.4.0",
     "typescript": "^5",
     "typescript-eslint": "^8.60.1"
   },

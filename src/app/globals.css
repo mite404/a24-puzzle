@@ -343,17 +343,217 @@ a {
   background: white;
 }
 
+.location-popup.mapboxgl-popup {
+  background: transparent;
+}
+
 .location-popup .mapboxgl-popup-content {
   padding: 0;
-  border-radius: 0;
-  background: var(--background);
-  border: 1px solid var(--border);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  background: transparent !important;
+  border: none;
+  box-shadow: none;
   font-family: var(--font-sans);
 }
 
+.location-popup__hit {
+  display: block;
+  background: transparent;
+}
+
 .location-popup .mapboxgl-popup-tip {
-  border-top-color: var(--background);
+  border-top-color: #000;
+}
+
+/* ── Location pin hover cards (Figma: 17:117 collapsed, 17:102 expanded) ── */
+
+.location-pin-card {
+  width: 364px;
+  max-width: min(364px, calc(100vw - 2rem));
+  overflow: hidden;
+  background: transparent;
+  color: #fff;
+  font-family: var(--font-sans);
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.45));
+}
+
+.location-pin-card--collapsed {
+  position: relative;
+  height: 346px;
+  border-radius: 60px 60px 0 0;
+}
+
+.location-pin-card--expanded {
+  display: flex;
+  flex-direction: column;
+  height: 518px;
+  border-radius: 60px 60px 0 0;
+}
+
+.location-pin-card--expanded .location-pin-card__body {
+  flex: none;
+  height: 372px;
+}
+
+.location-pin-card__body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border-radius: 60px 60px 0 0;
+  overflow: hidden;
+}
+
+.location-pin-card--collapsed .location-pin-card__body {
+  height: 100%;
+}
+
+.location-pin-card__body .location-pin-card__media {
+  position: absolute;
+  inset: 0;
+  border-radius: 60px 60px 0 0;
+  overflow: hidden;
+}
+
+.location-pin-card__image {
+  object-fit: cover;
+  object-position: center 35%;
+}
+
+.location-pin-card__gradient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 52.2%,
+    rgba(0, 0, 0, 0.92) 72.8%
+  );
+}
+
+.location-pin-card__logo {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  z-index: 2;
+  translate: -50% 0;
+  filter: brightness(0);
+}
+
+.location-pin-card__overlay {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0 12px 16px;
+}
+
+.location-pin-card__overlay--expanded {
+  padding: 0 12px 12px;
+}
+
+.location-pin-card__title {
+  margin: 0;
+  font-size: 2.25rem;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.location-pin-card__meta {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 0.35rem;
+  font-size: 1rem;
+  line-height: 1.25;
+  letter-spacing: -0.05em;
+  color: #b4b4b4;
+}
+
+.location-pin-card__more {
+  align-self: flex-start;
+  margin-top: 0.65rem;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 1rem;
+  letter-spacing: -0.05em;
+  color: #b4b4b4;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.location-pin-card__more:hover,
+.location-pin-card__more:focus-visible {
+  color: #fff;
+  outline: none;
+}
+
+.location-pin-card__eyebrow {
+  margin: 0.75rem 0 0;
+  font-size: 0.75625rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: var(--a24-label-tracking);
+  text-transform: uppercase;
+  color: #b4b4b4;
+}
+
+.location-pin-card__film {
+  margin: 0.15rem 0 0;
+  font-size: 1rem;
+  line-height: 1.25;
+  letter-spacing: -0.05em;
+  color: #fff;
+}
+
+.location-pin-card__overlay--expanded .location-pin-card__film {
+  margin-bottom: 0;
+}
+
+.location-pin-card__carousel {
+  display: flex;
+  gap: 4px;
+  padding-inline: 0;
+}
+
+.location-pin-card__overlay .location-pin-card__carousel {
+  margin-top: 0.75rem;
+}
+
+.location-pin-card__carousel-seg {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.location-pin-card__carousel-seg.is-active {
+  height: 9px;
+  background: #b4b4b4;
+}
+
+.location-pin-card__footer {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  justify-content: space-between;
+  height: 146px;
+  padding: 12px;
+  background: #000;
+}
+
+.location-pin-card__footer .location-pin-card__carousel {
+  margin-top: 0;
+}
+
+.location-pin-card__footer-caption {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.25;
+  letter-spacing: -0.05em;
+  color: #5a5a5a;
 }
 
 .location-popup .mapboxgl-popup-close-button {
