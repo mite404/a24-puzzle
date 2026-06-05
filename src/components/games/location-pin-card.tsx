@@ -33,17 +33,17 @@ function LocationPinCardMedia({
         src={location.photoUrl}
         alt={alt}
         fill
-        sizes="364px"
+        sizes="260px"
         className="location-pin-card__image"
         priority={false}
       />
-      <div className="location-pin-card__gradient" />
+      <div className="location-pin-card__gradient" aria-hidden="true" />
       {showLogo ? (
         <Image
           src={A24_LOGO_SRC}
           alt="A24"
-          width={47}
-          height={20}
+          width={34}
+          height={14}
           className="location-pin-card__logo"
         />
       ) : null}
@@ -78,8 +78,7 @@ export function LocationPinCard({
   expanded,
   onMoreInfo,
 }: LocationPinCardProps) {
-  const filmShort = getFilmShortTitle(location.filmId);
-  const filmFull = getFilmTitle(location.filmId);
+  const filmTitle = getFilmShortTitle(location.filmId);
   const venue = venueLabel(location);
 
   return (
@@ -99,40 +98,35 @@ export function LocationPinCard({
               : "location-pin-card__overlay"
           }
         >
-          <h2 className="location-pin-card__title">{location.neighborhood}</h2>
-          {expanded ? (
-            <>
-              <p className="location-pin-card__eyebrow">Film</p>
-              <p className="location-pin-card__film">{filmShort}</p>
-            </>
-          ) : (
-            <>
-              <div className="location-pin-card__meta">
-                <span>{filmShort}</span>
-                <span>{venue}</span>
-              </div>
-              <button
-                type="button"
-                className="location-pin-card__more"
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onMoreInfo();
-                }}
-              >
-                more info&hellip;
-              </button>
-            </>
-          )}
+          <h2 className="location-pin-card__title">{filmTitle}</h2>
+          {!expanded ? (
+            <p className="location-pin-card__location">{venue}</p>
+          ) : null}
+          {!expanded ? (
+            <button
+              type="button"
+              className="location-pin-card__more"
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onMoreInfo();
+              }}
+            >
+              more info&hellip;
+            </button>
+          ) : null}
         </div>
       </div>
       {expanded ? (
         <footer className="location-pin-card__footer">
           <LocationPinCarousel activeIndex={0} />
-          <p className="location-pin-card__footer-caption">
-            {venue} &mdash; {filmFull}
-          </p>
+          <div className="location-pin-card__footer-copy">
+            <p className="location-pin-card__footer-location">{venue}</p>
+            <p className="location-pin-card__footer-neighborhood">
+              {location.neighborhood}
+            </p>
+          </div>
         </footer>
       ) : null}
     </article>

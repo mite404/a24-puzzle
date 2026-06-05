@@ -1,9 +1,20 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import Map, { Marker, NavigationControl, Popup } from "react-map-gl/mapbox";
+import Map, {
+  type MapRef,
+  Marker,
+  NavigationControl,
+  Popup,
+} from "react-map-gl/mapbox";
 import "mapbox-gl/dist/mapbox-gl.css";
 import type { FilmLocation } from "@/lib/types";
+import {
+  getLocationCardHeight,
+  getLocationCardPopupPlacement,
+  LOCATION_CARD,
+  type LocationPopupAnchor,
+} from "@/lib/location-card-metrics";
 import { A24CtaButton } from "@/components/a24-cta-button";
 import { LocationPinCard } from "@/components/games/location-pin-card";
 
@@ -23,14 +34,51 @@ export function LocationMap({
   nearbyLocations,
   onContinue,
 }: LocationMapProps) {
+  const mapRef = useRef<MapRef>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [popupAnchor, setPopupAnchor] = useState<LocationPopupAnchor>("bottom");
+  const [popupOffset, setPopupOffset] = useState<[number, number]>([
+    0,
+    LOCATION_CARD.pinGap,
+  ]);
   const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hoveredLocation =
     hoveredId
       ? nearbyLocations.find((l) => l.id === hoveredId) ?? null
       : null;
+
+  const isExpanded =
+    hoveredLocation !== null && expandedId === hoveredLocation.id;
+
+  const updatePopupPlacement = useCallback(() => {
+    if (!hoveredLocation || !mapRef.current) {
+      return;
+    }
+
+    const map = mapRef.current.getMap();
+    const point = map.project([hoveredLocation.lng, hoveredLocation.lat]);
+    const canvas = map.getCanvas();
+
+    const placement = getLocationCardPopupPlacement({
+      pinX: point.x,
+      pinY: point.y,
+      mapWidth: canvas.clientWidth,
+      mapHeight: canvas.clientHeight,
+      cardWidth: LOCATION_CARD.width,
+      cardHeight: getLocationCardHeight(isExpanded),
+    });
+
+    setPopupAnchor(placement.anchor);
+    setPopupOffset(placement.offset);
+  }, [hoveredLocation, isExpanded]);
+
+  useEffect(() => {
+    updatePopupPlacement();
+    const frame = requestAnimationFrame(updatePopupPlacement);
+    return () => cancelAnimationFrame(frame);
+  }, [updatePopupPlacement]);
 
   const cancelScheduledClose = useCallback(() => {
     if (closeTimerRef.current !== null) {
@@ -79,8 +127,9 @@ export function LocationMap({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="relative aspect-video w-full overflow-hidden ring-1 ring-foreground">
+      <div className="location-map relative aspect-video w-full overflow-visible ring-1 ring-foreground">
         <Map
+          ref={mapRef}
           mapboxAccessToken={MAPBOX_TOKEN}
           initialViewState={{
             longitude: heroLocation.lng,
@@ -92,6 +141,9 @@ export function LocationMap({
           scrollZoom={false}
           attributionControl={false}
           onClick={handleMapClick}
+          onLoad={updatePopupPlacement}
+          onMove={updatePopupPlacement}
+          onResize={updatePopupPlacement}
         >
           <NavigationControl position="top-right" showCompass={false} />
 
@@ -122,8 +174,8 @@ export function LocationMap({
             <Popup
               longitude={hoveredLocation.lng}
               latitude={hoveredLocation.lat}
-              anchor="bottom"
-              offset={12}
+              anchor={popupAnchor}
+              offset={popupOffset}
               closeOnClick={false}
               closeButton={false}
               onClose={handlePopupClose}
@@ -139,7 +191,7 @@ export function LocationMap({
               >
                 <LocationPinCard
                   location={hoveredLocation}
-                  expanded={expandedId === hoveredLocation.id}
+                  expanded={isExpanded}
                   onMoreInfo={() => setExpandedId(hoveredLocation.id)}
                 />
               </div>
