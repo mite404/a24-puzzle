@@ -89,3 +89,8 @@ export function getFilm(id: FilmId): Film | undefined {
 export function getFilmTitle(id: FilmId): string {
   return filmsById.get(id)?.title ?? id;
 }
+
+/** Card copy: drop leading "The" (e.g. "The Backrooms" → "Backrooms"). */
+export function getFilmShortTitle(id: FilmId): string {
+  return getFilmTitle(id).replace(/^The\s+/i, "");
+}

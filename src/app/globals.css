@@ -343,17 +343,240 @@ a {
   background: white;
 }
 
+.location-popup.mapboxgl-popup {
+  background: transparent;
+}
+
 .location-popup .mapboxgl-popup-content {
   padding: 0;
-  border-radius: 0;
-  background: var(--background);
-  border: 1px solid var(--border);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  background: transparent !important;
+  border: none;
+  box-shadow: none;
   font-family: var(--font-sans);
 }
 
-.location-popup .mapboxgl-popup-tip {
-  border-top-color: var(--background);
+.location-popup__hit {
+  display: block;
+  background: transparent;
+}
+
+.location-popup.mapboxgl-popup-anchor-bottom .mapboxgl-popup-tip {
+  border-top-color: #000;
+}
+
+.location-popup.mapboxgl-popup-anchor-top .mapboxgl-popup-tip {
+  border-bottom-color: #000;
+}
+
+/* ── Location pin hover cards (Figma 17:117 / 17:102, scaled for map) ── */
+
+.location-map {
+  --loc-card-w: 260px;
+  --loc-card-radius: 43px;
+  --loc-card-collapsed-h: 247px;
+  /* Expanded 25rem total — footer 9.125rem (36.5%), image body 15.875rem */
+  --loc-card-expanded-h: 370px;
+  --loc-card-body-h: 235px;
+  --loc-card-footer-h: 135px;
+}
+
+.location-pin-card {
+  width: var(--loc-card-w);
+  max-width: min(var(--loc-card-w), calc(100% - 1.5rem));
+  overflow: hidden;
+  background: transparent;
+  color: #fff;
+  font-family: var(--font-sans);
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, 0.45));
+}
+
+.location-pin-card--collapsed {
+  position: relative;
+  height: var(--loc-card-collapsed-h);
+  border-radius: var(--loc-card-radius) var(--loc-card-radius) 0 0;
+}
+
+.location-pin-card--expanded {
+  display: flex;
+  flex-direction: column;
+  height: var(--loc-card-expanded-h);
+  border-radius: var(--loc-card-radius) var(--loc-card-radius) 0 0;
+}
+
+.location-pin-card--expanded .location-pin-card__body {
+  flex: none;
+  height: var(--loc-card-body-h);
+  background: #000;
+}
+
+.location-pin-card__body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border-radius: var(--loc-card-radius) var(--loc-card-radius) 0 0;
+  overflow: hidden;
+}
+
+.location-pin-card--collapsed .location-pin-card__body {
+  height: 100%;
+}
+
+.location-pin-card__body .location-pin-card__media {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--loc-card-radius) var(--loc-card-radius) 0 0;
+  overflow: hidden;
+}
+
+.location-pin-card__image {
+  object-fit: cover;
+  object-position: center 35%;
+}
+
+/* Collapsed: Figma "Transparency Mask" — 16.5×18.625rem, #000 0% → #000 100% */
+.location-pin-card--collapsed .location-pin-card__gradient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 68.27%,
+    #000 78.5%
+  );
+}
+
+/* Expanded: mask on image body only (15.875rem) — not the 9.125rem footer slab */
+.location-pin-card--expanded .location-pin-card__gradient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 39.15%,
+    #000 70.82%
+  );
+}
+
+.location-pin-card__logo {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  z-index: 2;
+  translate: -50% 0;
+  filter: brightness(0);
+}
+
+.location-pin-card__overlay {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 0 10px 12px;
+}
+
+.location-pin-card__overlay--expanded {
+  padding: 0 10px 10px;
+}
+
+/* Film title sits on the mask line; everything below is solid black (footer) */
+.location-pin-card--expanded .location-pin-card__title {
+  margin-bottom: 0;
+}
+
+.location-pin-card__title {
+  margin: 0;
+  font-size: 1.625rem;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.05em;
+}
+
+.location-pin-card__location {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  letter-spacing: -0.05em;
+  color: #b4b4b4;
+}
+
+.location-pin-card__more {
+  align-self: flex-start;
+  margin-top: 0.5rem;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.8125rem;
+  letter-spacing: -0.05em;
+  color: #b4b4b4;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.location-pin-card__more:hover,
+.location-pin-card__more:focus-visible {
+  color: #fff;
+  outline: none;
+}
+
+.location-pin-card__carousel {
+  display: flex;
+  gap: 4px;
+  padding-inline: 0;
+}
+
+.location-pin-card__carousel-seg {
+  flex: 1;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.location-pin-card__carousel-seg.is-active {
+  height: 6px;
+  background: #b4b4b4;
+}
+
+.location-pin-card__footer {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  justify-content: flex-start;
+  gap: 0.625rem;
+  height: var(--loc-card-footer-h);
+  padding: 10px 10px 12px;
+  background: #000;
+  border-top: none;
+}
+
+.location-pin-card__footer .location-pin-card__carousel {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
+.location-pin-card__footer-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin-top: auto;
+}
+
+.location-pin-card__footer-location {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  letter-spacing: -0.05em;
+  color: #fff;
+}
+
+.location-pin-card__footer-neighborhood {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+  letter-spacing: -0.05em;
+  color: #b4b4b4;
 }
 
 .location-popup .mapboxgl-popup-close-button {
