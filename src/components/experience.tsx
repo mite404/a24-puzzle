@@ -21,7 +21,7 @@ import { AppShell } from "@/components/app-shell";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { DebugPhaseBar } from "@/components/debug-phase-bar";
-import { OracleChat } from "@/components/intake/oracle-chat";
+import { OracleTvScene } from "@/components/intake/oracle-tv-scene";
 import { LocationQuiz } from "@/components/games/location-quiz";
 import { Crossword } from "@/components/games/crossword";
 import { EndScreen } from "@/components/end-screen";
@@ -92,18 +92,24 @@ export function Experience() {
     jumpToDebug(target);
   }, [jumpToDebug]);
 
+  const intakeActive = phase === "intake";
+
   return (
-    <main className="relative flex min-h-dvh flex-col bg-background text-foreground">
-      <SiteHeader />
+    <main
+      className={
+        intakeActive
+          ? "relative flex min-h-dvh flex-col bg-[#120f0c] text-[#f5e6c8]"
+          : "relative flex min-h-dvh flex-col bg-background text-foreground"
+      }
+    >
+      <SiteHeader overlay={intakeActive} />
 
       {DEBUG_EXPERIENCE_ENABLED && (
         <DebugPhaseBar phase={phase} onJump={jumpToDebug} onReset={restart} />
       )}
 
       {phase === "intake" && (
-        <AppShell hero centered maxWidth="copy">
-          <OracleChat key={intakeSession} onFinalize={handleFinalize} />
-        </AppShell>
+        <OracleTvScene key={intakeSession} onFinalize={handleFinalize} />
       )}
 
       {phase === "generating" && <Generating />}
@@ -126,7 +132,7 @@ export function Experience() {
         </AppShell>
       )}
 
-      <SiteFooter />
+      <SiteFooter className={intakeActive ? "hidden" : undefined} />
     </main>
   );
 }
