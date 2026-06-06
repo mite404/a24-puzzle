@@ -1,7 +1,6 @@
 # Scribe Realtime Voice Input Plan
 
 > Living document. Saved June 2026.
-> Related: [scribe-realtime-stt-plan.md](./scribe-realtime-stt-plan.md) · [valence-oracle-plan.md](./valence-oracle-plan.md) · [FOR_ETHAN.md](./FOR_ETHAN.md)
 
 ## Decisions locked (June 2026)
 
@@ -63,10 +62,10 @@ sequenceDiagram
 
 ## Why realtime Scribe (not batch upload)
 
-| Approach | Latency feel | Fit |
-| -------- | ------------ | --- |
-| Batch `scribe_v2` (record blob → POST) | Wait until utterance ends + upload | Too “walkie-talkie with delay” |
-| **Realtime `scribe_v2_realtime`** | Partial words appear while speaking | Matches “as realtime as possible” |
+| Approach                               | Latency feel                        | Fit                               |
+| -------------------------------------- | ----------------------------------- | --------------------------------- |
+| Batch `scribe_v2` (record blob → POST) | Wait until utterance ends + upload  | Too “walkie-talkie with delay”    |
+| **Realtime `scribe_v2_realtime`**      | Partial words appear while speaking | Matches “as realtime as possible” |
 
 Use **`CommitStrategy.MANUAL`** with tap-to-toggle: tap 1 opens the mic and partials stream live; tap 2 fires `commit()` to finalize the utterance before auto-send. Avoid always-on VAD — it would pick up TV speaker bleed from [`useOracleVoice`](../src/hooks/use-oracle-voice.ts).
 
@@ -96,7 +95,7 @@ No change to existing TTS route pattern in [`src/app/api/voice/route.ts`](../src
 ```typescript
 // Verified against @elevenlabs/elevenlabs-js@2.51.0:
 // create() returns SingleUseTokenResponseModel = { token: string } (an OBJECT).
-const { token } = await elevenlabs.tokens.singleUse.create("realtime_scribe");
+const { token } = await elevenlabs.tokens.singleUse.create('realtime_scribe');
 return Response.json({ token });
 ```
 
@@ -111,11 +110,11 @@ return Response.json({ token });
 
 Build a deduped list (max **100** terms per Scribe API) from existing data:
 
-| Source | Examples |
-| ------ | -------- |
-| [`src/data/films.ts`](../src/data/films.ts) | titles, directors, split `"Josh & Benny Safdie"` into parts |
-| [`src/data/locations.ts`](../src/data/locations.ts) | `neighborhood`, `venueLabel` if present |
-| Personas | `"A24"`, `"Lady Bird"`, `"Materialists"`, `"The Witch"` |
+| Source                                              | Examples                                                    |
+| --------------------------------------------------- | ----------------------------------------------------------- |
+| [`src/data/films.ts`](../src/data/films.ts)         | titles, directors, split `"Josh & Benny Safdie"` into parts |
+| [`src/data/locations.ts`](../src/data/locations.ts) | `neighborhood`, `venueLabel` if present                     |
+| Personas                                            | `"A24"`, `"Lady Bird"`, `"Materialists"`, `"The Witch"`     |
 
 Export `buildScribeKeyterms(): string[]` — used client-side when connecting Scribe (not secret data).
 
@@ -199,13 +198,13 @@ const scribe = useOracleScribe({
 
 ## Turn-taking model (no mid-reply barge-in)
 
-The TV character must never start talking *while the user is composing*. The existing TTS is **reactive** — a `useEffect` (`use-oracle-voice.ts:151`) fires when a reply finishes streaming (`status === "ready"`), decoupled from the send action. That opens two failure windows the design must close:
+The TV character must never start talking _while the user is composing_. The existing TTS is **reactive** — a `useEffect` (`use-oracle-voice.ts:151`) fires when a reply finishes streaming (`status === "ready"`), decoupled from the send action. That opens two failure windows the design must close:
 
-| Window | What happens | Guard |
-| ------ | ------------ | ----- |
-| Reply still streaming when user wants to talk | Stream completes mid-compose → TTS fires over the user | **Mic disabled while `chat.busy`** — user can't even start composing until the reply lands |
-| Reply finished but TTS audio still synthesizing (the `/api/voice` round-trip) | `stopPlayback` alone won't stop it — an in-flight synth fetch isn't cancelled by it, so it plays once it returns | **`cancelSpeech()`** on tap 1 — bumps `speakGenerationRef` **and** stops playback, discarding the take |
-| Reactive effect re-voices a pre-compose reply later | The effect would still try to speak a reply the user talked over | **`consumePendingReplies()`** on tap 1 — records all present assistant-message ids as already-spoken, so only replies that arrive *after* send are ever voiced |
+| Window                                                                        | What happens                                                                                                     | Guard                                                                                                                                                          |
+| ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reply still streaming when user wants to talk                                 | Stream completes mid-compose → TTS fires over the user                                                           | **Mic disabled while `chat.busy`** — user can't even start composing until the reply lands                                                                     |
+| Reply finished but TTS audio still synthesizing (the `/api/voice` round-trip) | `stopPlayback` alone won't stop it — an in-flight synth fetch isn't cancelled by it, so it plays once it returns | **`cancelSpeech()`** on tap 1 — bumps `speakGenerationRef` **and** stops playback, discarding the take                                                         |
+| Reactive effect re-voices a pre-compose reply later                           | The effect would still try to speak a reply the user talked over                                                 | **`consumePendingReplies()`** on tap 1 — records all present assistant-message ids as already-spoken, so only replies that arrive _after_ send are ever voiced |
 
 Two distinct failure points → two distinct guards. Cancelling the in-flight take (lifecycle) and consuming stale message ids (identity) do different jobs; you need both. Net behavior: **anything the character was about to say when the user grabs the mic is permanently dropped**, and the user can't interrupt a reply that's still forming.
 
@@ -216,7 +215,7 @@ Two distinct failure points → two distinct guards. Cancelling the in-flight ta
 Today the hook only returns `{ isSpeaking, voiceError, clearVoiceError }`. Add:
 
 - **`cancelSpeech()`** — like the internal `stopPlayback` (line 42) but **also** increments `speakGenerationRef` so a synth fetch already in flight is discarded when it resolves (the current `stopPlayback` does not do this — that's the latency-window bug).
-- **`consumePendingReplies()`** — record every current assistant message id into `lastSpokenMessageId`'s tracking so the reactive speak-effect skips them forever. *(~6 lines — the heart of "user takes the floor"; left for Ethan to implement.)*
+- **`consumePendingReplies()`** — record every current assistant message id into `lastSpokenMessageId`'s tracking so the reactive speak-effect skips them forever. _(~6 lines — the heart of "user takes the floor"; left for Ethan to implement.)_
 
 ## Env and docs
 
@@ -238,7 +237,7 @@ Manual test on **localhost** (mic requires secure context; localhost qualifies):
 2. Tap again → message auto-sends; oracle responds; TTS plays on TV
 3. Tap mic **while character is speaking** → TTS stops immediately; STT works
 4. Mic disabled while `status === "streaming" | "submitted"` (no mid-reply barge-in)
-4b. Tap mic in the gap between reply-finished and TTS-audio-starting → the synth take is dropped, no audio plays over compose (verifies `cancelSpeech` + `consumePendingReplies`)
+   4b. Tap mic in the gap between reply-finished and TTS-audio-starting → the synth take is dropped, no audio plays over compose (verifies `cancelSpeech` + `consumePendingReplies`)
 5. Missing `ELEVENLABS_API_KEY` → friendly 503 on token route; composer shows error
 6. Denied mic permission → clear error, typed input still works
 7. Safari + Chrome — same Scribe behavior (cross-browser consistency win)
@@ -253,9 +252,9 @@ Manual test on **localhost** (mic requires secure context; localhost qualifies):
 
 ## Risk notes
 
-| Risk | Mitigation |
-| ---- | ---------- |
-| TV speaker bleed into mic | Push-to-talk + echo cancellation; stop TTS on mic press |
-| Auto-send sends wrong transcript | `noVerbatim` + keyterms reduce errors; user can still type to correct on next turn |
-| Token fetch latency on press | Show “connecting” state immediately; typical connect is fast |
-| keyterm cap | Generous — Scribe v2 supports up to 1000 terms; realtime variant unspecified but our catalog is ~30–40 terms, so well clear. Slice defensively only if it ever grows past ~100. |
+| Risk                             | Mitigation                                                                                                                                                                      |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TV speaker bleed into mic        | Push-to-talk + echo cancellation; stop TTS on mic press                                                                                                                         |
+| Auto-send sends wrong transcript | `noVerbatim` + keyterms reduce errors; user can still type to correct on next turn                                                                                              |
+| Token fetch latency on press     | Show “connecting” state immediately; typical connect is fast                                                                                                                    |
+| keyterm cap                      | Generous — Scribe v2 supports up to 1000 terms; realtime variant unspecified but our catalog is ~30–40 terms, so well clear. Slice defensively only if it ever grows past ~100. |

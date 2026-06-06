@@ -63,15 +63,14 @@ export function useOracleVoice({
    * speak effect never voices a reply the user talked over.
    */
   const consumePendingReplies = useCallback(() => {
-    // Ethan: implement — record all present assistant message ids in tracking
     const lastAssistantMessage = messages
       .filter((message) => message.role === 'assistant')
       .at(-1);
-    
+
     if (lastAssistantMessage) {
       lastSpokenMessageId.current = lastAssistantMessage.id
     }
-    
+
   }, [messages]);
 
   const speak = useCallback(

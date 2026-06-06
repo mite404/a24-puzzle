@@ -26,7 +26,7 @@ export function suppressScribeWsCloseNoise(): void {
     const first = args[0];
     if (
       typeof first === "string" &&
-      first.startsWith("WebSocket closed unexpectedly: 1006")
+      first.includes("WebSocket closed unexpectedly: 1006")
     ) {
       return;
     }
