@@ -120,3 +120,36 @@ export function buildGamePayload(profile: ExperienceProfile): GamePayload {
   const locations = buildLocationQuestions(resolveLocations(profile.locationIds));
   return { profile, locations, crossword, crosswordWords: entries };
 }
+
+/** Client fallback when the regenerate API is unavailable. */
+export function pickAlternateCrosswordIds(
+  profile: ExperienceProfile,
+  excludeIds: string[],
+  count = 8,
+): string[] {
+  const exclude = new Set(excludeIds);
+  const filmSet = new Set(profile.selectedFilmIds);
+  const available = crosswordBank.filter((e) => !exclude.has(e.id));
+  const preferred = shuffle(available.filter((e) => filmSet.has(e.filmId)));
+  const rest = shuffle(available.filter((e) => !filmSet.has(e.filmId)));
+  const picked = [...preferred, ...rest].slice(0, count).map((e) => e.id);
+
+  if (picked.length >= 4) return picked;
+
+  for (const entry of crosswordBank) {
+    if (picked.length >= count) break;
+    if (!picked.includes(entry.id)) picked.push(entry.id);
+  }
+  return picked;
+}
+
+export function rebuildCrosswordPayload(
+  payload: GamePayload,
+  crosswordWordIds: string[],
+): GamePayload {
+  if (!payload.profile) return payload;
+  const profile = { ...payload.profile, crosswordWordIds };
+  const entries = resolveCrosswordEntries(crosswordWordIds);
+  const crossword = buildCrosswordLayout(entries);
+  return { ...payload, profile, crossword, crosswordWords: entries };
+}

@@ -428,6 +428,26 @@ a {
   overflow: hidden;
 }
 
+.location-pin-card__media-track {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  transition: transform 700ms ease-in-out;
+}
+
+.location-pin-card__media-slide {
+  position: relative;
+  flex: 0 0 100%;
+  height: 100%;
+  min-width: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .location-pin-card__media-track {
+    transition: none;
+  }
+}
+
 .location-pin-card__image {
   object-fit: cover;
   object-position: center 35%;
@@ -746,9 +766,18 @@ a {
   height: 100%;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain;
   padding: 0.35rem 0.15rem 0.35rem 0;
   scrollbar-width: thin;
   scrollbar-color: rgb(157 255 157 / 0.25) transparent;
+}
+
+.oracle-tv-feed__channel {
+  margin: 0 0 0.15rem;
+  font-size: 0.55rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgb(157 255 157 / 0.45);
 }
 
 .oracle-tv-feed__turn + .oracle-tv-feed__turn,
@@ -891,4 +920,13 @@ a {
   .oracle-tv-dial__sprite {
     animation: none;
   }
+}
+
+/* Crossword — letter tiles lift off the page (Feature 2 matte comp) */
+.crossword-letter-cell {
+  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.2));
+}
+
+.crossword-letter-cell input {
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.06);
 }

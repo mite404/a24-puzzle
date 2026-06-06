@@ -4,21 +4,43 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import type { OracleUIMessage } from "@/lib/oracle-tools";
 import type { ExperienceProfile } from "@/lib/types";
-
-export const ORACLE_OPENING_LINE =
-  "Sit with me a moment. Tell me how today actually feels — and which films, directors, or faces you keep circling back to lately.";
+import { setActiveOraclePersonaId } from "@/lib/oracle-chat-persona";
+import { oracleChatTransport } from "@/lib/oracle-chat-transport";
+import {
+  DEFAULT_PERSONA_ID,
+  getOraclePersona,
+  type OraclePersonaId,
+} from "@/lib/oracle-personas";
 
 export type OracleChatStatus = "ready" | "submitted" | "streaming" | "error";
 
-export function useOracleChat(onFinalize: (profile: ExperienceProfile) => void) {
+/** @deprecated Use persona-specific opening lines from oracle-personas. */
+export const ORACLE_OPENING_LINE = getOraclePersona(
+  DEFAULT_PERSONA_ID,
+).openingLine;
+
+export function useOracleChat(
+  onFinalize: (profile: ExperienceProfile) => void,
+  personaId: OraclePersonaId = DEFAULT_PERSONA_ID,
+) {
+  useEffect(() => {
+    setActiveOraclePersonaId(personaId);
+  }, [personaId]);
+
   const { messages, sendMessage, status, error, clearError } =
     useChat<OracleUIMessage>({
+      transport: oracleChatTransport,
       onError: (err) => {
         console.error("[oracle-chat]", err);
       },
     });
+
   const [text, setText] = useState("");
   const finalized = useRef(false);
+
+  useEffect(() => {
+    finalized.current = false;
+  }, [personaId]);
 
   useEffect(() => {
     if (finalized.current) return;
@@ -63,6 +85,8 @@ export function useOracleChat(onFinalize: (profile: ExperienceProfile) => void) 
     submit();
   }
 
+  const openingLine = getOraclePersona(personaId).openingLine;
+
   return {
     messages,
     text,
@@ -74,5 +98,6 @@ export function useOracleChat(onFinalize: (profile: ExperienceProfile) => void) 
     assistantStreamingText,
     submit,
     handleSubmit,
+    openingLine,
   };
 }

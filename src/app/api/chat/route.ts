@@ -8,6 +8,7 @@ import {
 } from "ai";
 import { oracleTools, type OracleUIMessage } from "@/lib/oracle-tools";
 import { buildSystemPrompt } from "@/lib/oracle-prompt";
+import { resolvePersonaId } from "@/lib/oracle-personas";
 import {
   logOpenRouter,
   summarizeIncomingMessages,
@@ -63,6 +64,7 @@ export async function POST(req: Request) {
   }
 
   let messages: OracleUIMessage[];
+  let personaId = resolvePersonaId(undefined);
   try {
     const body: unknown = await req.json();
     if (
@@ -76,13 +78,16 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-    messages = (body as { messages: OracleUIMessage[] }).messages;
+    const parsed = body as { messages: OracleUIMessage[]; personaId?: unknown };
+    messages = parsed.messages;
+    personaId = resolvePersonaId(parsed.personaId);
   } catch (error) {
     return chatErrorResponse(error, 400);
   }
 
   logOpenRouter("client → api/chat", {
     model: MODEL_ID,
+    personaId,
     ...summarizeIncomingMessages(messages),
   });
 
@@ -91,7 +96,7 @@ export async function POST(req: Request) {
 
     const result = streamText({
       model: openrouter.chat(MODEL_ID),
-      system: buildSystemPrompt(),
+      system: buildSystemPrompt(personaId),
       messages: await convertToModelMessages(messages),
       tools: oracleTools,
       stopWhen: stepCountIs(1),

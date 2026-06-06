@@ -19,11 +19,38 @@ The intake is no longer a text column — it’s a **VFX comp**:
 
 Phosphor-green broadcast type, scanlines, and a warm glass composer bar sell the 70s basement without building a 3D TV in CSS.
 
+### Three-channel oracle (voice + persona)
+
+The right-hand **UHF dial** cycles three broadcast personas — same tool pipeline underneath, different **performance** on top (like swapping announcers on the same teleprompter):
+
+| Dial | Persona | Character | Film anchor |
+| ---- | ------- | --------- | ----------- |
+| 0 | `ladybird_mom` | Marion ("Mom") | *Lady Bird* |
+| 1 | `witch` | William | *The Witch* |
+| 2 | `materialist` | Lucy | *Materialists* |
+
+- **Prompt layer** — `src/lib/oracle-personas.ts` wraps the shared catalog + tool rules in character voice. Dialogue cadence comes from the **shooting scripts** in `docs/scripts/` (Lady Bird, The Witch, Materialists) — not generic film knowledge.
+- **Speech layer** — `POST /api/voice` calls ElevenLabs TTS server-side; `useOracleVoice` plays each assistant turn after streaming completes. CRT flicker (`is-speaking`) fires while audio plays.
+- **Dial wiring** — `TvVolumeDial` → `personaId` in `/api/chat` body via `DefaultChatTransport`. Mid-chat channel changes keep history; only the next reply shifts character.
+
+### Crossword as floating matte (Round 2)
+
+The crossword grid is a **square title card** — not a fixed rectangle of black tiles. Think post-production: the puzzle sits on a transparent matte over the page background.
+
+- **Three cell kinds** — `letter` (white inputs), `block` (black squares inside the puzzle), `empty` (transparent padding that lets the page show through).
+- **Square frame** — the tight generator bounding box is centered inside `max(rows, cols)`, so non-square puzzles get see-through gutters instead of a heavy black box.
+- **Fluid sizing** — `aspect-square w-full max-w-[min(72vw,55dvh,28rem)]` scales the grid to the largest square that fits; cells use `1fr` tracks and `aspect-square` instead of fixed `size-9`.
+- **Layout** — grid floats in a `relative z-10` layer with a subtle letter-cell shadow; clues stay in normal flow beside (desktop) or below (mobile) the square.
+
 ## Behind the Scenes (Decisions)
 
 - **Centered column, left-aligned copy** — Shop product pages feel editorial because the *block* is centered, not because every line is centered. `mx-auto` on `AppShell` does that while keeping prose left-aligned.
 - **`a24-meta` vs `a24-caption`** — Grid “PREORDER” / price lines use tiny all-caps gray (`a24-meta`). Location hints use sentence-case italic under the still (`a24-caption`) so we never fight the image with white/black overlays.
 - **Footer mockup** — Inert links for visual parity only; keeps the puzzle demo honest without implying a real shop checkout.
+- **Crossword padding vs blocks** — One `null` type made every non-letter cell black, including square padding outside the puzzle. Option A from the plan: pad to a square, center the puzzle, mark outer cells `empty` (transparent) and inner nulls `block` (black). Arrow keys skip `empty` via `isCell()` on letter cells only.
+- **Voice is presentation-only** — `showPalette` / `finalizeExperience` unchanged. ElevenLabs is post-production VO on the same script OpenRouter writes; API key stays on the server.
+- **Autoplay unlock** — first click/keypress unlocks TTS (browser policy). Opening line speaks after unlock when you change channels.
+- **Script-sourced personas** — Marion, William, and Lucy prompts were tuned from primary-source PDFs: `docs/scripts/LADY_BIRD_shooting_script.pdf`, `docs/scripts/the-witch-shooting-script.pdf`, and `docs/scripts/MATERIALISTS-shooting-script.pdf`. Each persona carries signature lines, speech patterns, and tonal beats from those scripts (Marion's practical guilt-as-love; William's Early Modern conscience; Lucy's matchmaker market pragmatism).
 
 ## Bloopers (Bugs & Fixes)
 
@@ -42,4 +69,4 @@ After the quiz, **Beat 2** is explore mode: hover a nearby pin and a **collapsed
 - **Component:** `LocationPinCard` in `src/components/games/location-pin-card.tsx`; `LocationMap` only holds hover/expanded state.
 - **Assets:** stills from each `FilmLocation.photoUrl`; logo from `/a24-assets/A24-Films-Logo-Vector.png` (no duplicate Figma exports).
 - **Data:** optional `venueLabel` on locations (e.g. St. Barts Cathedral); film row uses `getFilmShortTitle()` (drops leading “The”).
-- **Carousel:** four segments, first active — UI placeholder until gallery URLs exist in data.
+- **Carousel:** expanded cards auto-advance film stills every 4s (RTL slide via `translateX`); segment dots track `activeIndex`; autoplay pauses on hover and respects `prefers-reduced-motion`. Collapsed cards keep the single `photoUrl` hero. Gallery comes from optional `photoUrls` on a location, or falls back to `getLocationPhotoUrls()` (primary still + `filmStillsForFilm()` pool in `locations.ts`).

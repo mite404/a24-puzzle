@@ -14,6 +14,9 @@ interface FloatingComposerProps {
   modelResponding: boolean;
   error: Error | undefined;
   onDismissError: () => void;
+  voiceError?: string | null;
+  onDismissVoiceError?: () => void;
+  channelLabel?: string;
 }
 
 export function FloatingComposer({
@@ -25,10 +28,19 @@ export function FloatingComposer({
   modelResponding,
   error,
   onDismissError,
+  voiceError,
+  onDismissVoiceError,
+  channelLabel,
 }: FloatingComposerProps) {
   return (
     <div className="oracle-tv-composer pointer-events-none absolute inset-x-0 bottom-0 z-30">
       <div className="oracle-tv-composer__inner pointer-events-auto">
+        {channelLabel ? (
+          <p className="oracle-tv-composer__channel mb-2 text-[0.625rem] uppercase tracking-[0.14em] text-[#f5e6c8]/40">
+            {channelLabel}
+          </p>
+        ) : null}
+
         {error ? (
           <div
             role="alert"
@@ -44,6 +56,26 @@ export function FloatingComposer({
             >
               Dismiss
             </button>
+          </div>
+        ) : null}
+
+        {voiceError ? (
+          <div
+            role="status"
+            className="oracle-tv-composer__error mb-3 flex items-start justify-between gap-4 px-1"
+          >
+            <p className="text-xs leading-snug text-[#ffb4a8]/80">
+              Voice: {voiceError}
+            </p>
+            {onDismissVoiceError ? (
+              <button
+                type="button"
+                onClick={onDismissVoiceError}
+                className="shrink-0 text-[0.625rem] uppercase tracking-widest text-[#ffb4a8]/60 hover:text-[#ffb4a8]"
+              >
+                Dismiss
+              </button>
+            ) : null}
           </div>
         ) : null}
 
