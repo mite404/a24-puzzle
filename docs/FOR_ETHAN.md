@@ -51,6 +51,76 @@ You can **talk to the oracle** from the couch, not just type. Think of it as a s
 
 **Token route:** unauthenticated for the demo; `requireScribeAccess()` is a no-op seam — harden before any public deploy (rate-limit / origin / shared secret).
 
+### Valence emotion bus (mic tone → oracle)
+
+Scribe gives the oracle the **script** (what you said). Valence reads the **performance** (how you sounded). Think of it as a second input bus on the sound stage — a **tone meter** running parallel to the transcript, never replacing the words.
+
+| Phase | Beat | What shipped |
+| ----- | ---- | ------------ |
+| **1** | **Location scout** | Server-only spike (`scripts/valence-spike.ts`) — prove the API key, Discrete baseline, clip limits, Streaming WebSocket. Verified **2026-06-06**; spike deleted after pass. |
+| **2** | **Backlot route** | `POST /api/valence` + `src/lib/valence.ts` — server-side Discrete analysis, confidence gate (0.38), clip floor/ceiling (4.5–15 s). |
+| **3** | **Single boom mic** | Browser tap: one `getUserMedia` → manual PCM + `sendAudio` to Scribe, same chunks accumulated into WAV for Valence on commit (`scribe-audio-tap.ts`). WebM transcode deferred — WAV path works today. |
+| **4** | **Script supervisor note** | Hidden `VOCAL_TONE` block injected into `/api/chat` when tone and words might disagree (`oracle-vocal-context.ts`). |
+| **5** | **CRT grade** | Diegetic static/dim/warm modifiers on the TV feed from last vocal emotion — felt, not labeled (`tv-oracle-feed.tsx`, `globals.css`). |
+| **6** | **ADR pass** | TTS `voice_settings` nudged from user's vocal tone + persona baseline (`oracle-voice-settings.ts`). |
+
+**Signal chain on a mic turn:**
+
+```
+tap 1 → one mic stream → Scribe partials (live) + PCM buffer (silent)
+tap 2 → commit transcript → POST /api/valence (WAV) → vocalEmotion JSON
+      → chat.submit(text + vocalEmotion) → LLM → TTS → CRT reacts
+```
+
+Typed turns skip the emotion bus entirely — no regression.
+
+#### Phase 1 spike script (reference — deleted after pass)
+
+Before wiring the app, we ran a **throwaway location scout**: a Bun script that never touched the Next.js app. It loaded `VALENCE_API_KEY` from `.env.local`, synthesized mono WAV probes (sine tones at 44.1 kHz), and logged pass/fail for three questions:
+
+1. **Discrete baseline (6 s)** — does the key work at all?
+2. **Limit probes (3 s / 20 s)** — where does the API reject clips (`AUDIO_TOO_SHORT` / `AUDIO_TOO_LONG`)?
+3. **Streaming WebSocket** — is live PCM analysis enabled on our account, or docs-only?
+
+Representative excerpt (full script was ~300 lines; deleted **2026-06-06** after Phase 1 passed):
+
+```typescript
+/**
+ * Phase 1 throwaway probe — server-side only.
+ * Run: bun scripts/valence-spike.ts
+ */
+import { ValenceClient, AudioTooShortError, AudioTooLongError } from "valenceai";
+
+// Load .env.local, require VALENCE_API_KEY, synthesize mono WAV @ 44.1 kHz …
+
+async function probeDiscrete(client, filePath, label) {
+  const start = performance.now();
+  try {
+    const response = await client.discrete.emotions(filePath, null, "4emotions");
+    return { label, ok: true, latencyMs: Math.round(performance.now() - start), response };
+  } catch (err) {
+    return { label, ok: false, latencyMs: Math.round(performance.now() - start), error: summarizeError(err) };
+  }
+}
+
+async function probeStreaming(client) {
+  const stream = client.streaming.connect("4emotions");
+  stream.onPrediction((data) => { /* cache first prediction latency */ });
+  await stream.connect();
+  // Send ~5 s of PCM16 in 500 ms chunks via stream.sendAudio(chunk)
+  stream.disconnect();
+}
+
+const client = new ValenceClient({ apiKey: API_KEY });
+const baseline = await probeDiscrete(client, clips.baseline6s, "Discrete 6s");
+const tooShort = await probeDiscrete(client, clips.short3s, "Discrete 3s");
+const tooLong  = await probeDiscrete(client, clips.long20s, "Discrete 20s");
+const streaming = await probeStreaming(client);
+// JSON summary → pasted into docs/valence-oracle-plan.md spike log
+```
+
+**What it proved (2026-06-06):** Discrete 6 s clip → PASS (~1.3 s wall-clock). 3 s → `AUDIO_TOO_SHORT` (floor **4.5 s**). 20 s → `AUDIO_TOO_LONG` (ceiling **15 s**). Streaming WebSocket → PASS (first prediction ~2.9 s after connect). Confidence gate 0.38 is app-side only — API returns all scores. Details live in `docs/valence-oracle-plan.md` spike log; `scripts/valence-route-test.ts` remains for Phase 2 route checks.
+
 ### Crossword as floating matte (Round 2)
 
 The crossword grid is a **square title card** — not a fixed rectangle of black tiles. Think post-production: the puzzle sits on a transparent matte over the page background.
@@ -78,6 +148,7 @@ The crossword grid is a **square title card** — not a fixed rectangle of black
 - **Footer flush to edge** — A global `* { padding: 0 }` sat *outside* Tailwind’s `@layer`, so it beat `.a24-gutter` in the cascade. Reset moved into `@layer base`; footer uses symmetric `a24-footer-inset` (~20–40px).
 - **Gray Mapbox map (pins only)** — [PR #3](https://github.com/mite404/a24-puzzle/pull/3) already proved the map on `main`: simple `location-map.tsx` + `NEXT_PUBLIC_MAPBOX_TOKEN`. The regression on `styling-details` came from layering *more* Mapbox wiring on top — `mapLib`, CSP worker `postinstall`, debug probes, `transpilePackages: ["mapbox-gl"]`. You got logo, zoom, and pins on gray; `NaN LngLat` was usually fallout from a map that never reached `load`, not bad data in `locations.ts`. **Fix:** revert to the PR pattern (plain `<Map mapboxAccessToken mapStyle=…>`), drop worker/debug extras, `bun run dev:clean`. **Not the culprit:** missing files, zero-size container, or quota — style/tile API calls could still return **200** while the canvas stayed blank; a **304** on `_next/.../mapbox-gl.css` is just local bundle cache. Healthy Network tab: `api.mapbox.com` style + lots of `/v4/...vector.pbf` after the quiz reveals the map.
 - **Scribe mic: `1008 invalid_request` + “WebSocket is not connected”** — Token mint succeeded (`/api/scribe-token` → 200), but the browser WebSocket died on connect. Root cause: two catalog keyterms exceeded ElevenLabs' client limit (**20 characters each** — see `@elevenlabs/client` `scribe.d.ts`): `"Everything Everywhere All at Once"` and `"Lotte New York Palace"`. Those strings ride on the WebSocket **query string** at connect time (model, token, keyterms, etc.); invalid params fail the handshake before any audio flows. The second error is a **symptom**: server closes the socket → mic capture still tries `send()` → “WebSocket is not connected.” **Fix:** `buildScribeKeyterms()` enforces 50×20, drops oversize terms, and maps long titles to spoken shorthand (`"All at Once"`, `"Lotte Palace"`). Separate gotcha: API key needs **Speech-to-Text** permission, not just TTS — missing scope surfaces as 401 on token mint, not on the WebSocket.
+- **Valence mic tap: SDK vs manual PCM (path b)** — Early plan assumed `@elevenlabs/react` might expose the underlying `MediaStream` for a shared fork to Valence, or a second `getUserMedia` as fallback. Investigation showed the SDK's built-in mic mode owns capture internally — no stream handle, no clean dual-consumer hook. **Fix:** switched to **manual PCM mode** (`audioFormat: PCM_16000` + `sendAudio`): `startScribeAudioTap()` grabs one `getUserMedia`, runs an AudioWorklet that resamples to 16 kHz, forwards base64 chunks to Scribe *and* accumulates PCM locally. On commit, chunks become a WAV blob → `POST /api/valence`. A second mic request was never needed — one boom, two mix buses.
 
 ## Director's Commentary
 

@@ -5,12 +5,15 @@ import type { OracleUIMessage } from "@/lib/oracle-tools";
 import { PaletteCard } from "@/components/intake/palette-card";
 import { Spinner } from "@/components/ui/spinner";
 import type { OracleChatStatus } from "@/hooks/use-oracle-chat";
+import type { VocalEmotionResult } from "@/lib/valence";
+import { crtToneClassForEmotion } from "@/lib/vocal-emotion-crt";
 
 interface TvOracleFeedProps {
   messages: OracleUIMessage[];
   status: OracleChatStatus;
   modelResponding: boolean;
   isSpeaking?: boolean;
+  vocalEmotion?: VocalEmotionResult | null;
   openingLine: string;
   channelLabel?: string;
 }
@@ -20,6 +23,7 @@ export function TvOracleFeed({
   status,
   modelResponding,
   isSpeaking = false,
+  vocalEmotion = null,
   openingLine,
   channelLabel,
 }: TvOracleFeedProps) {
@@ -32,12 +36,18 @@ export function TvOracleFeed({
   }, [messages, status]);
 
   const speakingClass = isSpeaking ? "is-speaking" : "";
+  const toneClass =
+    isSpeaking && vocalEmotion?.emotion
+      ? crtToneClassForEmotion(vocalEmotion.emotion)
+      : "";
   const thinking =
     status === "submitted" || (status === "streaming" && !modelResponding);
 
   return (
     <div
-      className={`oracle-tv-feed ${speakingClass}`.trim()}
+      className={["oracle-tv-feed", speakingClass, toneClass]
+        .filter(Boolean)
+        .join(" ")}
       aria-live="polite"
       aria-label="Oracle broadcast"
     >

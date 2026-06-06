@@ -10,6 +10,10 @@ import { oracleTools, type OracleUIMessage } from "@/lib/oracle-tools";
 import { buildSystemPrompt } from "@/lib/oracle-prompt";
 import { resolvePersonaId } from "@/lib/oracle-personas";
 import {
+  injectVocalEmotionForModel,
+  parseVocalEmotionBody,
+} from "@/lib/oracle-vocal-context";
+import {
   logOpenRouter,
   summarizeIncomingMessages,
 } from "@/lib/openrouter-dev-log";
@@ -65,6 +69,7 @@ export async function POST(req: Request) {
 
   let messages: OracleUIMessage[];
   let personaId = resolvePersonaId(undefined);
+  let vocalEmotion = null as ReturnType<typeof parseVocalEmotionBody>;
   try {
     const body: unknown = await req.json();
     if (
@@ -78,16 +83,24 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
-    const parsed = body as { messages: OracleUIMessage[]; personaId?: unknown };
+    const parsed = body as {
+      messages: OracleUIMessage[];
+      personaId?: unknown;
+      vocalEmotion?: unknown;
+    };
     messages = parsed.messages;
     personaId = resolvePersonaId(parsed.personaId);
+    vocalEmotion = parseVocalEmotionBody(parsed.vocalEmotion);
   } catch (error) {
     return chatErrorResponse(error, 400);
   }
 
+  const messagesForModel = injectVocalEmotionForModel(messages, vocalEmotion);
+
   logOpenRouter("client → api/chat", {
     model: MODEL_ID,
     personaId,
+    vocalEmotion: vocalEmotion?.emotion ?? null,
     ...summarizeIncomingMessages(messages),
   });
 
@@ -97,7 +110,7 @@ export async function POST(req: Request) {
     const result = streamText({
       model: openrouter.chat(MODEL_ID),
       system: buildSystemPrompt(personaId),
-      messages: await convertToModelMessages(messages),
+      messages: await convertToModelMessages(messagesForModel),
       tools: oracleTools,
       stopWhen: stepCountIs(1),
       experimental_onStepStart: () => {

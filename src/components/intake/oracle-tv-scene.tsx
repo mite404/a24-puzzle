@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import type { VocalEmotionResult } from "@/lib/valence";
 import Image from "next/image";
 import type { ExperienceProfile } from "@/lib/types";
 import type { OraclePersonaId } from "@/lib/oracle-personas";
@@ -31,25 +32,46 @@ interface OracleTvSceneProps {
 
 export function OracleTvScene({ onFinalize }: OracleTvSceneProps) {
   const [dialState, setDialState] = useState<TvDialState>(0);
+  const [lastVocalEmotion, setLastVocalEmotion] =
+    useState<VocalEmotionResult | null>(null);
   const persona = personaForDialState(dialState);
   const personaId = persona.id as OraclePersonaId;
 
   const chat = useOracleChat(onFinalize, personaId);
+
+  const handleOracleSubmit = useCallback(
+    (text: string, vocalEmotion?: VocalEmotionResult) => {
+      setLastVocalEmotion(vocalEmotion ?? null);
+      chat.submit(text, vocalEmotion);
+    },
+    [chat.submit],
+  );
+
+  const handleTypedSubmit = useCallback(
+    (e: React.FormEvent) => {
+      setLastVocalEmotion(null);
+      chat.handleSubmit(e);
+    },
+    [chat.handleSubmit],
+  );
   const voice = useOracleVoice({
     personaId,
     messages: chat.messages,
     status: chat.status,
+    vocalEmotion: lastVocalEmotion,
     openingLine: chat.openingLine,
   });
+
+  const handleStartListening = useCallback(() => {
+    voice.cancelSpeech();
+    voice.consumePendingReplies();
+  }, [voice.cancelSpeech, voice.consumePendingReplies]);
 
   const scribe = useOracleScribe({
     disabled: chat.busy,
     onPartial: chat.setText,
-    onSubmit: chat.submit,
-    onStartListening: () => {
-      voice.cancelSpeech();
-      voice.consumePendingReplies();
-    },
+    onSubmit: handleOracleSubmit,
+    onStartListening: handleStartListening,
   });
 
   const handleDialChange = useCallback((state: TvDialState) => {
@@ -102,6 +124,7 @@ export function OracleTvScene({ onFinalize }: OracleTvSceneProps) {
                 status={chat.status}
                 modelResponding={chat.assistantStreamingText}
                 isSpeaking={onAir}
+                vocalEmotion={lastVocalEmotion}
                 openingLine={chat.openingLine}
                 channelLabel={persona.label}
               />
@@ -133,7 +156,7 @@ export function OracleTvScene({ onFinalize }: OracleTvSceneProps) {
       <FloatingComposer
         text={chat.text}
         onTextChange={chat.setText}
-        onSubmit={chat.handleSubmit}
+        onSubmit={handleTypedSubmit}
         busy={chat.busy}
         status={chat.status}
         modelResponding={chat.assistantStreamingText}

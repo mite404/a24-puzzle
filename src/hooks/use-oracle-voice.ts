@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { OracleUIMessage } from "@/lib/oracle-tools";
 import type { OraclePersonaId } from "@/lib/oracle-personas";
+import { resolveOracleVoiceSettings } from "@/lib/oracle-voice-settings";
+import type { VocalEmotionResult } from "@/lib/valence";
 import type { OracleChatStatus } from "@/hooks/use-oracle-chat";
 
 function extractAssistantText(message: OracleUIMessage): string {
@@ -17,6 +19,8 @@ interface UseOracleVoiceOptions {
   personaId: OraclePersonaId;
   messages: OracleUIMessage[];
   status: OracleChatStatus;
+  /** Last detected user vocal tone from the mic turn that prompted the reply. */
+  vocalEmotion?: VocalEmotionResult | null;
   /** Spoken once when the scene mounts or the dial changes channel. */
   openingLine?: string;
 }
@@ -29,6 +33,7 @@ export function useOracleVoice({
   personaId,
   messages,
   status,
+  vocalEmotion = null,
   openingLine,
 }: UseOracleVoiceOptions) {
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -74,18 +79,27 @@ export function useOracleVoice({
   }, [messages]);
 
   const speak = useCallback(
-    async (text: string, cacheKey: string) => {
+    async (
+      text: string,
+      cacheKey: string,
+      emotionForTurn?: VocalEmotionResult | null,
+    ) => {
       if (!text.trim()) return;
 
       const generation = ++speakGenerationRef.current;
       stopPlayback();
       setVoiceError(null);
 
+      const voiceSettings = resolveOracleVoiceSettings(
+        personaId,
+        emotionForTurn,
+      );
+
       try {
         const res = await fetch("/api/voice", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, personaId }),
+          body: JSON.stringify({ text, personaId, voiceSettings }),
         });
 
         if (generation !== speakGenerationRef.current) return;
@@ -181,8 +195,8 @@ export function useOracleVoice({
     if (!text || lastSpokenMessageId.current === lastAssistant.id) return;
     if (!unlockedRef.current) return;
 
-    void speak(text, lastAssistant.id);
-  }, [messages, status, speak]);
+    void speak(text, lastAssistant.id, vocalEmotion);
+  }, [messages, status, speak, vocalEmotion]);
 
   useEffect(() => () => stopPlayback(), [stopPlayback]);
 

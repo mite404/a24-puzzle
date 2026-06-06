@@ -729,6 +729,8 @@ a {
 }
 
 .oracle-tv-feed {
+  position: relative;
+  isolation: isolate;
   height: 100%;
   color: var(--oracle-phosphor);
   text-shadow:
@@ -741,6 +743,47 @@ a {
 
 .oracle-tv-feed.is-speaking {
   animation: oracle-tv-flicker 4s ease-in-out infinite;
+}
+
+/* Diegetic CRT tone modifiers (Phase 5 — vocal emotion, on-air only). */
+.oracle-tv-feed.crt-tone-agitated.is-speaking {
+  animation:
+    oracle-tv-flicker 3.2s ease-in-out infinite,
+    oracle-crt-static-burst 0.9s ease-out 1;
+}
+
+.oracle-tv-feed.crt-tone-agitated.is-speaking::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  opacity: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgb(255 255 255 / 0.09) 0,
+    rgb(255 255 255 / 0.09) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  mix-blend-mode: overlay;
+  animation: oracle-crt-scanlines-boost 0.9s ease-out 1 forwards;
+}
+
+.oracle-tv-feed.crt-tone-sad.is-speaking {
+  color: rgb(132 188 132 / 0.78);
+  text-shadow:
+    0 0 6px rgb(107 184 106 / 0.22),
+    0 0 14px rgb(80 130 80 / 0.1);
+  animation: oracle-tv-flicker-slow 6.5s ease-in-out infinite;
+}
+
+.oracle-tv-feed.crt-tone-warm.is-speaking {
+  color: rgb(178 255 168);
+  text-shadow:
+    0 0 7px rgb(200 255 170 / 0.38),
+    0 0 16px rgb(255 210 140 / 0.12);
+  animation: oracle-tv-flicker-clean 5s ease-in-out infinite;
 }
 
 @keyframes oracle-tv-flicker {
@@ -759,6 +802,76 @@ a {
   }
   96% {
     opacity: 0.92;
+  }
+}
+
+@keyframes oracle-tv-flicker-slow {
+  0%,
+  100% {
+    opacity: 0.9;
+  }
+  48% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 0.82;
+  }
+  52% {
+    opacity: 0.9;
+  }
+  78% {
+    opacity: 0.88;
+  }
+}
+
+@keyframes oracle-tv-flicker-clean {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  97% {
+    opacity: 1;
+  }
+  98% {
+    opacity: 0.96;
+  }
+}
+
+@keyframes oracle-crt-static-burst {
+  0%,
+  100% {
+    filter: none;
+  }
+  12% {
+    filter: contrast(1.18) brightness(1.08);
+    opacity: 0.9;
+  }
+  24% {
+    filter: contrast(1.28) brightness(0.94);
+    opacity: 0.86;
+  }
+  36% {
+    filter: contrast(1.12) brightness(1.02);
+    opacity: 0.94;
+  }
+  48% {
+    filter: contrast(1.22) brightness(0.98);
+    opacity: 0.9;
+  }
+}
+
+@keyframes oracle-crt-scanlines-boost {
+  0% {
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.55;
+  }
+  35% {
+    opacity: 0.42;
+  }
+  100% {
+    opacity: 0.28;
   }
 }
 
@@ -930,8 +1043,16 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .oracle-tv-feed.is-speaking {
+  .oracle-tv-feed.is-speaking,
+  .oracle-tv-feed.crt-tone-agitated.is-speaking,
+  .oracle-tv-feed.crt-tone-sad.is-speaking,
+  .oracle-tv-feed.crt-tone-warm.is-speaking {
     animation: none;
+  }
+
+  .oracle-tv-feed.crt-tone-agitated.is-speaking::after {
+    animation: none;
+    opacity: 0.2;
   }
 
   .oracle-tv-composer__mic--listening {

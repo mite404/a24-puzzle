@@ -1,19 +1,23 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CommitStrategy, useScribe } from "@elevenlabs/react";
+import { AudioFormat, CommitStrategy, useScribe } from "@elevenlabs/react";
 import { buildScribeKeyterms } from "@/lib/scribe-keyterms";
+import {
+  resolveVocalEmotion,
+  startScribeAudioTap,
+  type ScribeAudioTap,
+} from "@/lib/scribe-audio-tap";
+import type { VocalEmotionResult } from "@/lib/valence";
 import { suppressScribeWsCloseNoise } from "@/lib/suppress-scribe-ws-noise";
 
-// Filter the benign 1006-close console error the Scribe SDK emits on every
-// post-commit disconnect (see the helper's docs). Runs once on client import.
 suppressScribeWsCloseNoise();
 
 interface UseOracleScribeOptions {
   disabled: boolean;
   onPartial: (text: string) => void;
   onCommitted?: (text: string) => void;
-  onSubmit: (text: string) => void;
+  onSubmit: (text: string, vocalEmotion?: VocalEmotionResult) => void;
   onStartListening: () => void;
   keyterms?: string[];
 }
@@ -25,6 +29,9 @@ function isListeningStatus(status: string): boolean {
 /**
  * Realtime STT input bus for the oracle composer — tap-to-toggle mic,
  * partials into textarea, auto-send on commit.
+ *
+ * Mic capture uses manual PCM mode (path b): one getUserMedia stream feeds
+ * Scribe via sendAudio and accumulates WAV for Valence on session end.
  */
 export function useOracleScribe({
   disabled,
@@ -44,6 +51,8 @@ export function useOracleScribe({
   const connectRef = useRef<
     (options?: { token?: string }) => Promise<void>
   >(() => Promise.resolve());
+  const sendAudioRef = useRef<(audioBase64: string) => void>(() => {});
+  const audioTapRef = useRef<ScribeAudioTap | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
   const [errorDismissed, setErrorDismissed] = useState(false);
   const statusRef = useRef<string>("disconnected");
@@ -51,10 +60,27 @@ export function useOracleScribe({
   const hasPartialRef = useRef(false);
   const didCommitRef = useRef(false);
 
+  const discardAudioTap = useCallback(() => {
+    const tap = audioTapRef.current;
+    audioTapRef.current = null;
+    if (tap) void tap.stop();
+  }, []);
+
+  const captureVocalEmotion = useCallback(async (): Promise<VocalEmotionResult | null> => {
+    const tap = audioTapRef.current;
+    audioTapRef.current = null;
+    if (!tap) return null;
+    const wavBlob = await tap.stop();
+    return resolveVocalEmotion(wavBlob);
+  }, []);
+
   const finishSession = useCallback(() => {
+    discardAudioTap();
     disconnectRef.current();
     clearTranscriptsRef.current();
-  }, []);
+  }, [discardAudioTap]);
+
+  const captureVocalEmotionRef = useRef(captureVocalEmotion);
 
   const scribe = useScribe({
     modelId: "scribe_v2_realtime",
@@ -63,11 +89,8 @@ export function useOracleScribe({
     languageCode: "eng",
     keyterms,
     autoConnect: false,
-    microphone: {
-      echoCancellation: true,
-      noiseSuppression: true,
-      autoGainControl: true,
-    },
+    audioFormat: AudioFormat.PCM_16000,
+    sampleRate: 16_000,
     onPartialTranscript: ({ text }) => {
       hasPartialRef.current = true;
       onPartialRef.current(text);
@@ -75,10 +98,15 @@ export function useOracleScribe({
     onCommittedTranscript: ({ text }) => {
       onCommittedRef.current?.(text);
       const trimmed = text.trim();
-      if (trimmed) {
-        onSubmitRef.current(trimmed);
-      }
-      finishSession();
+
+      void (async () => {
+        const vocalEmotion = await captureVocalEmotionRef.current();
+        if (trimmed) {
+          onSubmitRef.current(trimmed, vocalEmotion ?? undefined);
+        }
+        disconnectRef.current();
+        clearTranscriptsRef.current();
+      })();
     },
     onDisconnect: () => {
       clearTranscriptsRef.current();
@@ -94,7 +122,9 @@ export function useOracleScribe({
     clearTranscriptsRef.current = scribe.clearTranscripts;
     connectRef.current = scribe.connect;
     commitRef.current = scribe.commit;
+    sendAudioRef.current = scribe.sendAudio;
     statusRef.current = scribe.status;
+    captureVocalEmotionRef.current = captureVocalEmotion;
   }, [
     onPartial,
     onCommitted,
@@ -104,13 +134,11 @@ export function useOracleScribe({
     scribe.clearTranscripts,
     scribe.connect,
     scribe.commit,
+    scribe.sendAudio,
     scribe.status,
+    captureVocalEmotion,
   ]);
 
-  // The realtime API rejects a commit with < 0.3s of uncommitted audio (e.g.
-  // stopping a hair too early). It arrives asynchronously as an error and
-  // leaves the socket open, so tear the session down. The message itself is
-  // filtered out of `scribeError` below — it's a cancel, not a failure.
   useEffect(() => {
     if (
       scribe.status === "error" &&
@@ -120,6 +148,14 @@ export function useOracleScribe({
       finishSession();
     }
   }, [scribe.status, scribe.error, finishSession]);
+
+  useEffect(() => {
+    return () => {
+      const tap = audioTapRef.current;
+      audioTapRef.current = null;
+      if (tap) void tap.stop();
+    };
+  }, []);
 
   const startListening = useCallback(async () => {
     if (disabled) return;
@@ -154,6 +190,30 @@ export function useOracleScribe({
       if (abort.signal.aborted) return;
 
       await connectRef.current({ token: data.token });
+
+      if (abort.signal.aborted) {
+        finishSession();
+        return;
+      }
+
+      const tap = await startScribeAudioTap(
+        (base64) => {
+          sendAudioRef.current(base64);
+        },
+        {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      );
+
+      if (abort.signal.aborted) {
+        audioTapRef.current = tap;
+        finishSession();
+        return;
+      }
+
+      audioTapRef.current = tap;
     } catch (error) {
       if (abort.signal.aborted) return;
       if (error instanceof DOMException && error.name === "AbortError") return;
@@ -177,15 +237,11 @@ export function useOracleScribe({
 
     if (!isListeningStatus(status)) return;
 
-    // Commit at most once per session — a second stop-tap during teardown
-    // (statusRef updates a render late) would hit an already-emptied buffer.
     if (didCommitRef.current) {
       finishSession();
       return;
     }
 
-    // Nothing transcribed yet → cancel rather than commit an empty buffer (the
-    // API errors on commits with < 0.3s of audio).
     if (!hasPartialRef.current) {
       finishSession();
       return;
@@ -221,8 +277,6 @@ export function useOracleScribe({
     setErrorDismissed(true);
   }, []);
 
-  // Swallow the benign "< 0.3s uncommitted audio" commit rejection (handled as
-  // a cancel above); surface every other SDK error normally.
   const sdkError =
     scribe.error && /uncommitted audio/i.test(scribe.error)
       ? null
