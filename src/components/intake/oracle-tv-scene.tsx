@@ -8,6 +8,7 @@ import { personaForDialState } from "@/lib/oracle-personas";
 import { setActiveOraclePersonaId } from "@/lib/oracle-chat-persona";
 import { useOracleChat } from "@/hooks/use-oracle-chat";
 import { useOracleVoice } from "@/hooks/use-oracle-voice";
+import { useOracleScribe } from "@/hooks/use-oracle-scribe";
 import {
   TV_SCENE_ASPECT,
   TV_SCENE_GLASS,
@@ -39,6 +40,16 @@ export function OracleTvScene({ onFinalize }: OracleTvSceneProps) {
     messages: chat.messages,
     status: chat.status,
     openingLine: chat.openingLine,
+  });
+
+  const scribe = useOracleScribe({
+    disabled: chat.busy,
+    onPartial: chat.setText,
+    onSubmit: chat.submit,
+    onStartListening: () => {
+      voice.cancelSpeech();
+      voice.consumePendingReplies();
+    },
   });
 
   const handleDialChange = useCallback((state: TvDialState) => {
@@ -130,6 +141,12 @@ export function OracleTvScene({ onFinalize }: OracleTvSceneProps) {
         onDismissError={chat.clearError}
         voiceError={voice.voiceError}
         onDismissVoiceError={voice.clearVoiceError}
+        scribeError={scribe.scribeError}
+        onDismissScribeError={scribe.clearScribeError}
+        micListening={scribe.isListening}
+        micConnecting={scribe.isConnecting}
+        micDisabled={chat.busy}
+        onMicToggle={scribe.toggleMic}
         channelLabel={persona.label}
       />
     </section>

@@ -33,6 +33,24 @@ The right-hand **UHF dial** cycles three broadcast personas — same tool pipeli
 - **Speech layer** — `POST /api/voice` calls ElevenLabs TTS server-side; `useOracleVoice` plays each assistant turn after streaming completes. CRT flicker (`is-speaking`) fires while audio plays.
 - **Dial wiring** — `TvVolumeDial` → `personaId` in `/api/chat` body via `DefaultChatTransport`. Mid-chat channel changes keep history; only the next reply shifts character.
 
+#### Input track — Scribe realtime voice (composer mic)
+
+You can **talk to the oracle** from the couch, not just type. Think of it as a second input bus into the same chat splice — like feeding ADR into the same timeline as the typed lines.
+
+| Piece | Role (film analogy) |
+| ----- | ------------------- |
+| `FloatingComposer` mic button | Tap-to-toggle record — tap once to open the mic, tap again to commit + auto-send |
+| `useOracleScribe` | Field recorder — streams partials into the composer textarea, commits on second tap |
+| `GET /api/scribe-token` | Day pass desk — mints a single-use ElevenLabs realtime token (same `ELEVENLABS_API_KEY` as TTS) |
+| `buildScribeKeyterms()` | Script supervisor's name list — A24 proper nouns (films, directors, NYC locations, persona names) bias Scribe; capped at **50 terms × 20 chars** per SDK |
+| `useOracleVoice` guards | Floor manager — `cancelSpeech()` kills in-flight TTS; `consumePendingReplies()` drops any reply you talked over |
+
+**Tap lifecycle:** tap 1 → silence the TV character + fetch token + listen; partial words appear in the textarea; tap 2 → `commit()` → auto-send if non-empty → oracle streams back → TTS plays. Mic is **disabled while the model is replying** (`chat.busy`) so you can't barge in mid-stream.
+
+**Turn-taking:** TTS is reactive (fires when streaming finishes), so grabbing the mic also bumps `speakGenerationRef` and marks pending assistant ids as "already spoken" — anything the character was about to say when you start talking is permanently dropped.
+
+**Token route:** unauthenticated for the demo; `requireScribeAccess()` is a no-op seam — harden before any public deploy (rate-limit / origin / shared secret).
+
 ### Crossword as floating matte (Round 2)
 
 The crossword grid is a **square title card** — not a fixed rectangle of black tiles. Think post-production: the puzzle sits on a transparent matte over the page background.
@@ -50,6 +68,8 @@ The crossword grid is a **square title card** — not a fixed rectangle of black
 - **Crossword padding vs blocks** — One `null` type made every non-letter cell black, including square padding outside the puzzle. Option A from the plan: pad to a square, center the puzzle, mark outer cells `empty` (transparent) and inner nulls `block` (black). Arrow keys skip `empty` via `isCell()` on letter cells only.
 - **Voice is presentation-only** — `showPalette` / `finalizeExperience` unchanged. ElevenLabs is post-production VO on the same script OpenRouter writes; API key stays on the server.
 - **Autoplay unlock** — first click/keypress unlocks TTS (browser policy). Opening line speaks after unlock when you change channels.
+- **Scribe tap-to-toggle** — realtime STT is manual commit (not always-on VAD) to avoid TV speaker bleed; echo cancellation on the mic stream; typed Send remains the fallback if permission is denied.
+- **Scribe keyterms vs catalog copy** — film titles in `films.ts` can exceed Scribe's 20-char keyterm cap; the bias list uses shorthand, not a verbatim dump of catalog strings.
 - **Script-sourced personas** — Marion, William, and Lucy prompts were tuned from primary-source PDFs: `docs/scripts/LADY_BIRD_shooting_script.pdf`, `docs/scripts/the-witch-shooting-script.pdf`, and `docs/scripts/MATERIALISTS-shooting-script.pdf`. Each persona carries signature lines, speech patterns, and tonal beats from those scripts (Marion's practical guilt-as-love; William's Early Modern conscience; Lucy's matchmaker market pragmatism).
 
 ## Bloopers (Bugs & Fixes)
@@ -57,6 +77,7 @@ The crossword grid is a **square title card** — not a fixed rectangle of black
 - **Hint on stills** — Gradient + white/gray text on photos failed on unpredictable frames (like bad lower-thirds on a documentary). Moved hints to `figcaption` under the image.
 - **Footer flush to edge** — A global `* { padding: 0 }` sat *outside* Tailwind’s `@layer`, so it beat `.a24-gutter` in the cascade. Reset moved into `@layer base`; footer uses symmetric `a24-footer-inset` (~20–40px).
 - **Gray Mapbox map (pins only)** — [PR #3](https://github.com/mite404/a24-puzzle/pull/3) already proved the map on `main`: simple `location-map.tsx` + `NEXT_PUBLIC_MAPBOX_TOKEN`. The regression on `styling-details` came from layering *more* Mapbox wiring on top — `mapLib`, CSP worker `postinstall`, debug probes, `transpilePackages: ["mapbox-gl"]`. You got logo, zoom, and pins on gray; `NaN LngLat` was usually fallout from a map that never reached `load`, not bad data in `locations.ts`. **Fix:** revert to the PR pattern (plain `<Map mapboxAccessToken mapStyle=…>`), drop worker/debug extras, `bun run dev:clean`. **Not the culprit:** missing files, zero-size container, or quota — style/tile API calls could still return **200** while the canvas stayed blank; a **304** on `_next/.../mapbox-gl.css` is just local bundle cache. Healthy Network tab: `api.mapbox.com` style + lots of `/v4/...vector.pbf` after the quiz reveals the map.
+- **Scribe mic: `1008 invalid_request` + “WebSocket is not connected”** — Token mint succeeded (`/api/scribe-token` → 200), but the browser WebSocket died on connect. Root cause: two catalog keyterms exceeded ElevenLabs' client limit (**20 characters each** — see `@elevenlabs/client` `scribe.d.ts`): `"Everything Everywhere All at Once"` and `"Lotte New York Palace"`. Those strings ride on the WebSocket **query string** at connect time (model, token, keyterms, etc.); invalid params fail the handshake before any audio flows. The second error is a **symptom**: server closes the socket → mic capture still tries `send()` → “WebSocket is not connected.” **Fix:** `buildScribeKeyterms()` enforces 50×20, drops oversize terms, and maps long titles to spoken shorthand (`"All at Once"`, `"Lotte Palace"`). Separate gotcha: API key needs **Speech-to-Text** permission, not just TTS — missing scope surfaces as 401 on token mint, not on the WebSocket.
 
 ## Director's Commentary
 

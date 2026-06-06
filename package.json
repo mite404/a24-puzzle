@@ -13,6 +13,8 @@
   "dependencies": {
     "@ai-sdk/openai": "^3.0.67",
     "@ai-sdk/react": "^3.0.196",
+    "@elevenlabs/elevenlabs-js": "^2.51.0",
+    "@elevenlabs/react": "^1.6.4",
     "ai": "^6.0.194",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
