@@ -4,15 +4,39 @@ import type { FilmId } from "@/lib/types";
 interface PaletteCardProps {
   filmId: FilmId;
   promptText: string;
+  /** Compact color bars for the CRT viewport. */
+  variant?: "default" | "crt";
 }
 
 /**
  * Renders a film's color signature inline in the conversation. The film title is
  * intentionally withheld — the oracle is gauging a reaction to the colors alone.
  */
-export function PaletteCard({ filmId, promptText }: PaletteCardProps) {
+export function PaletteCard({
+  filmId,
+  promptText,
+  variant = "default",
+}: PaletteCardProps) {
   const palette = getPalette(filmId);
   if (!palette) return null;
+
+  if (variant === "crt") {
+    return (
+      <div className="oracle-tv-palette">
+        <div className="oracle-tv-palette__bars">
+          {palette.swatches.map((swatch) => (
+            <div
+              key={swatch.hex}
+              className="oracle-tv-palette__bar"
+              style={{ backgroundColor: swatch.hex }}
+              title={swatch.name}
+            />
+          ))}
+        </div>
+        <p className="oracle-tv-palette__prompt">{promptText}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="my-2 overflow-hidden ring-1 ring-foreground">

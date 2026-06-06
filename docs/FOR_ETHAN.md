@@ -6,7 +6,18 @@ A conversational “oracle” intake leads into location-guess rounds and a cros
 
 ## Cast & Crew (Architecture)
 
-Think of the page like a **single-camera master shot**: `SiteHeader` is the slate at the top, `AppShell` is the dolly track that keeps the action in a centered column, phase components (`OracleChat`, `LocationQuiz`, etc.) are the performers, and `SiteFooter` is the end credits roll — same framing whether the scene is chat or games.
+Think of the page like a **single-camera master shot**: `SiteHeader` is the slate at the top, `AppShell` is the dolly track that keeps the action in a centered column, phase components (`OracleTvScene`, `LocationQuiz`, etc.) are the performers, and `SiteFooter` is the end credits roll — same framing whether the scene is chat or games.
+
+### Basement TV intake (oracle landing)
+
+The intake is no longer a text column — it’s a **VFX comp**:
+
+1. **Plate** — `TV-scene-dial-01.png` (full basement set)
+2. **Insert** — oracle stream + palette bars mapped into the CRT cutout (`tv-screen-map.ts`)
+3. **Glass pass** — `TV-screen.png` reflection overlay on top
+4. **Off-camera** — `FloatingComposer` at the bottom of the viewport (you talk from the couch; your lines never appear on the TV)
+
+Phosphor-green broadcast type, scanlines, and a warm glass composer bar sell the 70s basement without building a 3D TV in CSS.
 
 ## Behind the Scenes (Decisions)
 

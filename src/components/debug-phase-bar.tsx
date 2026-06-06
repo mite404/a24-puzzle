@@ -36,7 +36,7 @@ export function DebugPhaseBar({ phase, onJump, onReset }: DebugPhaseBarProps) {
             variant="outline"
             size="sm"
             onClick={() => onJump(target)}
-            className="h-7 rounded-none px-2 text-[10px] uppercase"
+            className="debug-phase-bar__btn h-7 rounded-none px-2 text-[10px] uppercase"
           >
             {label}
           </Button>
@@ -46,7 +46,7 @@ export function DebugPhaseBar({ phase, onJump, onReset }: DebugPhaseBarProps) {
           variant="outline"
           size="sm"
           onClick={onReset}
-          className="h-7 rounded-none px-2 text-[10px] uppercase"
+          className="debug-phase-bar__btn h-7 rounded-none px-2 text-[10px] uppercase"
         >
           Intake
         </Button>
