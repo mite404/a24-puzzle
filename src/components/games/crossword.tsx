@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Volume2 } from "lucide-react";
 import type { CrosswordLayout, PlacedWord } from "@/lib/types";
 import { A24CtaButton } from "@/components/a24-cta-button";
 
@@ -9,6 +10,9 @@ interface CrosswordProps {
   onComplete: (correct: number) => void;
   onRegenerate?: () => void;
   regenerating?: boolean;
+  onActiveClueChange?: (clue: PlacedWord | null) => void;
+  onWordFilled?: (clue: PlacedWord) => void;
+  onReadClue?: (clue: PlacedWord) => void;
 }
 
 interface LetterCell {
@@ -123,6 +127,9 @@ export function Crossword({
   onComplete,
   onRegenerate,
   regenerating = false,
+  onActiveClueChange,
+  onWordFilled,
+  onReadClue,
 }: CrosswordProps) {
   const { grid, across, down, size, rowOffset, colOffset } = useMemo(
     () => buildGrid(layout),
@@ -137,6 +144,8 @@ export function Crossword({
   const gridRef = useRef<HTMLDivElement>(null);
   const inputRefs = useRef(new Map<string, HTMLInputElement>());
   const directionRef = useRef<Direction>(direction);
+  const prevActiveWordIdRef = useRef<string | null>(null);
+  const fillFingerprintsRef = useRef(new Map<string, string>());
 
   useEffect(() => {
     directionRef.current = direction;
@@ -157,6 +166,47 @@ export function Crossword({
       wordCells(match, rowOffset, colOffset).map((p) => key(p.r, p.c)),
     );
   }, [active, direction, words, rowOffset, colOffset]);
+
+  const activeWord = useMemo((): PlacedWord | null => {
+    if (!active) return null;
+    return (
+      words.find((w) => {
+        if (w.orientation !== direction) return false;
+        return wordCells(w, rowOffset, colOffset).some(
+          (p) => p.r === active.r && p.c === active.c,
+        );
+      }) ?? null
+    );
+  }, [active, direction, words, rowOffset, colOffset]);
+
+  useEffect(() => {
+    if (!onActiveClueChange) return;
+    const id = activeWord?.id ?? null;
+    if (id === prevActiveWordIdRef.current) return;
+    prevActiveWordIdRef.current = id;
+    onActiveClueChange(activeWord);
+  }, [activeWord, onActiveClueChange]);
+
+  useEffect(() => {
+    if (!activeWord || !onWordFilled) return;
+
+    const cells = wordCells(activeWord, rowOffset, colOffset);
+    const fingerprint = cells
+      .map((p) => values[key(p.r, p.c)] ?? "")
+      .join("|");
+    const filled = cells.every((p) => {
+      const letter = values[key(p.r, p.c)];
+      return typeof letter === "string" && letter.trim().length > 0;
+    });
+
+    const prev = fillFingerprintsRef.current.get(activeWord.id);
+    if (filled && prev !== fingerprint) {
+      onWordFilled(activeWord);
+      fillFingerprintsRef.current.set(activeWord.id, fingerprint);
+    } else if (!filled) {
+      fillFingerprintsRef.current.delete(activeWord.id);
+    }
+  }, [values, activeWord, onWordFilled, rowOffset, colOffset]);
 
   function focusCell(r: number, c: number) {
     setActive({ r, c });
@@ -364,8 +414,18 @@ export function Crossword({
         </div>
 
         <div className="flex-1 space-y-6 text-sm">
-          <ClueList title="Across" words={across} />
-          <ClueList title="Down" words={down} />
+          <ClueList
+            title="Across"
+            words={across}
+            activeWordId={activeWord?.orientation === "across" ? activeWord.id : null}
+            onReadClue={onReadClue}
+          />
+          <ClueList
+            title="Down"
+            words={down}
+            activeWordId={activeWord?.orientation === "down" ? activeWord.id : null}
+            onReadClue={onReadClue}
+          />
         </div>
       </div>
 
@@ -430,18 +490,50 @@ function CrosswordLegend() {
   );
 }
 
-function ClueList({ title, words }: { title: string; words: PlacedWord[] }) {
+function ClueList({
+  title,
+  words,
+  activeWordId = null,
+  onReadClue,
+}: {
+  title: string;
+  words: PlacedWord[];
+  activeWordId?: string | null;
+  onReadClue?: (clue: PlacedWord) => void;
+}) {
   if (words.length === 0) return null;
   return (
     <div>
       <h3 className="a24-eyebrow mb-2 text-muted-foreground">{title}</h3>
       <ol className="flex flex-col gap-1.5">
-        {words.map((w) => (
-          <li key={w.id} className="flex gap-2 text-foreground/75">
-            <span className="font-mono text-xs text-muted-foreground">{w.position}.</span>
-            <span>{w.clue}</span>
-          </li>
-        ))}
+        {words.map((w) => {
+          const isActive = w.id === activeWordId;
+          return (
+            <li
+              key={w.id}
+              className={
+                isActive
+                  ? "flex gap-2 rounded-sm bg-amber-100/80 px-1 py-0.5 text-foreground"
+                  : "flex gap-2 text-foreground/75"
+              }
+            >
+              <span className="font-mono text-xs text-muted-foreground">
+                {w.position}.
+              </span>
+              <span className="flex-1">{w.clue}</span>
+              {isActive && onReadClue ? (
+                <button
+                  type="button"
+                  className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
+                  aria-label={`Read clue ${w.position} aloud`}
+                  onClick={() => onReadClue(w)}
+                >
+                  <Volume2 className="size-4" aria-hidden />
+                </button>
+              ) : null}
+            </li>
+          );
+        })}
       </ol>
     </div>
   );

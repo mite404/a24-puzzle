@@ -25,7 +25,7 @@ import { SiteFooter } from "@/components/site-footer";
 import { DebugPhaseBar } from "@/components/debug-phase-bar";
 import { OracleTvScene } from "@/components/intake/oracle-tv-scene";
 import { LocationQuiz } from "@/components/games/location-quiz";
-import { Crossword } from "@/components/games/crossword";
+import { CrosswordWithOracle } from "@/components/games/crossword-with-oracle";
 import { EndScreen } from "@/components/end-screen";
 
 const EMPTY_SCORES: Scores = {
@@ -164,7 +164,7 @@ export function Experience() {
 
       {phase === "crossword" && payload?.crossword && (
         <AppShell hero maxWidth="game">
-          <Crossword
+          <CrosswordWithOracle
             key={crosswordKey}
             layout={payload.crossword}
             onComplete={finishCrossword}

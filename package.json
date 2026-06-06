@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "bun test",
     "doctor": "bunx react-doctor"
   },
   "dependencies": {

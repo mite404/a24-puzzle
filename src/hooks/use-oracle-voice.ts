@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import type { OracleUIMessage } from "@/lib/oracle-tools";
 import type { OraclePersonaId } from "@/lib/oracle-personas";
-import { resolveOracleVoiceSettings } from "@/lib/oracle-voice-settings";
 import type { VocalEmotionResult } from "@/lib/valence";
 import type { OracleChatStatus } from "@/hooks/use-oracle-chat";
+import { useOracleSpeaker } from "@/hooks/use-oracle-speaker";
 
 function extractAssistantText(message: OracleUIMessage): string {
   return message.parts
@@ -36,47 +36,17 @@ export function useOracleVoice({
   vocalEmotion = null,
   openingLine,
 }: UseOracleVoiceOptions) {
-  const [isSpeaking, setIsSpeaking] = useState(false);
-  const [voiceError, setVoiceError] = useState<string | null>(null);
   const lastSpokenMessageId = useRef<string | null>(null);
   const lastOpeningPersona = useRef<OraclePersonaId | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const speakGenerationRef = useRef(0);
-  const unlockedRef = useRef(false);
 
-  const stopPlayback = useCallback(() => {
-    const audio = audioRef.current;
-    if (audio) {
-      audio.onended = null;
-      audio.onerror = null;
-      audio.pause();
-      audio.removeAttribute("src");
-      audio.load();
-      audioRef.current = null;
-    }
-    setIsSpeaking(false);
-  }, []);
-
-  /** Stop playback and discard any in-flight /api/voice synth fetch when it resolves. */
-  const cancelSpeech = useCallback(() => {
-    speakGenerationRef.current += 1;
-    stopPlayback();
-  }, [stopPlayback]);
-
-  /**
-   * Mark every current assistant message id as already-spoken so the reactive
-   * speak effect never voices a reply the user talked over.
-   */
-  const consumePendingReplies = useCallback(() => {
-    const lastAssistantMessage = messages
-      .filter((message) => message.role === 'assistant')
-      .at(-1);
-
-    if (lastAssistantMessage) {
-      lastSpokenMessageId.current = lastAssistantMessage.id
-    }
-
-  }, [messages]);
+  const {
+    isSpeaking,
+    voiceError,
+    clearVoiceError,
+    cancelSpeech,
+    speak: speakRaw,
+    audioUnlockedRef,
+  } = useOracleSpeaker(personaId);
 
   const speak = useCallback(
     async (
@@ -84,103 +54,36 @@ export function useOracleVoice({
       cacheKey: string,
       emotionForTurn?: VocalEmotionResult | null,
     ) => {
-      if (!text.trim()) return;
-
-      const generation = ++speakGenerationRef.current;
-      stopPlayback();
-      setVoiceError(null);
-
-      const voiceSettings = resolveOracleVoiceSettings(
-        personaId,
-        emotionForTurn,
-      );
-
-      try {
-        const res = await fetch("/api/voice", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, personaId, voiceSettings }),
-        });
-
-        if (generation !== speakGenerationRef.current) return;
-
-        if (!res.ok) {
-          const payload = (await res.json().catch(() => null)) as {
-            error?: string;
-          } | null;
-          throw new Error(payload?.error ?? `Voice failed (${res.status}).`);
-        }
-
-        const blob = await res.blob();
-        if (generation !== speakGenerationRef.current) return;
-
-        const url = URL.createObjectURL(blob);
-        const audio = new Audio(url);
-        audioRef.current = audio;
-
-        audio.onended = () => {
-          if (audioRef.current !== audio) return;
-          URL.revokeObjectURL(url);
-          audioRef.current = null;
-          setIsSpeaking(false);
-        };
-        audio.onerror = () => {
-          if (audioRef.current !== audio) return;
-          URL.revokeObjectURL(url);
-          audioRef.current = null;
-          setIsSpeaking(false);
-          setVoiceError("Playback failed.");
-        };
-
-        setIsSpeaking(true);
-        await audio.play();
-        if (generation !== speakGenerationRef.current) {
-          audio.onended = null;
-          audio.onerror = null;
-          audio.pause();
-          URL.revokeObjectURL(url);
-          if (audioRef.current === audio) audioRef.current = null;
-          setIsSpeaking(false);
-          return;
-        }
+      const completed = await speakRaw(text, cacheKey, emotionForTurn);
+      if (completed) {
         lastSpokenMessageId.current = cacheKey;
-      } catch (error) {
-        if (generation !== speakGenerationRef.current) return;
-        setIsSpeaking(false);
-        const message =
-          error instanceof Error ? error.message : "Voice synthesis failed.";
-        // Superseded play() calls reject when a newer clip starts — not a user error.
-        if (/interrupted|abort/i.test(message)) return;
-        setVoiceError(message);
-        if (process.env.NODE_ENV === "development") {
-          console.warn("[oracle-voice]", message);
-        }
       }
     },
-    [personaId, stopPlayback],
+    [speakRaw],
   );
 
-  /** First user interaction unlocks autoplay for subsequent TTS. */
-  useEffect(() => {
-    function unlock() {
-      unlockedRef.current = true;
+  /**
+   * Mark every current assistant message id as already-spoken so the reactive
+   * speak effect never voices a reply the user talked over.
+   */
+  const consumePendingReplies = useCallback(() => {
+    const lastAssistantMessage = messages
+      .filter((message) => message.role === "assistant")
+      .at(-1);
+
+    if (lastAssistantMessage) {
+      lastSpokenMessageId.current = lastAssistantMessage.id;
     }
-    window.addEventListener("pointerdown", unlock, { once: true });
-    window.addEventListener("keydown", unlock, { once: true });
-    return () => {
-      window.removeEventListener("pointerdown", unlock);
-      window.removeEventListener("keydown", unlock);
-    };
-  }, []);
+  }, [messages]);
 
   /** Opening line when persona / channel changes. */
   useEffect(() => {
     if (!openingLine?.trim()) return;
     if (lastOpeningPersona.current === personaId) return;
     lastOpeningPersona.current = personaId;
-    if (!unlockedRef.current) return;
+    if (!audioUnlockedRef.current) return;
     void speak(openingLine, `opening:${personaId}`);
-  }, [openingLine, personaId, speak]);
+  }, [openingLine, personaId, speak, audioUnlockedRef]);
 
   /** Assistant reply after stream completes. */
   useEffect(() => {
@@ -193,17 +96,15 @@ export function useOracleVoice({
 
     const text = extractAssistantText(lastAssistant);
     if (!text || lastSpokenMessageId.current === lastAssistant.id) return;
-    if (!unlockedRef.current) return;
+    if (!audioUnlockedRef.current) return;
 
     void speak(text, lastAssistant.id, vocalEmotion);
-  }, [messages, status, speak, vocalEmotion]);
-
-  useEffect(() => () => stopPlayback(), [stopPlayback]);
+  }, [messages, status, speak, vocalEmotion, audioUnlockedRef]);
 
   return {
     isSpeaking,
     voiceError,
-    clearVoiceError: () => setVoiceError(null),
+    clearVoiceError,
     cancelSpeech,
     consumePendingReplies,
   };

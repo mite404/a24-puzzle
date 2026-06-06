@@ -130,6 +130,28 @@ The crossword grid is a **square title card** — not a fixed rectangle of black
 - **Fluid sizing** — `aspect-square w-full max-w-[min(72vw,55dvh,28rem)]` scales the grid to the largest square that fits; cells use `1fr` tracks and `aspect-square` instead of fixed `size-9`.
 - **Layout** — grid floats in a `relative z-10` layer with a subtle letter-cell shadow; clues stay in normal flow beside (desktop) or below (mobile) the square.
 
+### Crossword host — persona voice in Round 2
+
+Round 2 keeps the **scorekeeper blind**: no green cells, no per-word lock. The oracle you picked at intake becomes a **host** — reacting to moves, never confirming answers until **Reveal my tier**.
+
+Think of it like ADR over the puzzle: the grid is the picture lock; the voice is a separate track that never burns in correctness.
+
+| Piece | Role (film analogy) |
+| ----- | ------------------- |
+| `useOracleSpeaker` | Shared boom mic — one `/api/voice` path for intake *and* crossword; `generation` guard prevents stacked clips |
+| `useCrosswordOracle` | Timing brain — dwell timers, cooldowns, quip picks; no grid logic |
+| `crossword-oracle-quips.ts` | Script pages — Marion / William / Lucy banks; `completed` lines are **ambiguous on purpose** |
+| `crossword.tsx` events | Slate marks — emits `onActiveClueChange` + `onWordFilled`; 🔊 on the focused clue |
+| `POST /api/oracle-quip` | Improv coach — 45 s stall → one LLM zinger; fail-open → `idle45` bank |
+
+**Four speech triggers:** auto-read clue #1 on mount; 🔊 on demand; 20 s / 45 s dwell teases on the *focused* clue; one cryptic line when the active word becomes **filled** (right or wrong — same pool).
+
+**Timer resets** when the focused clue changes **or** the active word becomes fully filled — so teasing never leaks “you’re wrong.”
+
+**Guards:** no overlapping audio; ~12 s global cooldown between idle quips; one dwell escalation cycle per clue; everything yields while the oracle is already speaking.
+
+**Non-telegraphing rule:** correctness is computed only in `check()`. The voice must never behave differently for right vs. wrong words.
+
 ## Behind the Scenes (Decisions)
 
 - **Centered column, left-aligned copy** — Shop product pages feel editorial because the *block* is centered, not because every line is centered. `mx-auto` on `AppShell` does that while keeping prose left-aligned.
@@ -141,6 +163,7 @@ The crossword grid is a **square title card** — not a fixed rectangle of black
 - **Scribe tap-to-toggle** — realtime STT is manual commit (not always-on VAD) to avoid TV speaker bleed; echo cancellation on the mic stream; typed Send remains the fallback if permission is denied.
 - **Scribe keyterms vs catalog copy** — film titles in `films.ts` can exceed Scribe's 20-char keyterm cap; the bias list uses shorthand, not a verbatim dump of catalog strings.
 - **Script-sourced personas** — Marion, William, and Lucy prompts were tuned from primary-source PDFs: `docs/scripts/LADY_BIRD_shooting_script.pdf`, `docs/scripts/the-witch-shooting-script.pdf`, and `docs/scripts/MATERIALISTS-shooting-script.pdf`. Each persona carries signature lines, speech patterns, and tonal beats from those scripts (Marion's practical guilt-as-love; William's Early Modern conscience; Lucy's matchmaker market pragmatism).
+- **Crossword oracle fail-open** — `/api/oracle-quip` uses OpenRouter with `reasoning.effort: none` so Kimi K2.6 returns spoken text, not thinking tokens only. Any route error → authored `idle45` bank; puzzle stays fully playable mute.
 
 ## Bloopers (Bugs & Fixes)
 
