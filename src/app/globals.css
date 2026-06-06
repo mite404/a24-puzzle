@@ -870,6 +870,57 @@ a {
   letter-spacing: 0.01em;
 }
 
+.oracle-tv-composer__input--listening {
+  color: rgb(245 230 200 / 0.72);
+}
+
+.oracle-tv-composer__actions {
+  align-self: flex-end;
+}
+
+.oracle-tv-composer__mic {
+  background: rgb(0 0 0 / 0.35);
+}
+
+.oracle-tv-composer__mic--listening {
+  border-color: rgb(157 255 157 / 0.85);
+  color: rgb(157 255 157);
+  background: rgb(157 255 157 / 0.16);
+  animation: oracle-tv-mic-pulse 1.5s ease-out infinite;
+}
+
+/* Icon breathes so the button reads as "live" even between ring pings. */
+.oracle-tv-composer__mic--listening svg {
+  animation: oracle-tv-mic-breathe 1.5s ease-in-out infinite;
+}
+
+.oracle-tv-composer__mic--connecting {
+  border-color: rgb(157 255 157 / 0.35);
+  color: rgb(157 255 157 / 0.85);
+}
+
+@keyframes oracle-tv-mic-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgb(157 255 157 / 0.6);
+  }
+  70% {
+    box-shadow: 0 0 0 11px rgb(157 255 157 / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgb(157 255 157 / 0);
+  }
+}
+
+@keyframes oracle-tv-mic-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.14);
+  }
+}
+
 .oracle-tv-composer__send {
   font-size: clamp(0.85rem, 1.8vw, 1rem);
 }
@@ -880,6 +931,15 @@ a {
 
 @media (prefers-reduced-motion: reduce) {
   .oracle-tv-feed.is-speaking {
+    animation: none;
+  }
+
+  .oracle-tv-composer__mic--listening {
+    animation: none;
+    box-shadow: 0 0 0 2px rgb(157 255 157 / 0.6);
+  }
+
+  .oracle-tv-composer__mic--listening svg {
     animation: none;
   }
 }

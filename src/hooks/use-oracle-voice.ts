@@ -52,6 +52,28 @@ export function useOracleVoice({
     setIsSpeaking(false);
   }, []);
 
+  /** Stop playback and discard any in-flight /api/voice synth fetch when it resolves. */
+  const cancelSpeech = useCallback(() => {
+    speakGenerationRef.current += 1;
+    stopPlayback();
+  }, [stopPlayback]);
+
+  /**
+   * Mark every current assistant message id as already-spoken so the reactive
+   * speak effect never voices a reply the user talked over.
+   */
+  const consumePendingReplies = useCallback(() => {
+    // Ethan: implement — record all present assistant message ids in tracking
+    const lastAssistantMessage = messages
+      .filter((message) => message.role === 'assistant')
+      .at(-1);
+    
+    if (lastAssistantMessage) {
+      lastSpokenMessageId.current = lastAssistantMessage.id
+    }
+    
+  }, [messages]);
+
   const speak = useCallback(
     async (text: string, cacheKey: string) => {
       if (!text.trim()) return;
@@ -165,5 +187,11 @@ export function useOracleVoice({
 
   useEffect(() => () => stopPlayback(), [stopPlayback]);
 
-  return { isSpeaking, voiceError, clearVoiceError: () => setVoiceError(null) };
+  return {
+    isSpeaking,
+    voiceError,
+    clearVoiceError: () => setVoiceError(null),
+    cancelSpeech,
+    consumePendingReplies,
+  };
 }
