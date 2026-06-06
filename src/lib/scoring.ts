@@ -5,11 +5,26 @@ export interface FanTier {
   blurb: string;
 }
 
+/** Voice reaction band for final score (3 tiers, aligned with fanTier ratio bands). */
+export type ScoreQuipTier = "good" | "average" | "bad";
+
+function scoreRatio(scores: Scores): number {
+  const total = scores.locationTotal + scores.crosswordTotal;
+  if (total === 0) return 0;
+  return (scores.location + scores.crossword) / total;
+}
+
+/** Maps overall score ratio to oracle voice tier: good ≥65%, average ≥40%, else bad. */
+export function scoreQuipTier(scores: Scores): ScoreQuipTier {
+  const ratio = scoreRatio(scores);
+  if (ratio >= 0.65) return "good";
+  if (ratio >= 0.4) return "average";
+  return "bad";
+}
+
 /** Maps an overall correctness ratio to an A24 fan tier. */
 export function fanTier(scores: Scores): FanTier {
-  const total = scores.locationTotal + scores.crosswordTotal;
-  const correct = scores.location + scores.crossword;
-  const ratio = total === 0 ? 0 : correct / total;
+  const ratio = scoreRatio(scores);
 
   if (ratio >= 0.9) {
     return {

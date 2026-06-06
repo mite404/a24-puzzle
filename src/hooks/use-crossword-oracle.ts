@@ -61,8 +61,9 @@ export function useCrosswordOracle({
   const quips = CROSSWORD_ORACLE_QUIPS[personaId];
 
   const speakLine = useCallback(
-    async (text: string, cacheKey: string) => {
-      if (!text.trim() || isSpeaking) return false;
+    async (text: string, cacheKey: string, force = false) => {
+      if (!text.trim()) return false;
+      if (!force && isSpeaking) return false;
       const completed = await speak(text, cacheKey);
       if (completed) {
         timingRef.current = markSpoken(timingRef.current, Date.now());
@@ -72,6 +73,10 @@ export function useCrosswordOracle({
     },
     [isSpeaking, speak],
   );
+
+  const targetWordForDebug = useCallback((): PlacedWord | null => {
+    return activeWordRef.current ?? firstClueRef.current ?? firstClueWord(words);
+  }, [words]);
 
   const buildClueReadLine = useCallback(
     (word: PlacedWord) => {
@@ -181,9 +186,46 @@ export function useCrosswordOracle({
     return () => window.clearInterval(interval);
   }, [isSpeaking, speakIdleTier]);
 
+  const debugReadClue = useCallback(() => {
+    const word = targetWordForDebug();
+    if (!word) return;
+    void readClue(word);
+  }, [readClue, targetWordForDebug]);
+
+  const debugIdle20 = useCallback(() => {
+    const word = targetWordForDebug();
+    if (!word) return;
+    const line = pickQuip(quips.idle20, lastQuipRef.current);
+    void speakLine(line, `debug:idle20:${word.id}`, true);
+  }, [quips.idle20, speakLine, targetWordForDebug]);
+
+  const debugIdle45 = useCallback(() => {
+    const word = targetWordForDebug();
+    if (!word) return;
+    void (async () => {
+      const line = resolveIdle45Line(
+        await fetchIdle45Quip(personaId, word),
+        quips.idle45,
+        lastQuipRef.current,
+      );
+      await speakLine(line, `debug:idle45:${word.id}`, true);
+    })();
+  }, [personaId, quips.idle45, speakLine, targetWordForDebug]);
+
+  const debugCompleted = useCallback(() => {
+    const word = targetWordForDebug();
+    if (!word) return;
+    const line = pickQuip(quips.completed, lastQuipRef.current);
+    void speakLine(line, `debug:completed:${word.id}`, true);
+  }, [quips.completed, speakLine, targetWordForDebug]);
+
   return {
     handleActiveClueChange,
     handleWordFilled,
     readClue,
+    debugReadClue,
+    debugIdle20,
+    debugIdle45,
+    debugCompleted,
   };
 }

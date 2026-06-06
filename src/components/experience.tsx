@@ -26,7 +26,7 @@ import { DebugPhaseBar } from "@/components/debug-phase-bar";
 import { OracleTvScene } from "@/components/intake/oracle-tv-scene";
 import { LocationQuiz } from "@/components/games/location-quiz";
 import { CrosswordWithOracle } from "@/components/games/crossword-with-oracle";
-import { EndScreen } from "@/components/end-screen";
+import { EndScreenWithOracle } from "@/components/end-screen-with-oracle";
 
 const EMPTY_SCORES: Scores = {
   location: 0,
@@ -176,7 +176,7 @@ export function Experience() {
 
       {phase === "end" && (
         <AppShell hero centered maxWidth="copy">
-          <EndScreen scores={scores} onRestart={restart} />
+          <EndScreenWithOracle scores={scores} onRestart={restart} />
         </AppShell>
       )}
 

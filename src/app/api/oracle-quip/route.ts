@@ -20,7 +20,20 @@ function sanitizeLine(text: string): string {
   return text.replace(/^["'\s]+|["'\s]+$/g, "").replace(/\s+/g, " ").trim();
 }
 
-/** OpenRouter chat/completions — reasoning.effort must be top-level (AI SDK providerOptions miss it for Kimi). */
+/**
+ * Calls OpenRouter's REST API directly instead of going through the AI SDK
+ * (the way `/api/chat` does) — this divergence is INTENTIONAL, do not "unify."
+ *
+ * Why: Kimi (moonshotai/kimi-k2.6) is a reasoning model. Without
+ * `reasoning.effort: "none"` it spends its whole budget thinking and returns an
+ * EMPTY `content` for a one-liner like this. The AI SDK's `providerOptions` did
+ * not pass that field through to OpenRouter for Kimi, so the param was silently
+ * dropped and every quip came back blank. `reasoning.effort` must sit at the
+ * top level of the request body, which only the raw REST call lets us do.
+ *
+ * If you migrate this onto the AI SDK, first confirm the empty-response bug is
+ * gone (effort actually reaches the provider) — otherwise you reintroduce it.
+ */
 async function generateQuipLine(
   personaId: OraclePersonaId,
   clueContext: string,
