@@ -921,3 +921,12 @@ a {
     animation: none;
   }
 }
+
+/* Crossword — letter tiles lift off the page (Feature 2 matte comp) */
+.crossword-letter-cell {
+  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.2));
+}
+
+.crossword-letter-cell input {
+  box-shadow: 0 1px 0 rgb(0 0 0 / 0.06);
+}

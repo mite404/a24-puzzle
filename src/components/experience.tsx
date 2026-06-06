@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   buildGamePayload,
+  pickAlternateCrosswordIds,
+  rebuildCrosswordPayload,
 } from "@/lib/game";
 import {
   buildDebugPayload,
@@ -37,6 +39,8 @@ export function Experience() {
   const [phase, setPhase] = useState<Phase>("intake");
   const [payload, setPayload] = useState<GamePayload | null>(null);
   const [scores, setScores] = useState<Scores>(EMPTY_SCORES);
+  const [crosswordRegenerating, setCrosswordRegenerating] = useState(false);
+  const [crosswordKey, setCrosswordKey] = useState(0);
 
   const handleFinalize = useCallback((profile: ExperienceProfile) => {
     const gamePayload = buildGamePayload(profile);
@@ -67,6 +71,44 @@ export function Experience() {
     setScores((s) => ({ ...s, crossword: correct }));
     setPhase("end");
   }, []);
+
+  const regenerateCrossword = useCallback(async () => {
+    if (!payload?.profile || crosswordRegenerating) return;
+
+    setCrosswordRegenerating(true);
+    const excludeWordIds = payload.crosswordWords.map((e) => e.id);
+
+    try {
+      let crosswordWordIds: string[];
+
+      const res = await fetch("/api/crossword/regenerate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profile: payload.profile, excludeWordIds }),
+      });
+
+      if (res.ok) {
+        const data = (await res.json()) as { crosswordWordIds: string[] };
+        crosswordWordIds = data.crosswordWordIds;
+      } else {
+        crosswordWordIds = pickAlternateCrosswordIds(
+          payload.profile,
+          excludeWordIds,
+        );
+      }
+
+      const next = rebuildCrosswordPayload(payload, crosswordWordIds);
+      setPayload(next);
+      setScores((s) => ({
+        ...s,
+        crossword: 0,
+        crosswordTotal: next.crossword?.words.length ?? 0,
+      }));
+      setCrosswordKey((k) => k + 1);
+    } finally {
+      setCrosswordRegenerating(false);
+    }
+  }, [payload, crosswordRegenerating]);
 
   const [intakeSession, setIntakeSession] = useState(0);
 
@@ -122,7 +164,13 @@ export function Experience() {
 
       {phase === "crossword" && payload?.crossword && (
         <AppShell hero maxWidth="game">
-          <Crossword layout={payload.crossword} onComplete={finishCrossword} />
+          <Crossword
+            key={crosswordKey}
+            layout={payload.crossword}
+            onComplete={finishCrossword}
+            onRegenerate={payload.profile ? regenerateCrossword : undefined}
+            regenerating={crosswordRegenerating}
+          />
         </AppShell>
       )}
 

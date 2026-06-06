@@ -7,6 +7,8 @@ import { A24CtaButton } from "@/components/a24-cta-button";
 interface CrosswordProps {
   layout: CrosswordLayout;
   onComplete: (correct: number) => void;
+  onRegenerate?: () => void;
+  regenerating?: boolean;
 }
 
 interface LetterCell {
@@ -116,7 +118,12 @@ function prevCell(
   return direction === "down" ? { r: r - 1, c } : { r, c: c - 1 };
 }
 
-export function Crossword({ layout, onComplete }: CrosswordProps) {
+export function Crossword({
+  layout,
+  onComplete,
+  onRegenerate,
+  regenerating = false,
+}: CrosswordProps) {
   const { grid, across, down, size, rowOffset, colOffset } = useMemo(
     () => buildGrid(layout),
     [layout],
@@ -253,16 +260,39 @@ export function Crossword({ layout, onComplete }: CrosswordProps) {
   }
 
   return (
-    <div className="flex w-full flex-col py-2">
-      <header className="mb-5 shrink-0">
+    <div className="relative flex w-full flex-col py-2">
+      {regenerating ? (
+        <div
+          className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-background/80 backdrop-blur-[2px]"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <p className="a24-prose text-lg italic">The oracle is composing a new puzzle</p>
+          <p className="a24-meta text-muted-foreground">
+            Pulling clues from your conversation&hellip;
+          </p>
+        </div>
+      ) : null}
+
+      <header className="mb-5 flex shrink-0 flex-wrap items-end justify-between gap-3">
         <p className="a24-eyebrow text-muted-foreground">Round 2 — The A24 Crossword</p>
+        {onRegenerate && result === null ? (
+          <button
+            type="button"
+            className="text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline disabled:pointer-events-none disabled:opacity-50"
+            onClick={onRegenerate}
+            disabled={regenerating}
+          >
+            Regenerate from conversation
+          </button>
+        ) : null}
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col gap-8 md:flex-row">
         <div className="relative z-10 mx-auto w-full md:flex md:flex-1 md:items-start md:justify-center">
           <div
             ref={gridRef}
-            className="mx-auto grid aspect-square w-full max-w-[min(72vw,55dvh,28rem)] gap-px"
+            className="crossword-grid mx-auto grid aspect-square w-full max-w-[min(72vw,55dvh,28rem)]"
             style={{
               gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${size}, minmax(0, 1fr))`,
@@ -286,7 +316,10 @@ export function Crossword({ layout, onComplete }: CrosswordProps) {
                 const isActive = active?.r === r && active?.c === c;
                 const inWord = activeWordCells.has(key(r, c));
                 return (
-                  <div key={key(r, c)} className="relative aspect-square min-h-0 w-full">
+                  <div
+                    key={key(r, c)}
+                    className="crossword-letter-cell relative aspect-square min-h-0 w-full"
+                  >
                     {cell.number !== undefined && (
                       <span className="pointer-events-none absolute left-[8%] top-[6%] z-10 font-mono text-[clamp(0.4rem,18%,0.55rem)] leading-none text-black/60">
                         {cell.number}
@@ -416,7 +449,7 @@ function ClueList({ title, words }: { title: string; words: PlacedWord[] }) {
 
 function cellClass(isActive: boolean, inWord: boolean) {
   const base =
-    "aspect-square h-full min-h-0 w-full bg-white text-center font-mono text-[clamp(0.65rem,4vw,1rem)] font-semibold uppercase text-black caret-transparent shadow-[0_1px_2px_rgba(0,0,0,0.12)] outline-none";
+    "aspect-square h-full min-h-0 w-full bg-white text-center font-mono text-[clamp(0.65rem,4vw,1rem)] font-semibold uppercase text-black caret-transparent outline-none";
   if (isActive) return `${base} bg-amber-300`;
   if (inWord) return `${base} bg-amber-100`;
   return base;
