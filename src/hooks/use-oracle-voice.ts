@@ -36,13 +36,17 @@ export function useOracleVoice({
   const lastSpokenMessageId = useRef<string | null>(null);
   const lastOpeningPersona = useRef<OraclePersonaId | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const speakGenerationRef = useRef(0);
   const unlockedRef = useRef(false);
 
   const stopPlayback = useCallback(() => {
     const audio = audioRef.current;
     if (audio) {
+      audio.onended = null;
+      audio.onerror = null;
       audio.pause();
-      audio.src = "";
+      audio.removeAttribute("src");
+      audio.load();
       audioRef.current = null;
     }
     setIsSpeaking(false);
@@ -52,6 +56,7 @@ export function useOracleVoice({
     async (text: string, cacheKey: string) => {
       if (!text.trim()) return;
 
+      const generation = ++speakGenerationRef.current;
       stopPlayback();
       setVoiceError(null);
 
@@ -62,6 +67,8 @@ export function useOracleVoice({
           body: JSON.stringify({ text, personaId }),
         });
 
+        if (generation !== speakGenerationRef.current) return;
+
         if (!res.ok) {
           const payload = (await res.json().catch(() => null)) as {
             error?: string;
@@ -70,28 +77,45 @@ export function useOracleVoice({
         }
 
         const blob = await res.blob();
+        if (generation !== speakGenerationRef.current) return;
+
         const url = URL.createObjectURL(blob);
         const audio = new Audio(url);
         audioRef.current = audio;
 
         audio.onended = () => {
+          if (audioRef.current !== audio) return;
           URL.revokeObjectURL(url);
-          if (audioRef.current === audio) audioRef.current = null;
+          audioRef.current = null;
           setIsSpeaking(false);
         };
         audio.onerror = () => {
+          if (audioRef.current !== audio) return;
           URL.revokeObjectURL(url);
+          audioRef.current = null;
           setIsSpeaking(false);
           setVoiceError("Playback failed.");
         };
 
         setIsSpeaking(true);
         await audio.play();
+        if (generation !== speakGenerationRef.current) {
+          audio.onended = null;
+          audio.onerror = null;
+          audio.pause();
+          URL.revokeObjectURL(url);
+          if (audioRef.current === audio) audioRef.current = null;
+          setIsSpeaking(false);
+          return;
+        }
         lastSpokenMessageId.current = cacheKey;
       } catch (error) {
+        if (generation !== speakGenerationRef.current) return;
         setIsSpeaking(false);
         const message =
           error instanceof Error ? error.message : "Voice synthesis failed.";
+        // Superseded play() calls reject when a newer clip starts — not a user error.
+        if (/interrupted|abort/i.test(message)) return;
         setVoiceError(message);
         if (process.env.NODE_ENV === "development") {
           console.warn("[oracle-voice]", message);

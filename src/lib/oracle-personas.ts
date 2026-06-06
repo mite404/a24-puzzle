@@ -130,7 +130,7 @@ const MATERIALIST: OraclePersona = {
   dialPosition: 2,
   elevenLabsVoiceId: voiceId(
     "ELEVENLABS_VOICE_MATERIALIST",
-    "FGY2WhTYpPnrIDTdsKH5",
+    "kdmDKE6EkgrWrrykO9Qt",
   ),
   openingLine:
     "Let's skip the performance — how does today actually feel? And be honest: which films or directors keep pulling you back?",
