@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CrosswordLayout, PlacedWord } from "@/lib/types";
 import { A24CtaButton } from "@/components/a24-cta-button";
 
@@ -9,10 +9,21 @@ interface CrosswordProps {
   onComplete: (correct: number) => void;
 }
 
-interface Cell {
+interface LetterCell {
+  kind: "letter";
   solution: string;
   number?: number;
 }
+
+interface BlockCell {
+  kind: "block";
+}
+
+interface EmptyCell {
+  kind: "empty";
+}
+
+type GridCell = LetterCell | BlockCell | EmptyCell;
 
 type Direction = "across" | "down";
 
@@ -20,11 +31,18 @@ function key(r: number, c: number) {
   return `${r}-${c}`;
 }
 
-/** Builds a sparse grid model + ordered clue lists from the placed words. */
+function isLetterCell(cell: GridCell | undefined): cell is LetterCell {
+  return cell?.kind === "letter";
+}
+
+/**
+ * Builds a square-padded grid with three cell kinds: letter, block (internal
+ * null), empty (transparent padding outside the puzzle bounding box).
+ */
 function buildGrid(layout: CrosswordLayout) {
   const { rows, cols, words } = layout;
-  const grid: (Cell | null)[][] = Array.from({ length: rows }, () =>
-    Array<Cell | null>(cols).fill(null),
+  const tight: (LetterCell | null)[][] = Array.from({ length: rows }, () =>
+    Array<LetterCell | null>(cols).fill(null),
   );
 
   for (const w of words) {
@@ -34,13 +52,30 @@ function buildGrid(layout: CrosswordLayout) {
       const r = w.orientation === "down" ? r0 + i : r0;
       const c = w.orientation === "across" ? c0 + i : c0;
       if (r < 0 || r >= rows || c < 0 || c >= cols) continue;
-      grid[r][c] = { solution: w.answer[i], number: grid[r][c]?.number };
+      tight[r][c] = { kind: "letter", solution: w.answer[i], number: tight[r][c]?.number };
     }
-    const startCell = grid[r0]?.[c0];
+    const startCell = tight[r0]?.[c0];
     if (startCell) {
-      grid[r0][c0] = { ...startCell, number: w.position };
+      tight[r0][c0] = { ...startCell, number: w.position };
     }
   }
+
+  const size = Math.max(rows, cols);
+  const rowOffset = Math.floor((size - rows) / 2);
+  const colOffset = Math.floor((size - cols) / 2);
+
+  const grid: GridCell[][] = Array.from({ length: size }, (_, r) =>
+    Array.from({ length: size }, (_, c) => {
+      const origR = r - rowOffset;
+      const origC = c - colOffset;
+      if (origR < 0 || origR >= rows || origC < 0 || origC >= cols) {
+        return { kind: "empty" } satisfies EmptyCell;
+      }
+      const cell = tight[origR][origC];
+      if (cell) return cell;
+      return { kind: "block" } satisfies BlockCell;
+    }),
+  );
 
   const across = words
     .filter((w) => w.orientation === "across")
@@ -49,12 +84,16 @@ function buildGrid(layout: CrosswordLayout) {
     .filter((w) => w.orientation === "down")
     .sort((a, b) => a.position - b.position);
 
-  return { grid, across, down };
+  return { grid, across, down, size, rowOffset, colOffset };
 }
 
-function wordCells(w: PlacedWord): Array<{ r: number; c: number }> {
-  const r0 = w.starty - 1;
-  const c0 = w.startx - 1;
+function wordCells(
+  w: PlacedWord,
+  rowOffset: number,
+  colOffset: number,
+): Array<{ r: number; c: number }> {
+  const r0 = w.starty - 1 + rowOffset;
+  const c0 = w.startx - 1 + colOffset;
   return Array.from({ length: w.answer.length }, (_, i) => ({
     r: w.orientation === "down" ? r0 + i : r0,
     c: w.orientation === "across" ? c0 + i : c0,
@@ -78,8 +117,11 @@ function prevCell(
 }
 
 export function Crossword({ layout, onComplete }: CrosswordProps) {
-  const { grid, across, down } = useMemo(() => buildGrid(layout), [layout]);
-  const { rows, cols, words } = layout;
+  const { grid, across, down, size, rowOffset, colOffset } = useMemo(
+    () => buildGrid(layout),
+    [layout],
+  );
+  const { words } = layout;
 
   const [values, setValues] = useState<Record<string, string>>({});
   const [active, setActive] = useState<{ r: number; c: number } | null>(null);
@@ -88,20 +130,26 @@ export function Crossword({ layout, onComplete }: CrosswordProps) {
   const gridRef = useRef<HTMLDivElement>(null);
   const inputRefs = useRef(new Map<string, HTMLInputElement>());
   const directionRef = useRef<Direction>(direction);
-  directionRef.current = direction;
 
-  const isCell = (r: number, c: number) =>
-    r >= 0 && r < rows && c >= 0 && c < cols && Boolean(grid[r][c]);
+  useEffect(() => {
+    directionRef.current = direction;
+  }, [direction]);
+
+  const isCell = (r: number, c: number) => isLetterCell(grid[r]?.[c]);
 
   const activeWordCells = useMemo(() => {
     if (!active) return new Set<string>();
     const match = words.find((w) => {
       if (w.orientation !== direction) return false;
-      return wordCells(w).some((p) => p.r === active.r && p.c === active.c);
+      return wordCells(w, rowOffset, colOffset).some(
+        (p) => p.r === active.r && p.c === active.c,
+      );
     });
     if (!match) return new Set<string>();
-    return new Set(wordCells(match).map((p) => key(p.r, p.c)));
-  }, [active, direction, words]);
+    return new Set(
+      wordCells(match, rowOffset, colOffset).map((p) => key(p.r, p.c)),
+    );
+  }, [active, direction, words, rowOffset, colOffset]);
 
   function focusCell(r: number, c: number) {
     setActive({ r, c });
@@ -144,13 +192,6 @@ export function Crossword({ layout, onComplete }: CrosswordProps) {
     const letter = ch.toUpperCase();
     if (!/[A-Z]/.test(letter)) return;
 
-    console.log("[crossword] input", {
-      row: r + 1,
-      col: c + 1,
-      char: letter,
-      direction: directionRef.current,
-    });
-
     setValues((prev) => ({ ...prev, [key(r, c)]: letter }));
 
     const { r: nr, c: nc } = nextCell(r, c, directionRef.current);
@@ -192,7 +233,6 @@ export function Crossword({ layout, onComplete }: CrosswordProps) {
   }
 
   function handleChange(r: number, c: number, raw: string) {
-    // Mobile / IME paste — desktop letters go through onKeyDown.
     const ch = raw.slice(-1);
     if (!ch || !/[a-zA-Z]/.test(ch)) {
       if (!raw) setValues((prev) => ({ ...prev, [key(r, c)]: "" }));
@@ -203,7 +243,10 @@ export function Crossword({ layout, onComplete }: CrosswordProps) {
 
   function check() {
     const correct = words.filter((w) =>
-      wordCells(w).every((p) => values[key(p.r, p.c)] === grid[p.r][p.c]?.solution),
+      wordCells(w, rowOffset, colOffset).every((p) => {
+        const cell = grid[p.r][p.c];
+        return isLetterCell(cell) && values[key(p.r, p.c)] === cell.solution;
+      }),
     ).length;
     setResult(correct);
     onComplete(correct);
@@ -216,61 +259,75 @@ export function Crossword({ layout, onComplete }: CrosswordProps) {
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col gap-8 md:flex-row">
-        <div
-          ref={gridRef}
-          className="grid shrink-0 gap-px self-start bg-white/10 p-px"
-          style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}
-        >
-          {Array.from({ length: rows }).map((_, r) =>
-            Array.from({ length: cols }).map((_, c) => {
-              const cell = grid[r][c];
-              if (!cell) {
-                return <div key={key(r, c)} className="size-9 bg-black" />;
-              }
-              const isActive = active?.r === r && active?.c === c;
-              const inWord = activeWordCells.has(key(r, c));
-              return (
-                <div key={key(r, c)} className="relative size-9">
-                  {cell.number !== undefined && (
-                    <span className="pointer-events-none absolute left-0.5 top-0 z-10 font-mono text-[8px] text-black/60">
-                      {cell.number}
-                    </span>
-                  )}
-                  <input
-                    ref={(el) => {
-                      const k = key(r, c);
-                      if (el) inputRefs.current.set(k, el);
-                      else inputRefs.current.delete(k);
-                    }}
-                    data-cell={key(r, c)}
-                    value={values[key(r, c)] ?? ""}
-                    onChange={(e) => handleChange(r, c, e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(r, c, e)}
-                    onFocus={() => {
-                      if (active?.r !== r || active?.c !== c) {
-                        setActive({ r, c });
-                      }
-                    }}
-                    onClick={() => {
-                      if (active?.r === r && active?.c === c) {
-                        toggleDirectionAt(r, c);
-                      } else {
-                        selectCell(r, c);
-                      }
-                    }}
-                    maxLength={1}
-                    disabled={result !== null}
-                    autoComplete="off"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    inputMode="text"
-                    aria-label={`Row ${r + 1}, column ${c + 1}`}
-                    className={cellClass(isActive, inWord)}
-                  />
-                </div>
-              );
-            }),
-          )}
+        <div className="relative z-10 mx-auto w-full md:flex md:flex-1 md:items-start md:justify-center">
+          <div
+            ref={gridRef}
+            className="mx-auto grid aspect-square w-full max-w-[min(72vw,55dvh,28rem)] gap-px"
+            style={{
+              gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))`,
+              gridTemplateRows: `repeat(${size}, minmax(0, 1fr))`,
+            }}
+          >
+            {grid.map((row, r) =>
+              row.map((cell, c) => {
+                if (cell.kind === "empty") {
+                  return <div key={key(r, c)} aria-hidden className="min-h-0" />;
+                }
+                if (cell.kind === "block") {
+                  return (
+                    <div
+                      key={key(r, c)}
+                      aria-hidden
+                      className="aspect-square min-h-0 w-full bg-black"
+                    />
+                  );
+                }
+
+                const isActive = active?.r === r && active?.c === c;
+                const inWord = activeWordCells.has(key(r, c));
+                return (
+                  <div key={key(r, c)} className="relative aspect-square min-h-0 w-full">
+                    {cell.number !== undefined && (
+                      <span className="pointer-events-none absolute left-[8%] top-[6%] z-10 font-mono text-[clamp(0.4rem,18%,0.55rem)] leading-none text-black/60">
+                        {cell.number}
+                      </span>
+                    )}
+                    <input
+                      ref={(el) => {
+                        const k = key(r, c);
+                        if (el) inputRefs.current.set(k, el);
+                        else inputRefs.current.delete(k);
+                      }}
+                      data-cell={key(r, c)}
+                      value={values[key(r, c)] ?? ""}
+                      onChange={(e) => handleChange(r, c, e.target.value)}
+                      onKeyDown={(e) => handleKeyDown(r, c, e)}
+                      onFocus={() => {
+                        if (active?.r !== r || active?.c !== c) {
+                          setActive({ r, c });
+                        }
+                      }}
+                      onClick={() => {
+                        if (active?.r === r && active?.c === c) {
+                          toggleDirectionAt(r, c);
+                        } else {
+                          selectCell(r, c);
+                        }
+                      }}
+                      maxLength={1}
+                      disabled={result !== null}
+                      autoComplete="off"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      inputMode="text"
+                      aria-label={`Row ${r + 1}, column ${c + 1}`}
+                      className={cellClass(isActive, inWord)}
+                    />
+                  </div>
+                );
+              }),
+            )}
+          </div>
         </div>
 
         <div className="flex-1 space-y-6 text-sm">
@@ -359,7 +416,7 @@ function ClueList({ title, words }: { title: string; words: PlacedWord[] }) {
 
 function cellClass(isActive: boolean, inWord: boolean) {
   const base =
-    "size-9 bg-white text-center font-mono text-base font-semibold uppercase text-black caret-transparent outline-none";
+    "aspect-square h-full min-h-0 w-full bg-white text-center font-mono text-[clamp(0.65rem,4vw,1rem)] font-semibold uppercase text-black caret-transparent shadow-[0_1px_2px_rgba(0,0,0,0.12)] outline-none";
   if (isActive) return `${base} bg-amber-300`;
   if (inWord) return `${base} bg-amber-100`;
   return base;

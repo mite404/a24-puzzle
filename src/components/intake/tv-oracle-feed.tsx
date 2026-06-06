@@ -4,21 +4,24 @@ import { useEffect, useRef } from "react";
 import type { OracleUIMessage } from "@/lib/oracle-tools";
 import { PaletteCard } from "@/components/intake/palette-card";
 import { Spinner } from "@/components/ui/spinner";
-import {
-  ORACLE_OPENING_LINE,
-  type OracleChatStatus,
-} from "@/hooks/use-oracle-chat";
+import type { OracleChatStatus } from "@/hooks/use-oracle-chat";
 
 interface TvOracleFeedProps {
   messages: OracleUIMessage[];
   status: OracleChatStatus;
   modelResponding: boolean;
+  isSpeaking?: boolean;
+  openingLine: string;
+  channelLabel?: string;
 }
 
 export function TvOracleFeed({
   messages,
   status,
   modelResponding,
+  isSpeaking = false,
+  openingLine,
+  channelLabel,
 }: TvOracleFeedProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -28,18 +31,24 @@ export function TvOracleFeed({
     el.scrollTop = el.scrollHeight;
   }, [messages, status]);
 
-  const speaking =
-    status === "streaming" && modelResponding ? "is-speaking" : "";
-  const thinking = status === "submitted" || (status === "streaming" && !modelResponding);
+  const speakingClass = isSpeaking ? "is-speaking" : "";
+  const thinking =
+    status === "submitted" || (status === "streaming" && !modelResponding);
 
   return (
     <div
-      className={`oracle-tv-feed ${speaking}`.trim()}
+      className={`oracle-tv-feed ${speakingClass}`.trim()}
       aria-live="polite"
       aria-label="Oracle broadcast"
     >
       <div ref={scrollRef} className="oracle-tv-feed__scroll">
-        <p className="oracle-tv-feed__line">{OPENING_LINE}</p>
+        {channelLabel ? (
+          <p className="oracle-tv-feed__channel" aria-hidden>
+            {channelLabel}
+          </p>
+        ) : null}
+
+        <p className="oracle-tv-feed__line">{openingLine}</p>
 
         {messages.map((message) =>
           message.role === "assistant" ? (
@@ -51,6 +60,12 @@ export function TvOracleFeed({
           <div className="oracle-tv-feed__status" role="status">
             <Spinner className="size-3 shrink-0 text-[#9dff9d]/80" aria-hidden />
             <span className="oracle-tv-feed__status-text">Static…</span>
+          </div>
+        ) : null}
+
+        {isSpeaking && !thinking ? (
+          <div className="oracle-tv-feed__status" role="status">
+            <span className="oracle-tv-feed__status-text">On air.</span>
           </div>
         ) : null}
       </div>
@@ -100,5 +115,3 @@ function AssistantBroadcast({ message }: { message: OracleUIMessage }) {
     </div>
   );
 }
-
-const OPENING_LINE = ORACLE_OPENING_LINE;

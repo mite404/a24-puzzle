@@ -1,18 +1,24 @@
 "use client";
 
+import { useCallback, useState } from "react";
 import Image from "next/image";
 import type { ExperienceProfile } from "@/lib/types";
+import type { OraclePersonaId } from "@/lib/oracle-personas";
+import { personaForDialState } from "@/lib/oracle-personas";
+import { setActiveOraclePersonaId } from "@/lib/oracle-chat-persona";
 import { useOracleChat } from "@/hooks/use-oracle-chat";
+import { useOracleVoice } from "@/hooks/use-oracle-voice";
 import {
   TV_SCENE_ASPECT,
   TV_SCENE_GLASS,
-  TV_SCENE_PLATE,
 } from "@/lib/tv-scene-assets";
+import { TV_SCENE_PLATE_SRC } from "@/lib/tv-dial-states";
 import {
   TV_GLASS_MAP,
   TV_VIEWPORT_RADIUS,
   insetContentStyle,
   percentRectStyle,
+  type TvDialState,
 } from "@/lib/tv-screen-map";
 import { TvOracleFeed } from "@/components/intake/tv-oracle-feed";
 import { FloatingComposer } from "@/components/intake/floating-composer";
@@ -23,8 +29,27 @@ interface OracleTvSceneProps {
 }
 
 export function OracleTvScene({ onFinalize }: OracleTvSceneProps) {
-  const chat = useOracleChat(onFinalize);
+  const [dialState, setDialState] = useState<TvDialState>(0);
+  const persona = personaForDialState(dialState);
+  const personaId = persona.id as OraclePersonaId;
+
+  const chat = useOracleChat(onFinalize, personaId);
+  const voice = useOracleVoice({
+    personaId,
+    messages: chat.messages,
+    status: chat.status,
+    openingLine: chat.openingLine,
+  });
+
+  const handleDialChange = useCallback((state: TvDialState) => {
+    setActiveOraclePersonaId(personaForDialState(state).id);
+    setDialState(state);
+  }, []);
+
   const glassStyle = percentRectStyle(TV_GLASS_MAP);
+  const onAir =
+    voice.isSpeaking ||
+    (chat.status === "streaming" && chat.assistantStreamingText);
 
   return (
     <section
@@ -42,7 +67,7 @@ export function OracleTvScene({ onFinalize }: OracleTvSceneProps) {
           }}
         >
           <Image
-            src={TV_SCENE_PLATE}
+            src={TV_SCENE_PLATE_SRC}
             alt=""
             fill
             priority
@@ -65,6 +90,9 @@ export function OracleTvScene({ onFinalize }: OracleTvSceneProps) {
                 messages={chat.messages}
                 status={chat.status}
                 modelResponding={chat.assistantStreamingText}
+                isSpeaking={onAir}
+                openingLine={chat.openingLine}
+                channelLabel={persona.label}
               />
             </div>
           </div>
@@ -83,7 +111,11 @@ export function OracleTvScene({ onFinalize }: OracleTvSceneProps) {
             />
           </div>
 
-          <TvVolumeDial />
+          <TvVolumeDial
+            state={dialState}
+            onStateChange={handleDialChange}
+            channelLabel={persona.label}
+          />
         </div>
       </div>
 
@@ -96,6 +128,9 @@ export function OracleTvScene({ onFinalize }: OracleTvSceneProps) {
         modelResponding={chat.assistantStreamingText}
         error={chat.error}
         onDismissError={chat.clearError}
+        voiceError={voice.voiceError}
+        onDismissVoiceError={voice.clearVoiceError}
+        channelLabel={persona.label}
       />
     </section>
   );

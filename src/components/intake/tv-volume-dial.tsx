@@ -2,36 +2,37 @@
 
 import { useCallback, useState } from "react";
 import Image from "next/image";
-import {
-  TV_DIAL_STATE_02,
-  TV_DIAL_STATE_03,
-} from "@/lib/tv-scene-assets";
+import { TV_DIAL_SPRITES } from "@/lib/tv-dial-states";
 import {
   TV_VOLUME_DIAL_MAP,
   percentRectStyle,
   type TvDialState,
 } from "@/lib/tv-screen-map";
 
-const DIAL_SPRITES: Record<1 | 2, string> = {
-  1: TV_DIAL_STATE_02,
-  2: TV_DIAL_STATE_03,
-};
-
 interface TvVolumeDialProps {
-  /** Fires when the knob snaps to a new detent (for future persona wiring). */
+  state?: TvDialState;
+  /** Fires when the knob snaps to a new detent — swaps persona + voice. */
   onStateChange?: (state: TvDialState) => void;
+  channelLabel?: string;
 }
 
-export function TvVolumeDial({ onStateChange }: TvVolumeDialProps) {
-  const [state, setState] = useState<TvDialState>(0);
+export function TvVolumeDial({
+  state: controlledState,
+  onStateChange,
+  channelLabel,
+}: TvVolumeDialProps) {
+  const [internalState, setInternalState] = useState<TvDialState>(0);
+  const state = controlledState ?? internalState;
 
   const cycle = useCallback(() => {
-    setState((prev) => {
-      const next = ((prev + 1) % 3) as TvDialState;
-      onStateChange?.(next);
-      return next;
-    });
-  }, [onStateChange]);
+    const next = ((state + 1) % 3) as TvDialState;
+    if (controlledState === undefined) {
+      setInternalState(next);
+    }
+    onStateChange?.(next);
+  }, [controlledState, onStateChange, state]);
+
+  const sprite = state > 0 ? TV_DIAL_SPRITES[state as 1 | 2] : null;
 
   return (
     <button
@@ -40,9 +41,11 @@ export function TvVolumeDial({ onStateChange }: TvVolumeDialProps) {
       style={percentRectStyle(TV_VOLUME_DIAL_MAP)}
       onClick={cycle}
       aria-label={
-        state === 0
-          ? "Tune the oracle channel"
-          : `Oracle channel ${state} — click to change`
+        channelLabel
+          ? `${channelLabel} — click to change oracle channel`
+          : state === 0
+            ? "Tune the oracle channel"
+            : `Oracle channel ${state + 1} — click to change`
       }
     >
       <span
@@ -50,10 +53,10 @@ export function TvVolumeDial({ onStateChange }: TvVolumeDialProps) {
         aria-hidden
       />
 
-      {state > 0 ? (
+      {sprite ? (
         <Image
           key={state}
-          src={DIAL_SPRITES[state as 1 | 2]}
+          src={sprite}
           alt=""
           fill
           sizes="120px"

@@ -27,7 +27,10 @@ export interface Palette {
 export interface FilmLocation {
   id: string;
   filmId: FilmId;
+  /** Primary still — quiz hero and collapsed map card. */
   photoUrl: string;
+  /** Expanded-card carousel gallery; falls back to film stills when omitted. */
+  photoUrls?: string[];
   address: string;
   /** Specific place name on map hover cards (e.g. "St. Barts Cathedral"). */
   venueLabel?: string;

@@ -1,4 +1,35 @@
-import type { FilmLocation } from "@/lib/types";
+import type { FilmId, FilmLocation } from "@/lib/types";
+
+/** Film-wide still pools for carousel fallback when a location omits `photoUrls`. */
+const FILM_STILLS: Partial<Record<FilmId, string[]>> = {
+  "uncut-gems": [
+    "/a24-assets/uncut-gems-01.jpg",
+    "/a24-assets/uncut-gems-02.jpg",
+    "/a24-assets/uncut-gems-03.jpg",
+  ],
+  "the-backrooms": [
+    "/a24-assets/A24_BACKROOMS_01.jpg",
+    "/a24-assets/backrooms-02.jpg",
+    "/a24-assets/backrooms-03.JPG",
+    "/a24-assets/backrooms-04.JPG",
+  ],
+  materialists: [
+    "/a24-assets/materialists/materialists-still-cooper-union.webp",
+    "/a24-assets/materialists/materialists-Saint-Bartholomews-movie-still.webp",
+    "/a24-assets/materialists/materialists-Cooper-Union-Real.webp",
+    "/a24-assets/materialists/materialists-Saint-Bartholomews-Real.webp",
+  ],
+};
+
+export function filmStillsForFilm(filmId: FilmId): string[] {
+  return FILM_STILLS[filmId] ?? [];
+}
+
+/** Carousel gallery: explicit `photoUrls` or primary still + film pool (deduped). */
+export function getLocationPhotoUrls(location: FilmLocation): string[] {
+  if (location.photoUrls?.length) return location.photoUrls;
+  return [...new Set([location.photoUrl, ...filmStillsForFilm(location.filmId)])];
+}
 
 /**
  * NYC filming locations. Photos point at the real stills we have on hand
@@ -101,7 +132,8 @@ export const locations: FilmLocation[] = [
   {
     id: "mat-lotte-palace",
     filmId: "materialists",
-    photoUrl: "/a24-assets/materialists/materialists-lotties-still.html",
+    photoUrl:
+      "/a24-assets/materialists/materialists-Saint-Bartholomews-Real.webp",
     address: "Madison Avenue",
     venueLabel: "Lotte New York Palace",
     neighborhood: "Midtown East",
