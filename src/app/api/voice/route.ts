@@ -3,6 +3,7 @@ import {
   isOraclePersonaId,
   resolvePersonaId,
 } from "@/lib/oracle-personas";
+import type { OracleVoiceSettings } from "@/lib/oracle-voice-settings";
 
 export const maxDuration = 30;
 
@@ -11,6 +12,39 @@ const MAX_TTS_CHARS = 2500;
 
 function voiceError(message: string, status: number): Response {
   return Response.json({ error: message }, { status });
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function parseVoiceSettings(value: unknown): OracleVoiceSettings | undefined {
+  if (!value || typeof value !== "object") return undefined;
+
+  const raw = value as Record<string, unknown>;
+  const stability = raw.stability;
+  const similarity_boost = raw.similarity_boost;
+
+  if (typeof stability !== "number" || typeof similarity_boost !== "number") {
+    return undefined;
+  }
+
+  const settings: OracleVoiceSettings = {
+    stability: clamp(stability, 0, 1),
+    similarity_boost: clamp(similarity_boost, 0, 1),
+  };
+
+  if (typeof raw.style === "number") {
+    settings.style = clamp(raw.style, 0, 1);
+  }
+  if (typeof raw.speed === "number") {
+    settings.speed = clamp(raw.speed, 0.25, 4);
+  }
+  if (typeof raw.use_speaker_boost === "boolean") {
+    settings.use_speaker_boost = raw.use_speaker_boost;
+  }
+
+  return settings;
 }
 
 export async function POST(req: Request) {
@@ -29,10 +63,11 @@ export async function POST(req: Request) {
     return voiceError("Expected JSON object.", 400);
   }
 
-  const { text, voiceId, personaId } = body as {
+  const { text, voiceId, personaId, voiceSettings } = body as {
     text?: unknown;
     voiceId?: unknown;
     personaId?: unknown;
+    voiceSettings?: unknown;
   };
 
   if (typeof text !== "string" || !text.trim()) {
@@ -51,6 +86,8 @@ export async function POST(req: Request) {
       .elevenLabsVoiceId;
   }
 
+  const resolvedVoiceSettings = parseVoiceSettings(voiceSettings);
+
   try {
     const upstream = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(resolvedVoiceId)}`,
@@ -64,6 +101,9 @@ export async function POST(req: Request) {
         body: JSON.stringify({
           text: trimmed,
           model_id: TTS_MODEL,
+          ...(resolvedVoiceSettings
+            ? { voice_settings: resolvedVoiceSettings }
+            : {}),
         }),
       },
     );

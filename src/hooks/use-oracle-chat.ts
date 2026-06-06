@@ -6,6 +6,7 @@ import type { OracleUIMessage } from "@/lib/oracle-tools";
 import type { ExperienceProfile } from "@/lib/types";
 import { setActiveOraclePersonaId } from "@/lib/oracle-chat-persona";
 import { oracleChatTransport } from "@/lib/oracle-chat-transport";
+import type { VocalEmotionResult } from "@/lib/valence";
 import {
   DEFAULT_PERSONA_ID,
   getOraclePersona,
@@ -73,10 +74,13 @@ export function useOracleChat(
     );
   }, [messages, status]);
 
-  function submit(textOverride?: string) {
+  function submit(textOverride?: string, vocalEmotion?: VocalEmotionResult) {
     const trimmed = (textOverride ?? text).trim();
     if (!trimmed || busy) return;
-    sendMessage({ text: trimmed });
+    sendMessage(
+      { text: trimmed },
+      vocalEmotion ? { body: { vocalEmotion } } : undefined,
+    );
     setText("");
   }
 

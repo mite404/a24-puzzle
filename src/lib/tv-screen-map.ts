@@ -56,12 +56,12 @@ export const TV_VOLUME_DIAL_MAP = {
 
 export type TvDialState = 0 | 1 | 2;
 
-export type PercentRect = {
+export interface PercentRect {
   top: number;
   left: number;
   width: number;
   height: number;
-};
+}
 
 export function percentRectStyle(rect: PercentRect): CSSProperties {
   return {

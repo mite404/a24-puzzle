@@ -5,15 +5,16 @@
 
 ## Open questions
 
-- **Streaming WebSocket availability is unknown** until we probe our API key (Spike A). Official docs say "coming soon"; PyPI SDK references it. Try first — contact Valence only if the probe is inconclusive.
+- ~~**Streaming WebSocket availability is unknown**~~ **Resolved (Spike A, 2026-06-06):** Streaming WebSocket is **live on our account** (`client.streaming.connect()` connects + predicts). No support ticket needed.
+- **Streaming not yet wired into the app.** Phases 2–6 shipped the **Discrete** path (upload WAV, trim ≤15 s, ~2.5 s commit cap). Streaming — the plan's preferred primary path — remains unbuilt; it would remove the commit-time latency and the 15 s clip cap. Decide whether to migrate post-MVP. See [API choice](#api-choice-streaming-preferred-if-verified-discrete-as-documented-fallback).
 
 ## Research checklist
 
-- [ ] Spike A: Discrete baseline + Streaming WebSocket probe + wall-clock latency (see [Spike log](#spike-log))
-- [ ] Spike B: single PCM tap alongside Scribe — no mic conflict
-- [ ] Spike C: inject vocalEmotion into `/api/chat` — word/tone mismatch per persona
-- [ ] Spike D: ElevenLabs voice_settings matrix for adaptive TTS
-- [ ] Design CRT emotion modifiers (no raw labels)
+- [x] Spike A: Discrete baseline + Streaming WebSocket probe + wall-clock latency (see [Spike log](#spike-log)) — **Streaming live; Discrete 4.5–15 s confirmed**
+- [x] Spike B: single PCM tap alongside Scribe — no mic conflict — **manual PCM mode (path b): one tap → Scribe `sendAudio` + WAV buffer; no second `getUserMedia`**
+- [x] Spike C: inject vocalEmotion into `/api/chat` — word/tone mismatch per persona — **hidden `[VOCAL_TONE]` block; Marion/William/Lucy prompt sections**
+- [x] Spike D: ElevenLabs voice_settings matrix for adaptive TTS — **persona × emotion maps in `oracle-voice-settings.ts`**
+- [x] Design CRT emotion modifiers (no raw labels) — **`lastVocalEmotion` → diegetic CSS, gated on `onAir`**
 
 ---
 
@@ -56,7 +57,7 @@ The intro docs say "4–10 s" as a practical target; the `valenceai` SDK error t
 
 **Implication for oracle mic turns:** If a user holds the mic open and talks for 20+ seconds, trim to the **last 15 s** (most recent tone) or **first 15 s** before calling Discrete — do not upload the full blob raw. Utterances under 4.5 s → skip Valence for that turn (text-only), same as already planned.
 
-**Confidence gate:** Valence recommends dropping predictions below **~0.38** confidence. Low-confidence turns should not drive dramatic oracle shifts.
+**Confidence gate:** Valence docs *recommend* dropping predictions below **~0.38** client-side. **Not API-enforced** — verified 2026-06-06: API returns all predictions; 0.38 is an app-side threshold for weak signals.
 
 **Pricing:** Enterprise agreement (you indicated you can get a key). Plan for per-utterance cost on top of existing ElevenLabs + OpenRouter spend.
 
@@ -195,6 +196,12 @@ sequenceDiagram
 
 
 **Key constraint:** `[useOracleScribe](src/hooks/use-oracle-scribe.ts)` owns the mic via ElevenLabs Scribe. Scribe does **not** expose a finished audio file on commit — you need a **single parallel PCM tap** (manual `sendAudio` fork, `AudioWorklet`, or one `MediaRecorder`) on the same mic stream. WAV is produced **server-side** for Discrete API, or skipped entirely if Streaming API accepts PCM chunks. This is the main engineering unknown to spike first — not dual-format recording.
+
+> **⚠️ Code findings (verify before relying on the "shared stream" plan above)** — from reading `[use-oracle-scribe.ts](src/hooks/use-oracle-scribe.ts)`:
+>
+> 1. **The SDK owns `getUserMedia` internally.** `useScribe` (`@elevenlabs/react`) is configured with a `microphone: { echoCancellation, noiseSuppression, autoGainControl }` option and **does not currently expose the underlying `MediaStream`.** The "fork one shared stream to both Scribe and Valence" assumption is **unconfirmed** for this SDK. Spike B must first check whether `@elevenlabs/react` exposes the stream or a manual PCM `sendAudio` mode; if neither, fall back to a **second `getUserMedia`** dedicated to Valence (browsers allow multiple consumers of one mic device).
+> 2. **Commit is synchronous today.** `onCommittedTranscript` → `onSubmit(trimmed)` → `finishSession()` fire in one tick. Attaching `vocalEmotion` requires *holding* submit until emotion resolves (or a ~1.5 s timeout), so a slow/failed Valence call never blocks send — a real rework of the hook's control flow, not just a new field.
+> 3. **A lower minimum already exists.** Scribe rejects commits with **< 0.3 s** of audio (handled as a cancel via the `/uncommitted audio/i` guard) and cancels when no partial has arrived. Valence's own clip floor is higher — respect **both**: skip Valence (text-only) under Valence's floor even when Scribe accepted the commit.
 
 **Typed turns:** No Valence signal. Oracle continues using text + palette reactions only — no regression.
 
@@ -501,13 +508,16 @@ sequenceDiagram
 
 ## Spike log
 
-> Fill in during Spike A. Leave blank until tested.
+> Verified by `scripts/valence-spike.ts` on **2026-06-06** against `api.getvalenceai.com` / `wss://api.getvalenceai.com`.
 
 | Probe | Date | Result | Notes |
 | ----- | ---- | ------ | ----- |
-| Discrete baseline (6 s WAV) | | | |
-| Streaming WebSocket connect | | pass / fail / inconclusive | endpoint tried, close code, error body |
-| Streaming first prediction | | | latency to first emotion chunk |
-| Discrete wall-clock (tap-2 → JSON) | | | ms |
-| Streaming wall-clock (commit → cached emotion) | | | ms |
-| Support email sent? | | yes / no | only if probe inconclusive |
+| Discrete baseline (6 s WAV) | 2026-06-06 | **PASS** | Key works. 1336 ms wall-clock. Response: `{ main_emotion, confidence, all_predictions, model_type, processing_time_ms, request_id }`. Synthetic sine → `sad` @ 0.405. |
+| Streaming WebSocket connect | 2026-06-06 | **pass** | `wss://api.getvalenceai.com` via Socket.IO (`client.streaming.connect()`). Session established; no 401/403/404. |
+| Streaming first prediction | 2026-06-06 | **PASS** | First prediction ~2.9 s after connect (includes 5 s of PCM chunks sent). Window `00:00:00`–`00:00:04` (~4.5 s analysis window). Same shape as Discrete. |
+| Discrete wall-clock (6 s clip → JSON) | 2026-06-06 | **1336 ms** | Upload + API processing (API reported 138 ms internal). |
+| Streaming wall-clock (commit → cached emotion) | 2026-06-06 | **~0 ms at commit** (design) | Emotion arrives during speech; last prediction cached before mic stop. Spike sent 5 s PCM then waited 3 s — 1 prediction received. |
+| Limit probe: 3 s clip | 2026-06-06 | **AUDIO_TOO_SHORT (400)** | `min_duration_seconds: 4.5`, `actual_duration_seconds: 2.5` (API measured shorter than file header — treat **4.5 s** as floor). |
+| Limit probe: 20 s clip | 2026-06-06 | **AUDIO_TOO_LONG (400)** | `max_duration_seconds: 15.0`, `actual_duration_seconds: 20.0`. |
+| Confidence gate 0.38 | 2026-06-06 | **Not API-enforced** | SDK/docs recommend ~0.38 as a *client-side* drop threshold. API returns predictions regardless; synthetic clip returned 0.405. Keep 0.38 as app constant with "recommended, not verified API limit" comment. |
+| Support email sent? | 2026-06-06 | **no** | Streaming probe succeeded — no ticket needed. |
