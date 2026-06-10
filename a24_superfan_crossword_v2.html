@@ -1,0 +1,271 @@
+
+<style>
+  #a24-root { width: 100%; height: 700px; position: relative; overflow: hidden; font-family: Georgia, serif; }
+  #a24-bg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #a24-overlay { position: absolute; inset: 0; z-index: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
+  .cw-grid { display: grid; background: transparent; }
+  .cw-dead { background: transparent !important; border: none !important; cursor: default !important; pointer-events: none; box-shadow: none !important; }
+  .cw-cell {
+    position: relative; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-sizing: border-box;
+    border: 1.5px solid #000;
+    background: #fff;
+    box-shadow:
+      0 1px 2px rgba(0,0,0,0.18),
+      0 4px 10px rgba(0,0,0,0.28),
+      0 10px 28px rgba(0,0,0,0.22);
+    transition: background 0.08s;
+    user-select: none;
+  }
+  .cw-cell.sel { background: rgba(255,210,0,1) !important; }
+  .cw-cell.hl  { background: rgba(176,214,255,1) !important; }
+  .cw-cell.ok  { background: rgba(140,220,140,1) !important; }
+  .cw-cell.err { background: rgba(255,130,130,1) !important; }
+  .cw-num { position: absolute; top: 2px; left: 3px; font-size: 9px; font-weight: 700; line-height: 1; color: #000; font-family: Arial, sans-serif; }
+  .cw-letter { font-size: 22px; font-weight: 700; color: #000; line-height: 1; }
+  #cw-clues {
+    background: #fff;
+    border: 1.5px solid #000;
+    padding: 13px 17px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 22px;
+    box-shadow:
+      0 1px 2px rgba(0,0,0,0.18),
+      0 4px 10px rgba(0,0,0,0.28),
+      0 10px 28px rgba(0,0,0,0.22);
+  }
+  .clue-head { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; margin-bottom: 7px; font-family: Arial, sans-serif; }
+  .clue-item { font-size: 11px; line-height: 1.45; margin-bottom: 5px; font-family: Arial, sans-serif; }
+  #cw-btns { display: flex; gap: 8px; }
+  .cw-btn {
+    padding: 6px 18px; font-size: 10px; font-weight: 700; letter-spacing: 0.12em;
+    cursor: pointer; font-family: Arial, sans-serif;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.22), 0 6px 16px rgba(0,0,0,0.16);
+  }
+  .cw-btn.primary { background: #000; color: #fff; border: 1.5px solid #000; }
+  .cw-btn.secondary { background: #fff; color: #000; border: 1.5px solid #000; }
+  .cw-btn:hover { opacity: 0.82; }
+  #cw-msg { font-size: 11px; font-family: Arial, sans-serif; color: #000; background: #fff; border: 1.5px solid #000; padding: 4px 14px; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.18); }
+</style>
+
+<div id="a24-root">
+  <canvas id="a24-bg"></canvas>
+  <div id="a24-overlay">
+    <div id="cw-grid-wrap"></div>
+    <div id="cw-clues">
+      <div>
+        <div class="clue-head">ACROSS</div>
+        <div class="clue-item"><b>1.</b> Haunting cry heard in Midsommar</div>
+        <div class="clue-item"><b>4.</b> A24's fan base has formed one of these</div>
+        <div class="clue-item"><b>5.</b> Coveted golden statuette, won multiple times by A24</div>
+        <div class="clue-item"><b>6.</b> Lingering sound — and feeling — after Hereditary</div>
+      </div>
+      <div>
+        <div class="clue-head">DOWN</div>
+        <div class="clue-item"><b>2.</b> Robert Eggers' 2015 debut, "The ___"</div>
+        <div class="clue-item"><b>3.</b> What horror films sometimes show in excess</div>
+      </div>
+    </div>
+    <div id="cw-btns">
+      <button class="cw-btn primary" id="btn-check">CHECK</button>
+      <button class="cw-btn secondary" id="btn-clear">CLEAR</button>
+    </div>
+    <div id="cw-msg"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+const CS=52, GN=7;
+const WORDS=[
+  {w:"HOWL", d:"A",r:1,c:1,n:1},
+  {w:"WITCH",d:"D",r:1,c:3,n:2},
+  {w:"GORE", d:"D",r:2,c:5,n:3},
+  {w:"CULT", d:"A",r:3,c:0,n:4},
+  {w:"OSCAR",d:"A",r:4,c:1,n:5},
+  {w:"ECHO", d:"A",r:5,c:1,n:6},
+];
+const ANS={},NUMS={},CW={};
+WORDS.forEach((wd,wi)=>{
+  NUMS[`${wd.r},${wd.c}`]=wd.n;
+  for(let i=0;i<wd.w.length;i++){
+    const r=wd.d==="A"?wd.r:wd.r+i;
+    const c=wd.d==="A"?wd.c+i:wd.c;
+    const k=`${r},${c}`;
+    ANS[k]=wd.w[i];
+    if(!CW[k])CW[k]={};
+    CW[k][wd.d]=wi;
+  }
+});
+function wkeys(wi){
+  const{w,d,r,c}=WORDS[wi];
+  return Array.from({length:w.length},(_,i)=>`${d==="A"?r:r+i},${d==="A"?c+i:c}`);
+}
+let inp={},sel=null,dir="A",chk=false;
+
+function drawBg(){
+  const canvas=document.getElementById("a24-bg");
+  if(!canvas)return;
+  const ctx=canvas.getContext("2d");
+  const dpr=window.devicePixelRatio||1;
+  const W=canvas.offsetWidth,H=canvas.offsetHeight;
+  if(!W||!H)return;
+  canvas.width=Math.round(W*dpr);
+  canvas.height=Math.round(H*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle="#fff";
+  ctx.fillRect(0,0,W,H);
+  const ANG=-0.52;
+  const DG=Math.sqrt(W*W+H*H)+200;
+  ctx.save();
+  ctx.fillStyle="#000";
+  ctx.font="bold 112px Georgia, serif";
+  const TW=ctx.measureText("A24").width;
+  const TX=TW+26,TH=128;
+  ctx.translate(W/2,H/2);
+  ctx.rotate(ANG);
+  const NC=Math.ceil(DG/TX)+5,NR=Math.ceil(DG/TH)+5;
+  const OX=-(NC/2)*TX,OY=-(NR/2)*TH;
+  for(let row=0;row<NR;row++){
+    for(let col=0;col<NC;col++){
+      const xOff=row%2===0?0:TX*0.5;
+      ctx.fillText("A24",OX+col*TX+xOff,OY+row*TH);
+    }
+  }
+  ctx.restore();
+  ctx.save();
+  ctx.strokeStyle="#000";
+  ctx.lineWidth=0.7;
+  ctx.globalAlpha=0.09;
+  ctx.translate(W/2,H/2);
+  ctx.rotate(ANG);
+  for(let i=-22;i<=22;i++){
+    ctx.beginPath();
+    ctx.moveTo(i*TX-DG,-DG);
+    ctx.lineTo(i*TX+DG,DG);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function render(){
+  const wrap=document.getElementById("cw-grid-wrap");
+  if(!wrap)return;
+  let grid=document.getElementById("cw-grid");
+  if(!grid){
+    grid=document.createElement("div");
+    grid.id="cw-grid";
+    grid.className="cw-grid";
+    grid.style.gridTemplateColumns=`repeat(${GN},${CS}px)`;
+    grid.style.gridTemplateRows=`repeat(${GN},${CS}px)`;
+    wrap.appendChild(grid);
+  }
+  grid.innerHTML="";
+  for(let row=0;row<GN;row++){
+    for(let col=0;col<GN;col++){
+      const k=`${row},${col}`;
+      const cell=document.createElement("div");
+      cell.style.width=CS+"px";
+      cell.style.height=CS+"px";
+      if(!ANS[k]){
+        cell.className="cw-cell cw-dead";
+        grid.appendChild(cell);
+        continue;
+      }
+      let cls="cw-cell";
+      if(chk&&inp[k]){
+        cls+=inp[k]===ANS[k]?" ok":" err";
+      } else if(sel===k){
+        cls+=" sel";
+      } else if(sel){
+        const wi=CW[sel]&&CW[sel][dir];
+        if(wi!==undefined&&wkeys(wi).includes(k))cls+=" hl";
+      }
+      cell.className=cls;
+      const num=NUMS[k];
+      if(num){
+        const ns=document.createElement("span");
+        ns.className="cw-num";
+        ns.textContent=num;
+        cell.appendChild(ns);
+      }
+      const ls=document.createElement("span");
+      ls.className="cw-letter";
+      ls.textContent=inp[k]||"";
+      cell.appendChild(ls);
+      cell.dataset.key=k;
+      cell.addEventListener("click",()=>clickCell(k));
+      grid.appendChild(cell);
+    }
+  }
+  const clues=document.getElementById("cw-clues");
+  if(clues)clues.style.width=(GN*CS)+"px";
+}
+
+function clickCell(k){
+  if(sel===k){
+    const avail=Object.keys(CW[k]||{});
+    if(avail.length>1)dir=dir==="A"?"D":"A";
+  } else {
+    sel=k;
+    const avail=Object.keys(CW[k]||{});
+    if(avail.length===1)dir=avail[0];
+    else if(!avail.includes(dir))dir=avail[0]||dir;
+  }
+  chk=false;
+  render();
+}
+
+document.addEventListener("keydown",(e)=>{
+  if(!sel)return;
+  const[r,c]=sel.split(",").map(Number);
+  if(/^[a-zA-Z]$/.test(e.key)){
+    e.preventDefault();
+    inp[sel]=e.key.toUpperCase();
+    chk=false;
+    const nk=dir==="A"?`${r},${c+1}`:`${r+1},${c}`;
+    if(ANS[nk])sel=nk;
+    render();
+  } else if(e.key==="Backspace"){
+    e.preventDefault();
+    if(inp[sel]){delete inp[sel];}
+    else{
+      const pk=dir==="A"?`${r},${c-1}`:`${r-1},${c}`;
+      if(ANS[pk]){sel=pk;delete inp[pk];}
+    }
+    chk=false;render();
+  } else if(e.key==="ArrowRight"){e.preventDefault();if(ANS[`${r},${c+1}`]){dir="A";sel=`${r},${c+1}`;render();}}
+  else if(e.key==="ArrowLeft") {e.preventDefault();if(ANS[`${r},${c-1}`]){dir="A";sel=`${r},${c-1}`;render();}}
+  else if(e.key==="ArrowDown") {e.preventDefault();if(ANS[`${r+1},${c}`]){dir="D";sel=`${r+1},${c}`;render();}}
+  else if(e.key==="ArrowUp")   {e.preventDefault();if(ANS[`${r-1},${c}`]){dir="D";sel=`${r-1},${c}`;render();}}
+  else if(e.key===" "||e.key==="Tab"){
+    e.preventDefault();
+    if(Object.keys(CW[sel]||{}).length>1){dir=dir==="A"?"D":"A";render();}
+  }
+});
+
+document.getElementById("btn-check").addEventListener("click",()=>{
+  chk=true;
+  const total=Object.keys(ANS).length;
+  const correct=Object.entries(inp).filter(([k,v])=>v===ANS[k]).length;
+  const msg=document.getElementById("cw-msg");
+  const filled=Object.keys(inp).length;
+  if(filled===total&&correct===total){msg.textContent="✓ Solved!";} 
+  else{msg.textContent=`${correct} / ${total} correct`;}
+  msg.style.display="block";
+  render();
+});
+
+document.getElementById("btn-clear").addEventListener("click",()=>{
+  inp={};sel=null;dir="A";chk=false;
+  document.getElementById("cw-msg").style.display="none";
+  render();
+});
+
+const canvas=document.getElementById("a24-bg");
+new ResizeObserver(()=>requestAnimationFrame(drawBg)).observe(canvas);
+requestAnimationFrame(()=>{drawBg();render();});
+})();
+</script>
