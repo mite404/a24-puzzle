@@ -4,15 +4,18 @@ import type { FilmId } from "@/lib/types";
 interface PaletteCardProps {
   filmId: FilmId;
   promptText: string;
+}
+
+type PaletteCardInternalProps = PaletteCardProps & {
   /** Compact color bars for the CRT viewport. */
-  variant?: "default" | "crt";
+  variant: "default" | "crt";
 }
 
 /**
  * Renders a film's color signature inline in the conversation. The film title is
  * intentionally withheld — the oracle is gauging a reaction to the colors alone.
  */
-export function CrtPaletteCard(props: Omit<PaletteCardProps>) {
+function PaletteCardBase({ filmId, promptText, variant }: PaletteCardInternalProps) {
   const palette = getPalette(filmId);
   if (!palette) return null;
 
@@ -60,4 +63,12 @@ export function CrtPaletteCard(props: Omit<PaletteCardProps>) {
       </p>
     </div>
   );
+}
+
+export function CrtPaletteCard(props: PaletteCardProps) {
+  return <PaletteCardBase variant="crt" {...props} />;
+}
+
+export function PaletteCard(props: PaletteCardProps) {
+  return <PaletteCardBase variant="default" {...props} />;
 }

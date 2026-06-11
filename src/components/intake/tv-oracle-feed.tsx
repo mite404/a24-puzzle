@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { OracleUIMessage } from "@/lib/oracle-tools";
-import { PaletteCard } from "@/components/intake/palette-card";
+import { CrtPaletteCard } from "@/components/intake/palette-card";
 import { Spinner } from "@/components/ui/spinner";
 import type { OracleChatStatus } from "@/hooks/use-oracle-chat";
 import type { VocalEmotionResult } from "@/lib/valence";
@@ -134,11 +134,10 @@ function AssistantBroadcast({ message }: { message: OracleUIMessage }) {
             part.input
           ) {
             return (
-              <PaletteCard
+              <CrtPaletteCard
                 key={i}
                 filmId={part.input.filmId}
                 promptText={part.input.promptText}
-                variant="crt"
               />
             );
           }

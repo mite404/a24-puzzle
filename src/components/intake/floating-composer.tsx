@@ -6,22 +6,22 @@ import { A24CtaButton } from "@/components/a24-cta-button";
 import { formatChatError } from "@/lib/chat-errors";
 import type { OracleChatStatus } from "@/hooks/use-oracle-chat";
 
-interface MicState {
+export interface MicState {
   listening: boolean;
   connecting: boolean;
   disabled: boolean;
   onToggle?: () => void;
 }
 
-interface DismissableError {
+export interface DismissableError {
   message: string | Error;
   onDismiss: () => void;
 }
 
-interface FloatingComposerProps {
+export interface FloatingComposerProps {
   text: string;
   onTextChange: (value: string) => void;
-  onSubmit: (e: React.SubmitEvent) => void;
+  onSubmit: (e: React.FormEvent) => void;
   busy: boolean;
   status: OracleChatStatus;
   modelResponding: boolean;

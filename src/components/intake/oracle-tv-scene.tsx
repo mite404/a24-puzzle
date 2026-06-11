@@ -26,6 +26,7 @@ import {
 import { TvOracleFeed } from "@/components/intake/tv-oracle-feed";
 import { FloatingComposer } from "@/components/intake/floating-composer";
 import { TvVolumeDial } from "@/components/intake/tv-volume-dial";
+import type { FloatingComposerProps, MicState } from "@/components/intake/floating-composer";
 
 interface OracleTvSceneProps {
   onFinalize: (profile: ExperienceProfile) => void;
@@ -97,6 +98,11 @@ export function OracleTvScene({ onFinalize }: OracleTvSceneProps) {
     disabled: chat.busy,
     onToggle: voiceApisEnabled ? scribe.toggleMic : undefined,
   };
+  const composerErrors: FloatingComposerProps["errors"] = {
+    chat: chat.error ? { message: chat.error, onDismiss: chat.clearError } : undefined,
+    voice: voice.voiceError ? { message: voice.voiceError, onDismiss: voice.clearVoiceError} : undefined,
+    scribe: scribe.scribeError ? { message: scribe.scribeError, onDismiss: scribe.clearScribeError } : undefined,
+  }
 
   return (
     <section
@@ -174,12 +180,7 @@ export function OracleTvScene({ onFinalize }: OracleTvSceneProps) {
         busy={chat.busy}
         status={chat.status}
         modelResponding={chat.assistantStreamingText}
-        error={chat.error}
-        onDismissError={chat.clearError}
-        voiceError={voice.voiceError}
-        onDismissVoiceError={voice.clearVoiceError}
-        scribeError={scribe.scribeError}
-        onDismissScribeError={scribe.clearScribeError}
+        errors={composerErrors}
         mic={micState}
         channelLabel={persona.label}
       />
