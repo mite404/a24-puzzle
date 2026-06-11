@@ -9,7 +9,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "bun test",
-    "doctor": "bunx react-doctor"
+    "doctor": "bunx react-doctor",
+    "md:lint": "rumdl check .",
+    "md:fmt": "rumdl fmt ."
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.67",

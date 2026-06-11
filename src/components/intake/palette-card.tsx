@@ -12,11 +12,7 @@ interface PaletteCardProps {
  * Renders a film's color signature inline in the conversation. The film title is
  * intentionally withheld — the oracle is gauging a reaction to the colors alone.
  */
-export function PaletteCard({
-  filmId,
-  promptText,
-  variant = "default",
-}: PaletteCardProps) {
+export function CrtPaletteCard(props: Omit<PaletteCardProps>) {
   const palette = getPalette(filmId);
   if (!palette) return null;
 

@@ -103,6 +103,7 @@ lib/
 **Concept:** Build the game component in complete isolation from any AI logic. This component has no idea it will live inside a chat — it could be rendered anywhere. That's the whole point of controlled GenUI: the LLM supplies the data, but the component is just a normal React component.
 
 The component needs to:
+
 - Display a row of color swatches from the `palette` array (hex strings)
 - Show four film title buttons the user can click
 - Reveal the correct answer after a guess

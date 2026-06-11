@@ -50,6 +50,7 @@ function getNearbyLocations(hero, allLocations, minResults = 1):
 ### Hover card anatomy
 
 On hover of any nearby pin, a card appears with:
+
 - **Film still** (the location's `photoUrl`) as a thumbnail
 - **Film title** (from `getFilmTitle`)
 - **Location name** (neighborhood + address)
@@ -115,16 +116,19 @@ New file: [`src/components/games/location-map.tsx`](src/components/games/locatio
 Modify [`src/components/games/location-quiz.tsx`](src/components/games/location-quiz.tsx):
 
 **New state:**
+
 - `showMap: boolean` -- controls whether the map is visible
 - Track consecutive correct count
 
 **Logic:**
+
 - On wrong answer: set `showMap = true` after reveal
 - On correct answer for question 3: set `showMap = true`
 - When `showMap` is true, hide the "Next" button, render `<LocationMap>` with a slide-in animation
 - The map's `onContinue` calls the existing `onComplete` callback to advance to the crossword
 
 **Nearby pin computation:**
+
 - Import all `locations` from `src/data/locations`
 - Call `getNearbyLocations(currentQuestion.location, locations)` to get the nearby set
 

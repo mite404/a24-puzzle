@@ -1,5 +1,6 @@
 /** User-facing copy for common AI SDK / chat failures. */
-export function formatChatError(error: Error): string {
+export function formatChatError(error: string | Error): string {
+  if (typeof error === "string") return error;
   const name = error.name ?? "";
   const message = error.message ?? "Something went wrong.";
 

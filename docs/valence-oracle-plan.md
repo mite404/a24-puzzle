@@ -30,7 +30,6 @@ Think of it like ADR vs. performance: Scribe gives you the **script** (transcrip
 
 ## What Valence actually provides
 
-
 | Aspect             | Detail                                                                                                                                                                               |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Input              | Mono `.wav` upload payload, ideally 44.1 kHz; Discrete wants **4.5–15 s** per request (**5–10 s recommended**; intro docs round to "4–10 s")                                         |
@@ -42,16 +41,13 @@ Think of it like ADR vs. performance: Scribe gives you the **script** (transcrip
 | Privacy (Discrete) | Data-in-transit, **not stored** on Valence systems                                                                                                                                   |
 | SDK                | `valenceai` on npm (Discrete + Asynch documented); Streaming WebSocket referenced in PyPI SDK but **not documented on site — probe in Spike A** |
 
-
 **Discrete clip length (hard limits vs. guidance):**
-
 
 |                 | Seconds   | Enforced?                                |
 | --------------- | --------- | ---------------------------------------- |
 | **Minimum**     | **4.5 s** | Yes — `AUDIO_TOO_SHORT` (400) if shorter |
 | **Recommended** | 5–10 s    | No — best accuracy/latency sweet spot    |
 | **Maximum**     | **15 s**  | Yes — `AUDIO_TOO_LONG` (400) if longer   |
-
 
 The intro docs say "4–10 s" as a practical target; the `valenceai` SDK error table documents the actual floor (4.5 s) and ceiling (15 s). **10 s is not a hard cap.**
 
@@ -85,13 +81,11 @@ Your `[src/app/api/voice/route.ts](src/app/api/voice/route.ts)` currently reques
 
 There are three separate audio paths — only one needs extra work:
 
-
 | Path                         | What happens today                                   | Format                                   | Valence involved? |
 | ---------------------------- | ---------------------------------------------------- | ---------------------------------------- | ----------------- |
 | **User → Scribe (STT)**      | Mic → PCM chunks over WebSocket → partial transcript | PCM internally; no saved file            | No                |
 | **User → Valence (emotion)** | *Not built yet*                                      | WAV (Discrete) or PCM chunks (Streaming) | Yes               |
 | **Oracle → TTS (playback)**  | Text → `/api/voice` → MP3 blob → `<audio>`           | MP3 (by choice)                          | No                |
-
 
 Scribe already gives you realtime partials **without** writing any file. Valence adds a **second consumer** of the same mic performance — not a second file format.
 
@@ -108,8 +102,6 @@ flowchart TB
   ChatSubmit --> LLM[OpenRouter]
   LLM --> TTS[ElevenLabs TTS MP3]
 ```
-
-
 
 ### What actually runs in parallel (and what doesn't block realtime)
 
@@ -164,8 +156,6 @@ flowchart LR
   TTS --> CRT
 ```
 
-
-
 Valence inserts a **parallel analysis bus** on mic turns only:
 
 ```mermaid
@@ -193,8 +183,6 @@ sequenceDiagram
   Voice-->>User: TTS with emotion_adapted settings
 ```
 
-
-
 **Key constraint:** `[useOracleScribe](src/hooks/use-oracle-scribe.ts)` owns the mic via ElevenLabs Scribe. Scribe does **not** expose a finished audio file on commit — you need a **single parallel PCM tap** (manual `sendAudio` fork, `AudioWorklet`, or one `MediaRecorder`) on the same mic stream. WAV is produced **server-side** for Discrete API, or skipped entirely if Streaming API accepts PCM chunks. This is the main engineering unknown to spike first — not dual-format recording.
 
 > **⚠️ Code findings (verify before relying on the "shared stream" plan above)** — from reading `[use-oracle-scribe.ts](src/hooks/use-oracle-scribe.ts)`:
@@ -220,13 +208,11 @@ Interpret delivery separately from word choice. If tone and words conflict, name
 
 Extend each persona in `[src/lib/oracle-personas.ts](src/lib/oracle-personas.ts)` with a short **"VOCAL TONE"** section — same catalog/tools rules, different *interpretation*:
 
-
 | Persona                 | Example dynamic behavior                                                        |
 | ----------------------- | ------------------------------------------------------------------------------- |
 | Marion (`ladybird_mom`) | Calls out performative "fine"; softens when vocal = sad                         |
 | William (`witch`)       | Maps tone to "spiritual weather"; irritated → trial of patience                 |
 | Lucy (`materialist`)    | Frames mismatch as compatibility signal; excited → lean into bold palette picks |
-
 
 Also nudge **tool behavior**: `showPalette` film selection when vocal emotion contradicts stated mood (e.g., user says "light" but sounds **sad** → pick a film whose palette tests that gap).
 
@@ -236,14 +222,12 @@ Also nudge **tool behavior**: `showPalette` film selection when vocal emotion co
 
 Reuse the existing "on air" language from `[oracle-tv-scene.tsx](src/components/intake/oracle-tv-scene.tsx)` (`onAir = isSpeaking || streaming`):
 
-
 | Detected tone            | CRT behavior (subtle, in-world)           |
 | ------------------------ | ----------------------------------------- |
 | irritated / angry        | Brief static burst, scanline intensity up |
 | sad                      | Phosphor dims, slower flicker             |
 | happy / excited          | Slightly warmer tint, cleaner signal      |
 | neutral / low confidence | No change                                 |
-
 
 Store last vocal emotion in client state from the Valence response; apply CSS modifiers on `[TvOracleFeed](src/components/intake/tv-oracle-feed.tsx)`. **Do not** show raw emotion labels to the user — keep it felt, not dashboard-y.
 
@@ -253,13 +237,11 @@ Optional Phase 2: if Streaming API is available on your account, show **live** s
 
 Extend `[src/app/api/voice/route.ts](src/app/api/voice/route.ts)` to accept optional `voiceSettings` (ElevenLabs `stability`, `similarity_boost`, etc.) derived from **user's** vocal emotion + **persona** baseline:
 
-
 | User vocal | TTS adaptation (example)                                                    |
 | ---------- | --------------------------------------------------------------------------- |
 | sad        | Lower stability, slightly slower delivery — Marion/Lucy sound gentler       |
 | irritated  | William stays firm but not escalated; Marion doesn't match snark with snark |
 | excited    | Slightly higher energy; Lucy leans crisp                                    |
-
 
 `[useOracleVoice](src/hooks/use-oracle-voice.ts)` would pass the last `vocalEmotion` when fetching TTS for the **reply** to that turn. This is **output** empathy, separate from Valence **input** analysis.
 
@@ -277,13 +259,11 @@ The [Choosing an API](https://docs.getvalenceai.com/introduction#choosing-an-api
 
 Think of Valence as three different ways to read an actor's delivery:
 
-
 | API                                              | Analogy                                                      | What you send                                    | What you get back                                                           | When you'd use it                                              |
 | ------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------ | --------------------------------------------------------------------------- | -------------------------------------------------------------- |
 | **Discrete**                                     | **One Polaroid** — snap a single frame of the performance    | One short WAV clip (~one sentence)               | **One** emotion + confidence for the whole clip                             | "How did that line land?" — right after the user stops talking |
 | **Asynch**                                       | **Dailies review** — scan the whole reel later               | One long WAV (call, interview, entire recording) | **Timeline** — one emotion every ~5 s with timestamps (`00:00`, `00:05`, …) | Post-hoc analysis of a finished recording, not live chat       |
 | **Streaming** *(undocumented on site; SDK only)* | **Live waveform monitor** — emotion meter while they perform | PCM chunks over WebSocket during speech          | Emotion updates as audio flows in                                           | Live agents, live CRT feedback, zero wait at commit            |
-
 
 All three use the **same emotion model** underneath — they differ in **how audio is delivered** and **what shape the answer takes**.
 
@@ -352,8 +332,6 @@ flowchart TD
   Asynch -.->|too slow for intake| Skip[Skip for oracle MVP]
 ```
 
-
-
 **For your app:** Discrete is what the docs steer you toward for conversational "real-time." Streaming is what you actually want for long turns + low commit latency — but you have to validate outside the introduction page.
 
 ---
@@ -364,7 +342,6 @@ Your skepticism on latency is warranted. **100–500 ms is Valence's claimed API
 
 ### Honest latency budget (tap 2 → `chat.submit`)
 
-
 | Stage                          | Discrete path (typical)                   | Streaming path (typical)                                        |
 | ------------------------------ | ----------------------------------------- | --------------------------------------------------------------- |
 | Scribe `commit()` + transcript | ~50–200 ms                                | ~50–200 ms                                                      |
@@ -374,19 +351,16 @@ Your skepticism on latency is warranted. **100–500 ms is Valence's claimed API
 | Valence API processing         | 100–500 ms (their docs)                   | **~0 ms at commit** — last chunk already received during speech |
 | **Total added before LLM**     | **~400 ms – 1.5+ s** realistic            | **~0 ms** if latest emotion cached from stream                  |
 
-
 The intro docs' "100–500 ms" assumes a small WAV is already in hand. In a browser app, **upload + transcode often dominate** — so treating Discrete as "~200 ms" would be misleading.
 
 **Spike A must measure wall-clock** from mock commit → emotion JSON in hand, on your network, with a realistic 6–15 s clip — not just Valence's internal number.
 
 ### Long utterances (>10 s, >15 s)
 
-
 | API           | Long speech behavior                                                                                                                                    |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Streaming** | **No clip cap.** Analyzes in ~5 s windows for the whole mic session; at commit, use the **most recent** window's emotion. Fits rambling oracle answers. |
 | **Discrete**  | Hard **15 s max** per upload; must trim. Loses early tone if you keep only the last 15 s. Not ideal for long monologues.                                |
-
 
 Since you're okay with long mic turns as long as streaming handles them, **Streaming should be the primary path** if your account exposes it (verify in Spike A/B first). Discrete becomes fallback for short turns or if Streaming isn't available in JS.
 
@@ -407,17 +381,13 @@ sequenceDiagram
   Scribe->>Chat: submit transcript plus vocalEmotion immediately
 ```
 
-
-
 ### Revised API ranking
-
 
 | API                       | Role                     | Notes                                                                                        |
 | ------------------------- | ------------------------ | -------------------------------------------------------------------------------------------- |
 | **Streaming (WebSocket)** | **Primary** if available | Handles long utterances; emotion ready at commit; enables live CRT during speech             |
 | **Discrete**              | **Fallback**             | Per-utterance upload; trim to ≤15 s; budget **0.5–1.5 s** added latency; skip if clip <4.5 s |
 | **Asynch**                | Skip                     | Long-file batch pipeline; wrong shape for interactive intake                                 |
-
 
 ---
 
@@ -468,7 +438,6 @@ sequenceDiagram
 
 ## Risks and mitigations
 
-
 | Risk                           | Mitigation                                                                                                                                           |
 | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | TV speaker bleed into mic      | Existing `echoCancellation` + `cancelSpeech()` on mic start; accept some false positives in demo                                                     |
@@ -480,7 +449,6 @@ sequenceDiagram
 | Dual-format recording overhead | Single PCM tap only; WebM→WAV conversion server-side; TTS stays MP3 on separate path                                                                 |
 | Non-English / accent drift     | Document as known limitation; NA English optimized                                                                                                   |
 | Cost                           | ~~1 Valence call per mic turn (~~4–6 per intake session)                                                                                             |
-
 
 ---
 

@@ -91,6 +91,12 @@ export function OracleTvScene({ onFinalize }: OracleTvSceneProps) {
   const onAir =
     voice.isSpeaking ||
     (chat.status === "streaming" && chat.assistantStreamingText);
+  const micState: MicState = {
+    listening: scribe.isListening,
+    connecting: scribe.isConnecting,
+    disabled: chat.busy,
+    onToggle: voiceApisEnabled ? scribe.toggleMic : undefined,
+  };
 
   return (
     <section
@@ -174,10 +180,7 @@ export function OracleTvScene({ onFinalize }: OracleTvSceneProps) {
         onDismissVoiceError={voice.clearVoiceError}
         scribeError={scribe.scribeError}
         onDismissScribeError={scribe.clearScribeError}
-        micListening={scribe.isListening}
-        micConnecting={scribe.isConnecting}
-        micDisabled={chat.busy}
-        onMicToggle={voiceApisEnabled ? scribe.toggleMic : undefined}
+        mic={micState}
         channelLabel={persona.label}
       />
     </section>

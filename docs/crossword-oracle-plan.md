@@ -13,7 +13,6 @@ Think of it as the difference between a **scorekeeper** and a **host**. A scorek
 
 ## Locked design decisions
 
-
 | #   | Decision            | Choice                                                                                                                                         |
 | --- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | Architecture        | **Approach A** — dedicated quip engine + shared speaker + lightweight quip endpoint. Built in **2 slices**.                                    |
@@ -21,7 +20,6 @@ Think of it as the difference between a **scorekeeper** and a **host**. A scorek
 | 3   | Clue reading        | **Auto-read the first clue** on entering the crossword, then **on-demand (🔊) + idle quips**.                                                  |
 | 4   | Idle model          | **Per-clue dwell** — timer tied to the focused clue; resets on clue change or when the active word becomes filled.                             |
 | 5   | Completion feedback | **Pure ambiguity** — finishing a word fires one cryptic line from a shared pool, regardless of correctness. **No green cells, no input lock.** |
-
 
 ---
 
@@ -40,7 +38,6 @@ Two rules fall out of this, and they are **load-bearing**:
 
 ## Current architecture this builds on (verified)
 
-
 | Existing piece      | File                                                                          | What it gives us                                                                                                                                                                                                                                                                                                                     |
 | ------------------- | ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Phase state machine | `[src/components/experience.tsx](../src/components/experience.tsx)`           | `phase === "crossword"` renders the puzzle (~line 165). Persona was chosen during `intake`.                                                                                                                                                                                                                                          |
@@ -50,13 +47,11 @@ Two rules fall out of this, and they are **load-bearing**:
 | TTS endpoint        | `[src/app/api/voice/route.ts](../src/app/api/voice/route.ts)`                 | Persona voice → MP3 → TV speaker.                                                                                                                                                                                                                                                                                                    |
 | The crossword       | `[src/components/games/crossword.tsx](../src/components/games/crossword.tsx)` | Owns `active` cell, `direction`, `values`. An `activeWordCells` memo already finds the focused `PlacedWord` (with `.clue`, `.answer`, `.position`, `.orientation`, `.id`). Correctness is computed **only** in `check()` on the "Reveal my tier" button. No per-cell lock exists except `disabled={result !== null}` at end-of-game. |
 
-
 **Key seam:** the crossword *owns the state the engine reads* (active clue, fill events) but should **not own the quip logic**. `crossword.tsx` is already ~450 lines doing grid/input/scoring; bolting timers + persona lines + TTS into it would tangle four jobs. The crossword **emits events**; a dedicated hook **decides when the Oracle speaks**.
 
 ---
 
 ## Components & responsibilities
-
 
 | Unit                                               | Job                                                                                                                                                                                                                                 | Slice |
 | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- |
@@ -65,7 +60,6 @@ Two rules fall out of this, and they are **load-bearing**:
 | `crossword-oracle-quips.ts`                        | Authored **bank** per persona (Marion / William / Lucy): clue-read flourishes, idle nudges, and the ambiguous completion pool. Includes a no-repeat-back-to-back picker.                                                            | 1     |
 | `crossword.tsx` (edits)                            | Emit `onActiveClueChange(clue ǀ null)` and `onWordFilled(clue)`; add a 🔊 affordance on the focused clue; highlight the active clue in the clue list. **No** green/lock telegraphing.                                               | 1     |
 | `POST /api/oracle-quip`                            | One-shot LLM **zinger**: `{ personaId, clue }` → `{ line }`. Tiny persona-flavored prompt, ~20-token cap, **no tools**. Fail-open → authored bank.                                                                                  | 2     |
-
 
 ---
 
@@ -91,14 +85,11 @@ flowchart TB
   Voice --> TV[TV speaker]
 ```
 
-
-
 Persona = `getActiveOraclePersonaId()`. Voice settings = that persona's **baseline** from `oracle-voice-settings.ts` (neutral — there is **no mic** in the crossword phase, so no Valence emotion input here).
 
 ---
 
 ## The four speech triggers + guards
-
 
 | Trigger                  | When                                                                     | Source                                           | Slice |
 | ------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------ | ----- |
@@ -106,7 +97,6 @@ Persona = `getActiveOraclePersonaId()`. Voice settings = that persona's **baseli
 | **On-demand 🔊**         | User taps the speaker icon on the focused clue                           | Bank (`clueRead`)                                | 1     |
 | **Per-clue dwell**       | 20s on same clue → idle nudge; still there at 45s → clue-specific zinger | 20s = bank; 45s = LLM (bank fallback in Slice 1) | 1 / 2 |
 | **Completion reaction**  | Active word becomes fully filled (right OR wrong)                        | Bank (`completed`, ambiguous pool)               | 1     |
-
 
 **Timer resets:** active clue changes, **or** active word becomes filled.
 
@@ -219,4 +209,3 @@ Fail-open everywhere. No audio unlock, `/api/voice` error, or `/api/oracle-quip`
 4. **Reuse the voice, don't fork it** — both intake and crossword speak through the shared `useOracleSpeaker`; no second `/api/voice` caller.
 5. **No mic in the crossword phase** — voice output only; persona baseline voice settings (neutral), no Valence input.
 6. This is a **bun** project; consult `node_modules/next/dist/docs/` before touching routes.
-

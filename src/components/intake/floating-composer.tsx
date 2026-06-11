@@ -6,25 +6,34 @@ import { A24CtaButton } from "@/components/a24-cta-button";
 import { formatChatError } from "@/lib/chat-errors";
 import type { OracleChatStatus } from "@/hooks/use-oracle-chat";
 
+interface MicState {
+  listening: boolean;
+  connecting: boolean;
+  disabled: boolean;
+  onToggle?: () => void;
+}
+
+interface DismissableError {
+  message: string | Error;
+  onDismiss: () => void;
+}
+
 interface FloatingComposerProps {
   text: string;
   onTextChange: (value: string) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit: (e: React.SubmitEvent) => void;
   busy: boolean;
   status: OracleChatStatus;
   modelResponding: boolean;
-  error: Error | undefined;
-  onDismissError: () => void;
-  voiceError?: string | null;
-  onDismissVoiceError?: () => void;
-  scribeError?: string | null;
-  onDismissScribeError?: () => void;
-  micListening?: boolean;
-  micConnecting?: boolean;
-  micDisabled?: boolean;
-  onMicToggle?: () => void;
+  mic?: MicState;
+  errors: {
+    chat?: DismissableError;
+    voice?: DismissableError;
+    scribe?: DismissableError;
+  }
   channelLabel?: string;
 }
+
 
 export function FloatingComposer({
   text,
@@ -33,26 +42,17 @@ export function FloatingComposer({
   busy,
   status,
   modelResponding,
-  error,
-  onDismissError,
-  voiceError,
-  onDismissVoiceError,
-  scribeError,
-  onDismissScribeError,
-  micListening = false,
-  micConnecting = false,
-  micDisabled = false,
-  onMicToggle,
+  mic,
+  errors,
   channelLabel,
 }: FloatingComposerProps) {
-  const audioError = voiceError ?? scribeError;
-  const dismissAudioError = voiceError
-    ? onDismissVoiceError
-    : onDismissScribeError;
-  const micActive = micListening || micConnecting;
-  const micLabel = micListening
+  const audioError = errors.voice?.message ?? errors.scribe?.message;
+  const dismissAudioError = errors.voice?.onDismiss ??
+    errors.scribe?.onDismiss;
+  const micActive = mic?.listening || mic?.connecting;
+  const micLabel = mic?.listening
     ? "Stop and send"
-    : micConnecting
+    : mic?.connecting
       ? "Connecting mic…"
       : "Speak to the oracle";
 
@@ -65,17 +65,17 @@ export function FloatingComposer({
           </p>
         ) : null}
 
-        {error ? (
+        {errors.chat ? (
           <div
             role="alert"
             className="oracle-tv-composer__error mb-3 flex items-start justify-between gap-4 px-1"
           >
             <p className="text-xs leading-snug text-[#ffb4a8]">
-              {formatChatError(error)}
+              {formatChatError(errors.chat.message)}
             </p>
             <button
               type="button"
-              onClick={onDismissError}
+              onClick={errors.chat.onDismiss}
               className="shrink-0 text-[0.625rem] uppercase tracking-widest text-[#ffb4a8]/80 hover:text-[#ffb4a8]"
             >
               Dismiss
@@ -89,7 +89,7 @@ export function FloatingComposer({
             className="oracle-tv-composer__error mb-3 flex items-start justify-between gap-4 px-1"
           >
             <p className="text-xs leading-snug text-[#ffb4a8]/80">
-              {voiceError ? `Voice: ${voiceError}` : `Mic: ${scribeError}`}
+              {errors.voice ? `Voice: ${errors.voice.message}` : `Mic: ${errors.scribe?.message}`}
             </p>
             {dismissAudioError ? (
               <button
@@ -108,26 +108,29 @@ export function FloatingComposer({
             value={text}
             onChange={(e) => onTextChange(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) onSubmit(e);
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                e.currentTarget.form?.requestSubmit()
+              };
             }}
             rows={2}
             placeholder="Speak from the couch…"
             disabled={busy}
             aria-describedby="oracle-tv-compose-status"
-            className={`oracle-tv-composer__input min-h-11 flex-1 resize-none bg-transparent text-[#f5e6c8] placeholder:text-[#f5e6c8]/35 focus:outline-none disabled:opacity-50${micListening ? " oracle-tv-composer__input--listening" : ""}`}
+            className={`oracle-tv-composer__input min-h-11 flex-1 resize-none bg-transparent text-[#f5e6c8] placeholder:text-[#f5e6c8]/35 focus:outline-none disabled:opacity-50${mic?.listening ? " oracle-tv-composer__input--listening" : ""}`}
           />
           <div className="oracle-tv-composer__actions flex shrink-0 items-center gap-3">
-            {onMicToggle ? (
+            {mic?.onToggle ? (
               <button
                 type="button"
-                onClick={onMicToggle}
-                disabled={micDisabled}
-                aria-pressed={micListening}
+                onClick={mic?.onToggle}
+                disabled={mic.disabled}
+                aria-pressed={mic.listening}
                 aria-label={micLabel}
                 title={micLabel}
-                className={`oracle-tv-composer__mic inline-flex size-10 items-center justify-center rounded-full border border-[#f5e6c8]/20 text-[#f5e6c8]/80 transition-colors hover:border-[#9dff9d]/40 hover:text-[#9dff9d] disabled:cursor-not-allowed disabled:opacity-40${micListening ? " oracle-tv-composer__mic--listening" : ""}${micConnecting ? " oracle-tv-composer__mic--connecting" : ""}`}
+                className={`oracle-tv-composer__mic inline-flex size-10 items-center justify-center rounded-full border border-[#f5e6c8]/20 text-[#f5e6c8]/80 transition-colors hover:border-[#9dff9d]/40 hover:text-[#9dff9d] disabled:cursor-not-allowed disabled:opacity-40${mic.listening ? " oracle-tv-composer__mic--listening" : ""}${mic.connecting ? " oracle-tv-composer__mic--connecting" : ""}`}
               >
-                {micConnecting ? (
+                {mic.connecting ? (
                   <Spinner
                     className="size-4 text-[#9dff9d]/80"
                     aria-hidden
