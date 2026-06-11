@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { VocalEmotionResult } from "@/lib/valence";
 import Image from "next/image";
 import type { ExperienceProfile } from "@/lib/types";
 import type { OraclePersonaId } from "@/lib/oracle-personas";
 import { personaForDialState } from "@/lib/oracle-personas";
 import { setActiveOraclePersonaId } from "@/lib/oracle-chat-persona";
+import { useDebugVoice } from "@/hooks/use-debug-voice";
 import { useOracleChat } from "@/hooks/use-oracle-chat";
 import { useOracleVoice } from "@/hooks/use-oracle-voice";
 import { useOracleScribe } from "@/hooks/use-oracle-scribe";
@@ -36,6 +37,7 @@ export function OracleTvScene({ onFinalize }: OracleTvSceneProps) {
     useState<VocalEmotionResult | null>(null);
   const persona = personaForDialState(dialState);
   const personaId = persona.id as OraclePersonaId;
+  const { voiceApisEnabled } = useDebugVoice();
 
   const chat = useOracleChat(onFinalize, personaId);
 
@@ -68,11 +70,17 @@ export function OracleTvScene({ onFinalize }: OracleTvSceneProps) {
   }, [voice.cancelSpeech, voice.consumePendingReplies]);
 
   const scribe = useOracleScribe({
-    disabled: chat.busy,
+    disabled: chat.busy || !voiceApisEnabled,
     onPartial: chat.setText,
     onSubmit: handleOracleSubmit,
     onStartListening: handleStartListening,
   });
+
+  useEffect(() => {
+    if (!voiceApisEnabled) {
+      voice.cancelSpeech();
+    }
+  }, [voiceApisEnabled, voice.cancelSpeech]);
 
   const handleDialChange = useCallback((state: TvDialState) => {
     setActiveOraclePersonaId(personaForDialState(state).id);
@@ -169,7 +177,7 @@ export function OracleTvScene({ onFinalize }: OracleTvSceneProps) {
         micListening={scribe.isListening}
         micConnecting={scribe.isConnecting}
         micDisabled={chat.busy}
-        onMicToggle={scribe.toggleMic}
+        onMicToggle={voiceApisEnabled ? scribe.toggleMic : undefined}
         channelLabel={persona.label}
       />
     </section>

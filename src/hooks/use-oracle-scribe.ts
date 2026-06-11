@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AudioFormat, CommitStrategy, useScribe } from "@elevenlabs/react";
+import { areVoiceApisEnabled } from "@/lib/debug-voice";
 import { buildScribeKeyterms } from "@/lib/scribe-keyterms";
 import {
   resolveVocalEmotion,
@@ -150,6 +151,16 @@ export function useOracleScribe({
   }, [scribe.status, scribe.error, finishSession]);
 
   useEffect(() => {
+    if (!disabled) return;
+    if (scribe.status === "connecting") {
+      connectAbortRef.current?.abort();
+    }
+    if (isListeningStatus(scribe.status) || scribe.status === "connecting") {
+      finishSession();
+    }
+  }, [disabled, scribe.status, finishSession]);
+
+  useEffect(() => {
     return () => {
       const tap = audioTapRef.current;
       audioTapRef.current = null;
@@ -158,7 +169,7 @@ export function useOracleScribe({
   }, []);
 
   const startListening = useCallback(async () => {
-    if (disabled) return;
+    if (disabled || !areVoiceApisEnabled()) return;
 
     setLocalError(null);
     setErrorDismissed(false);
@@ -261,7 +272,7 @@ export function useOracleScribe({
   }, [finishSession]);
 
   const toggleMic = useCallback(() => {
-    if (disabled) return;
+    if (disabled || !areVoiceApisEnabled()) return;
 
     const status = statusRef.current;
     if (status === "connecting" || isListeningStatus(status)) {

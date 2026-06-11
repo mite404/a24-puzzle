@@ -24,13 +24,18 @@ export function PaletteCard({
     return (
       <div className="oracle-tv-palette">
         <div className="oracle-tv-palette__bars">
-          {palette.swatches.map((swatch) => (
+          {palette.swatches.map((swatch, index) => (
             <div
               key={swatch.hex}
               className="oracle-tv-palette__bar"
-              style={{ backgroundColor: swatch.hex }}
+              style={{
+                backgroundColor: swatch.hex,
+                zIndex: index + 1,
+              }}
               title={swatch.name}
-            />
+            >
+              <span className="oracle-tv-palette__label">{swatch.name}</span>
+            </div>
           ))}
         </div>
         <p className="oracle-tv-palette__prompt">{promptText}</p>

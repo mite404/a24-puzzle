@@ -894,13 +894,30 @@ a {
 }
 
 .oracle-tv-feed__turn + .oracle-tv-feed__turn,
-.oracle-tv-feed__line + .oracle-tv-feed__turn {
+.oracle-tv-feed__line + .oracle-tv-feed__turn,
+.oracle-tv-feed__user-turn + .oracle-tv-feed__turn,
+.oracle-tv-feed__turn + .oracle-tv-feed__user-turn,
+.oracle-tv-feed__user-turn + .oracle-tv-feed__user-turn,
+.oracle-tv-feed__line + .oracle-tv-feed__user-turn {
   margin-top: 0.65rem;
 }
 
 .oracle-tv-feed__line {
   margin: 0;
   max-width: none;
+}
+
+.oracle-tv-feed__user-turn {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.oracle-tv-feed__user-line {
+  margin: 0;
+  max-width: 88%;
+  color: #fff;
+  text-align: right;
+  text-shadow: none;
 }
 
 .oracle-tv-feed__status {
@@ -926,11 +943,32 @@ a {
 
 .oracle-tv-palette__bars {
   display: flex;
-  height: 1.1rem;
+  height: 18px;
 }
 
 .oracle-tv-palette__bar {
+  position: relative;
+  display: flex;
   flex: 1;
+  align-items: center;
+  min-width: 0;
+  padding-inline: 6px;
+  margin-left: -2px;
+  border-radius: 0 3px 3px 0;
+}
+
+.oracle-tv-palette__bar:first-child {
+  margin-left: 0;
+}
+
+.oracle-tv-palette__label {
+  overflow: hidden;
+  font-size: 12px;
+  font-weight: 300;
+  line-height: normal;
+  color: #fff;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .oracle-tv-palette__prompt {

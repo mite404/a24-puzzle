@@ -60,11 +60,15 @@ export function TvOracleFeed({
 
         <p className="oracle-tv-feed__line">{openingLine}</p>
 
-        {messages.map((message) =>
-          message.role === "assistant" ? (
-            <AssistantBroadcast key={message.id} message={message} />
-          ) : null,
-        )}
+        {messages.map((message) => {
+          if (message.role === "user") {
+            return <UserTurn key={message.id} message={message} />;
+          }
+          if (message.role === "assistant") {
+            return <AssistantBroadcast key={message.id} message={message} />;
+          }
+          return null;
+        })}
 
         {thinking ? (
           <div className="oracle-tv-feed__status" role="status">
@@ -79,6 +83,25 @@ export function TvOracleFeed({
           </div>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+function extractMessageText(message: OracleUIMessage): string {
+  return message.parts
+    .filter((part) => part.type === "text")
+    .map((part) => part.text)
+    .join("\n")
+    .trim();
+}
+
+function UserTurn({ message }: { message: OracleUIMessage }) {
+  const text = extractMessageText(message);
+  if (!text) return null;
+
+  return (
+    <div className="oracle-tv-feed__user-turn">
+      <p className="oracle-tv-feed__user-line">{text}</p>
     </div>
   );
 }

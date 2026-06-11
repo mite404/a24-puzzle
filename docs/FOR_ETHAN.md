@@ -74,6 +74,18 @@ tap 2 → commit transcript → POST /api/valence (WAV) → vocalEmotion JSON
 
 Typed turns skip the emotion bus entirely — no regression.
 
+#### Debug voice mute (dev only)
+
+The **Debug — skip intake** HUD has a **Voice off** toggle. Think of it as pulling the XLRs from the booth — chat still runs on typed input, but no paid API calls fire:
+
+| Bus | What stops |
+| --- | ---------- |
+| TTS | `/api/voice` — oracle stays silent (intake, crossword quips, end-screen tier line) |
+| Scribe | `/api/scribe-token` + realtime mic — composer mic button hides |
+| Valence | `/api/valence` — mic commits skip tone analysis |
+
+State persists in `localStorage` (`a24-debug-voice-off`) so a refresh keeps credits safe. Production builds ignore the flag.
+
 #### Phase 1 spike script (reference — deleted after pass)
 
 Before wiring the app, we ran a **throwaway location scout**: a Bun script that never touched the Next.js app. It loaded `VALENCE_API_KEY` from `.env.local`, synthesized mono WAV probes (sine tones at 44.1 kHz), and logged pass/fail for three questions:
