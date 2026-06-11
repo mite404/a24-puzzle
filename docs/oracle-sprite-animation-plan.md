@@ -1,7 +1,8 @@
 # Oracle Character Sprite Animation — Implementation Plan
 
 **Stack:** React Three Fiber · `@react-three/drei` · Next.js App Router  
-**Scope:** Animate PixelLab-generated spritesheets for multiple oracle characters wandering over the A24 background  
+**Scope:** Animate PixelLab-generated spritesheets for multiple oracle characters wandering over the
+A24 background  
 **Prerequisites:** Sprite sheets exported from PixelLab (6 frames × 4 directions per character)
 
 ---
@@ -24,6 +25,7 @@ Row 2          → facing LEFT
 Row 3 (bottom) → facing RIGHT
 ```
 
+> [!WARNING]
 > **Verify this before Phase 1.** Open the exported PNG in Figma or Preview,
 > draw a grid overlay, and confirm which row maps to which direction. PixelLab
 > doesn't guarantee a fixed row order — if your sheet differs, update the
@@ -200,6 +202,7 @@ export function OracleScene() {
 }
 ```
 
+> [!TIP]
 > **`zoom: 50` explained:** With an orthographic camera, `zoom` controls how
 > many world units fit in the viewport. `zoom: 50` means 1 world unit = 50px.
 > A character with `scale: 1.2` will render at ~60px tall. Adjust until the
@@ -244,6 +247,7 @@ export function OracleCharacter({ config, initialPosition }: Props) {
 }
 ```
 
+> [!TIP]
 > **`alphaTest={0.1}`** discards pixels below 10% opacity, giving you clean
 > transparent edges without blending artifacts. If you see a faint border
 > around the character, raise this to `0.5`.
@@ -301,6 +305,7 @@ export function useSpriteAnimation(
 }
 ```
 
+> [!TIP]
 > **Why `useRef` for frame state instead of `useState`?**
 > `useState` triggers a React re-render. `useRef` is mutable without
 > re-rendering. Animation state that changes 8 times per second should
@@ -357,6 +362,7 @@ export function velocityToDirection(vx: number, vy: number): Direction {
 }
 ```
 
+> [!TIP]
 > **Why not diagonals?** Your spritesheet has 4 directional rows, not 8.
 > Snapping to the dominant axis gives clean direction switches without needing
 > diagonal sprites. This matches how classic RPG sprites handle diagonals.
@@ -482,6 +488,7 @@ export function useWander(
 }
 ```
 
+> [!TIP]
 > **`delta` vs fixed `0.016`:** `useFrame` provides `delta` (time since last
 > frame) as the second argument. Replace the hardcoded `0.016` with the actual
 > `delta` from `useFrame((state, delta) => ...)` for frame-rate-independent
@@ -565,6 +572,7 @@ export function OracleScene() {
 }
 ```
 
+> [!TIP]
 > **Depth sorting:** Add a small `z` value based on `y` position to get
 > characters to sort correctly when they overlap — lower Y = in front.
 > In `useFrame`: `meshRef.current.position.z = -positionRef.current.y * 0.01`
@@ -606,6 +614,7 @@ rendering contexts. Stack them with absolute positioning:
 `gl={{ alpha: true }}` and `background: 'transparent'` — so the A24 pattern
 shows through wherever there are no sprites.
 
+> [!TIP]
 > **`pointer-events`:** The R3F canvas will intercept mouse events. If you
 > need clicks to pass through to game UI layers, add
 > `style={{ pointerEvents: 'none' }}` to the R3F canvas (on the `Canvas`

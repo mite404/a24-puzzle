@@ -1,7 +1,8 @@
 # Controlled GenUI — Color Swatch Game via Vercel AI SDK
 
 **Audience:** Bootcamp grad building an AI-powered Next.js app, comfortable with React hooks  
-**Goal:** Build a color palette guessing game that the LLM renders as an interactive React component inside a chat UI using `streamUI`  
+**Goal:** Build a color palette guessing game that the LLM renders as an interactive React component
+inside a chat UI using `streamUI`  
 **Estimated Time:** 2–3 hours (hands-on)
 
 ---
@@ -33,25 +34,35 @@ Think of a traditional chat interface like a **film messenger service**:
 
 What you're building is more like a **full film production**:
 
-- The LLM is the **casting director** — it decides *which scene to shoot* and *who is in it*, based on the conversation
-- Your React component is the **set designer** — it decides *what that scene actually looks like* with full interactivity
-- The tool call is the **call sheet** — a structured spec passed from the casting director to the crew: `film: "Midsommar", palette: ["#D4B896", "#8B9B6E"], options: [...]`
-- `streamUI` is the **video village monitor** — the director sees a live preview stream (the loading state) before the final cut arrives
+- The LLM is the **casting director** — it decides *which scene to shoot* and *who is in it*,
+based on the conversation
+- Your React component is the **set designer** — it decides *what that scene actually looks like*
+with full interactivity
+- The tool call is the **call sheet** — a structured spec passed from the casting director to the
+crew: `film: "Midsommar", palette: ["#D4B896", "#8B9B6E"], options: [...]`
+- `streamUI` is the **video village monitor** — the director sees a live preview stream (the
+loading state) before the final cut arrives
 
-The LLM never draws pixels or writes CSS. It only decides *when* to invoke the game and *what data* to populate it with. Your component handles everything the user sees and touches.
+The LLM never draws pixels or writes CSS. It only decides *when* to invoke the game and *what data*
+to populate it with. Your component handles everything the user sees and touches.
 
 ### Two State Types, Two Different Jobs
 
-`ai/rsc` introduces a concept that confuses most people: there are **two parallel state arrays** running at the same time.
+`ai/rsc` introduces a concept that confuses most people: there are **two parallel state arrays**
+running at the same time.
 
 | State | Type | What It Holds | Why |
 |-------|------|---------------|-----|
 | `AIState` | `{ role, content }[]` | Serializable text — the conversation history | Sent to the LLM on every request so it remembers context |
 | `UIState` | `{ id, role, display: ReactNode }[]` | React nodes — what the user actually sees | Never sent to the LLM (React nodes aren't serializable) |
 
-Think of `AIState` as the **script** — what the LLM needs to read to understand where the story is. Think of `UIState` as the **screen** — what the audience actually watches, which can include interactive elements no script could describe.
+Think of `AIState` as the **script** — what the LLM needs to read to understand where the story
+is. Think of `UIState` as the **screen** — what the audience actually watches, which can include
+interactive elements no script could describe.
 
-When the LLM triggers a color game, `AIState` records `"[Presented color game for Midsommar]"` (text). `UIState` records the actual `<ColorSwatchGame />` component. The LLM sees the text summary; the user sees the interactive card.
+When the LLM triggers a color game, `AIState` records `"[Presented color game for Midsommar]"`
+(text). `UIState` records the actual `<ColorSwatchGame />` component. The LLM sees the text summary;
+the user sees the interactive card.
 
 ### What `streamUI` Does
 
@@ -59,9 +70,12 @@ When the LLM triggers a color game, `AIState` records `"[Presented color game fo
 
 1. Calls the LLM with your messages and tool definitions
 2. If the LLM returns plain text → streams it to a React node via the `text` handler
-3. If the LLM calls a tool → runs your `generate` function, which **yields** a loading state immediately, then **returns** the final component when ready
+3. If the LLM calls a tool → runs your `generate` function, which **yields** a loading state
+immediately, then **returns** the final component when ready
 
-The `generate` function is a JavaScript **async generator** — the `yield` keyword sends the loading state to the client right away, and `return` sends the final component. Two round trips to the client, zero extra API calls.
+The `generate` function is a JavaScript **async generator** — the `yield` keyword sends the
+loading state to the client right away, and `return` sends the final component. Two round trips to
+the client, zero extra API calls.
 
 ---
 
@@ -72,8 +86,10 @@ npm install ai @ai-sdk/openai zod nanoid
 npm install @openrouter/ai-sdk-provider
 ```
 
-> **Why `@openrouter/ai-sdk-provider` and not just `@ai-sdk/anthropic`?**  
-> You're routing through OpenRouter. Vercel's AI SDK is model-agnostic — the provider package is just a thin adapter. The `streamUI` API is identical regardless of which adapter you use.
+> [!TIP]
+> **Why `@openrouter/ai-sdk-provider` and not just `@ai-sdk/anthropic`?**
+> You're routing through OpenRouter. Vercel's AI SDK is model-agnostic — the provider package is
+> just a thin adapter. The `streamUI` API is identical regardless of which adapter you use.
 
 Verify `ai/rsc` is available (requires `ai` >= 3.x):
 
@@ -100,14 +116,17 @@ lib/
 
 **File:** `components/ColorSwatchGame.tsx`
 
-**Concept:** Build the game component in complete isolation from any AI logic. This component has no idea it will live inside a chat — it could be rendered anywhere. That's the whole point of controlled GenUI: the LLM supplies the data, but the component is just a normal React component.
+**Concept:** Build the game component in complete isolation from any AI logic. This component has no
+idea it will live inside a chat — it could be rendered anywhere. That's the whole point of
+controlled GenUI: the LLM supplies the data, but the component is just a normal React component.
 
 The component needs to:
 
 - Display a row of color swatches from the `palette` array (hex strings)
 - Show four film title buttons the user can click
 - Reveal the correct answer after a guess
-- Call `onGuess` with the film name and whether it was correct — this is how the result gets back to the chat
+- Call `onGuess` with the film name and whether it was correct — this is how the result gets back
+to the chat
 
 ### Hint
 
@@ -183,7 +202,8 @@ export function ColorSwatchGame({
 
 - Why does this file need `'use client'` at the top?
 - What would happen if you removed the `if (revealed) return` guard in `handleGuess`?
-- The `onGuess` callback uses optional chaining (`onGuess?.()`). Why might the parent not always pass this prop?
+- The `onGuess` callback uses optional chaining (`onGuess?.()`). Why might the parent not always
+pass this prop?
 
 ---
 
@@ -191,9 +211,13 @@ export function ColorSwatchGame({
 
 **File:** `app/actions.ts` (partial — just the schema for now)
 
-**Concept:** The Zod schema is the **contract** between the LLM and your component. It defines exactly what data the AI must provide to invoke the game. If the LLM calls the tool with the wrong shape, Zod rejects it before your component ever renders.
+**Concept:** The Zod schema is the **contract** between the LLM and your component. It defines
+exactly what data the AI must provide to invoke the game. If the LLM calls the tool with the wrong
+shape, Zod rejects it before your component ever renders.
 
-Think of the schema as the call sheet for your set designer. The casting director (LLM) fills it out — film name, palette colors, four options, correct answer. If any field is missing or wrong type, the call sheet gets bounced back.
+Think of the schema as the call sheet for your set designer. The casting director (LLM) fills it out
+— film name, palette colors, four options, correct answer. If any field is missing or wrong type,
+the call sheet gets bounced back.
 
 The schema fields must match your component's props exactly.
 
@@ -231,7 +255,8 @@ const colorGameSchema = z.object({
 **Questions to answer before looking at the solution:**
 
 - Why does `.describe()` matter for LLM tool calls but not for regular form validation?
-- The `options` array must include `correctFilm` as one of its four items. Should you enforce that in Zod, or trust the LLM? What are the tradeoffs?
+- The `options` array must include `correctFilm` as one of its four items. Should you enforce that
+in Zod, or trust the LLM? What are the tradeoffs?
 - What happens at runtime if the LLM sends five options instead of four?
 
 ---
@@ -240,9 +265,13 @@ const colorGameSchema = z.object({
 
 **File:** `lib/ai-provider.tsx` and `app/layout.tsx`
 
-**Concept:** `createAI` sets up the two-state architecture from the mental model section. It wires your server actions to the `useUIState` and `useActions` hooks you'll use in the chat page. Think of it as registering the studio's entire crew list — every action your AI can take, and the initial state of both scoreboards (AI and UI).
+**Concept:** `createAI` sets up the two-state architecture from the mental model section. It wires
+your server actions to the `useUIState` and `useActions` hooks you'll use in the chat page. Think of
+it as registering the studio's entire crew list — every action your AI can take, and the initial
+state of both scoreboards (AI and UI).
 
-You wrap the app in this provider the same way you'd wrap it in a React Query provider or a Zustand store — once, at the root.
+You wrap the app in this provider the same way you'd wrap it in a React Query provider or a Zustand
+store — once, at the root.
 
 ### Hint
 
@@ -310,7 +339,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 - Why does `AIState` only contain `{ role, content }` strings while `UIState` can hold React nodes?
 - What would break if you forgot to wrap the app in the `AI` provider?
-- You export `const AI` from `ai-provider.tsx`. Where is this value actually used — in the component or in the hook?
+- You export `const AI` from `ai-provider.tsx`. Where is this value actually used — in the
+component or in the hook?
 
 ---
 
@@ -318,11 +348,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 **File:** `app/actions.ts`
 
-**Concept:** This is the core of the pattern. `streamUI` runs on the server, calls the LLM, and handles two outcomes: plain text (the `text` handler returns JSX) or a tool call (the `generate` generator yields a loading state and returns the final component).
+**Concept:** This is the core of the pattern. `streamUI` runs on the server, calls the LLM, and
+handles two outcomes: plain text (the `text` handler returns JSX) or a tool call (the `generate`
+generator yields a loading state and returns the final component).
 
-The `generate` function is the key primitive: it's an async generator that lets you send UI to the client in two phases — immediately (loading), and when ready (component). The client sees the loading state the moment the tool is called, before any computation happens.
+The `generate` function is the key primitive: it's an async generator that lets you send UI to the
+client in two phases — immediately (loading), and when ready (component). The client sees the
+loading state the moment the tool is called, before any computation happens.
 
-`getMutableAIState` is how you write back to the conversation history. You update it with the user's message at the start, and call `.done()` with the assistant's response at the end.
+`getMutableAIState` is how you write back to the conversation history. You update it with the user's
+message at the start, and call `.done()` with the assistant's response at the end.
 
 ### Two Phases of `generate`
 
@@ -471,10 +506,16 @@ export async function sendMessage(userMessage: string) {
 
 **Concept:** The chat page uses two hooks from `ai/rsc`:
 
-- `useUIState<typeof AI>` — a stateful array of `{ id, role, display }` objects. This is what you render in the message list. It holds React nodes, not strings.
-- `useActions<typeof AI>` — gives you the server actions registered in `createAI`. You call `sendMessage` from here rather than importing it directly, because the hook handles the RSC streaming protocol.
+- `useUIState<typeof AI>` — a stateful array of `{ id, role, display }` objects. This is what you
+render in the message list. It holds React nodes, not strings.
+- `useActions<typeof AI>` — gives you the server actions registered in `createAI`. You call
+`sendMessage` from here rather than importing it directly, because the hook handles the RSC
+streaming protocol.
 
-When the user submits a message, you optimistically add it to `UIState` (so the input appears immediately in the list), then call `sendMessage` and append the response. The response's `display` field is the React node returned by your server action — either a plain `<p>` for text or a `<ColorSwatchGame />` for a tool call.
+When the user submits a message, you optimistically add it to `UIState` (so the input appears
+immediately in the list), then call `sendMessage` and append the response. The response's `display`
+field is the React node returned by your server action — either a plain `<p>` for text or a
+`<ColorSwatchGame />` for a tool call.
 
 ### Hint
 
@@ -564,7 +605,8 @@ export default function ChatPage() {
 
 - Why do you clear the input field (`setInput('')`) before awaiting `sendMessage` rather than after?
 - `msg.display` is a `ReactNode` — why don't you need to do anything special to render it in JSX?
-- What's the difference between calling `sendMessage` via `useActions` vs. importing it directly from `actions.ts`?
+- What's the difference between calling `sendMessage` via `useActions` vs. importing it directly
+from `actions.ts`?
 
 ---
 
@@ -656,10 +698,14 @@ export function ColorSwatchGame({
 
 **Key points:**
 
-- `'use client'` is required because this component uses `useState` and `onClick`. Server Components cannot have state or event handlers.
-- The `data-state` attribute lets you style button states in CSS without conditional `className` strings — `button[data-state="correct"] { background: green }`.
-- `onGuess?.()` uses optional chaining because the component is useful standalone (in tests, Storybook, other pages) where no callback is needed.
-- Clearing `revealed` before `selected` isn't possible — always set `selected` first so the button state derivation works correctly on the same render.
+- `'use client'` is required because this component uses `useState` and `onClick`. Server Components
+cannot have state or event handlers.
+- The `data-state` attribute lets you style button states in CSS without conditional `className`
+strings — `button[data-state="correct"] { background: green }`.
+- `onGuess?.()` uses optional chaining because the component is useful standalone (in tests,
+Storybook, other pages) where no callback is needed.
+- Clearing `revealed` before `selected` isn't possible — always set `selected` first so the button
+state derivation works correctly on the same render.
 
 ---
 
@@ -687,9 +733,14 @@ const colorGameSchema = z.object({
 
 **Key points:**
 
-- `.describe()` is injected directly into the tool's JSON Schema that gets sent to the LLM. Without it, Claude will hallucinate what each field means. This is the difference between consistent tool calls and garbage output.
-- Enforcing `correctFilm` is one of the four `options` in Zod would require a `.refine()` that compares two fields — valid Zod, but puts a constraint the LLM can't see. Better to put it in the `.describe()` of `options` so the model knows to include it.
-- Zod validation runs automatically before `generate` is called — if the LLM sends five options, the tool call fails with a validation error, not a runtime crash inside your component.
+- `.describe()` is injected directly into the tool's JSON Schema that gets sent to the LLM. Without
+it, Claude will hallucinate what each field means. This is the difference between consistent tool
+calls and garbage output.
+- Enforcing `correctFilm` is one of the four `options` in Zod would require a `.refine()` that
+compares two fields — valid Zod, but puts a constraint the LLM can't see. Better to put it in the
+`.describe()` of `options` so the model knows to include it.
+- Zod validation runs automatically before `generate` is called — if the LLM sends five options,
+the tool call fails with a validation error, not a runtime crash inside your component.
 
 ---
 
@@ -735,9 +786,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 **Key points:**
 
-- `createAI` returns a React context component (`AI`) — that's why you can use it as `<AI>` in layout.tsx.
-- The exported `typeof AI` is used by the hooks: `useUIState<typeof AI>()` gives you type-safe access to your `UIState` shape.
-- `initialAIState: []` means the LLM starts each session with no context. For a persistent experience, you'd hydrate this from a database on the server before rendering the layout.
+- `createAI` returns a React context component (`AI`) — that's why you can use it as `<AI>` in
+layout.tsx.
+- The exported `typeof AI` is used by the hooks: `useUIState<typeof AI>()` gives you type-safe
+access to your `UIState` shape.
+- `initialAIState: []` means the LLM starts each session with no context. For a persistent
+experience, you'd hydrate this from a database on the server before rendering the layout.
 
 ---
 
@@ -840,10 +894,14 @@ export async function sendMessage(userMessage: string) {
 
 **Key points:**
 
-- `text: ({ content, done })` — the `done` flag fires once on the final chunk. Calling `aiState.done()` on every chunk would corrupt the state; only call it when the stream is complete.
-- `result.value` is the streamed React node. `result` itself is a `StreamableUIWrapper` — you return `.value` because that's the `ReactNode` the client needs to render.
-- `getMutableAIState()` must be called at the top of the server action, not inside `generate`. The generator runs in a different execution context.
-- The loading state (`yield`) is not stored in `AIState` — only the final `done()` call is. The LLM never sees `"Loading..."` in its context.
+- `text: ({ content, done })` — the `done` flag fires once on the final chunk. Calling
+`aiState.done()` on every chunk would corrupt the state; only call it when the stream is complete.
+- `result.value` is the streamed React node. `result` itself is a `StreamableUIWrapper` — you
+return `.value` because that's the `ReactNode` the client needs to render.
+- `getMutableAIState()` must be called at the top of the server action, not inside `generate`. The
+generator runs in a different execution context.
+- The loading state (`yield`) is not stored in `AIState` — only the final `done()` call is. The
+LLM never sees `"Loading..."` in its context.
 
 ---
 
@@ -908,10 +966,16 @@ export default function ChatPage() {
 
 **Key points:**
 
-- Capture `input` in `currentInput` before `setInput('')` — React batches state updates and you need the value for the async call.
-- `msg.display` is a `ReactNode` — renders directly in JSX with no `.toString()` or special handling.
-- `useActions` vs. direct import: calling the server action via `useActions` routes through the RSC streaming protocol. Importing `sendMessage` directly and calling it would work for the return value but breaks the streaming connection — the loading state (`yield`) won't reach the client.
-- No `<form>` tag — in Next.js App Router, a `<form>` without an explicit `action` prop can trigger unintended server action behavior. Use a `<div>` wrapper with `onClick` / `onKeyDown` handlers.
+- Capture `input` in `currentInput` before `setInput('')` — React batches state updates and you
+need the value for the async call.
+- `msg.display` is a `ReactNode` — renders directly in JSX with no `.toString()` or special
+handling.
+- `useActions` vs. direct import: calling the server action via `useActions` routes through the RSC
+streaming protocol. Importing `sendMessage` directly and calling it would work for the return value
+but breaks the streaming connection — the loading state (`yield`) won't reach the client.
+- No `<form>` tag — in Next.js App Router, a `<form>` without an explicit `action` prop can
+trigger unintended server action behavior. Use a `<div>` wrapper with `onClick` / `onKeyDown`
+handlers.
 
 ---
 
@@ -953,13 +1017,15 @@ Run these in order before calling the implementation complete:
 
 **`getMutableAIState` throws "Context not found":**
 
-- You called it inside the `generate` generator — move it to the top of `sendMessage`, before `streamUI`
+- You called it inside the `generate` generator — move it to the top of `sendMessage`, before
+`streamUI`
 - Confirm `app/layout.tsx` wraps `children` in `<AI>` — the context must be present
 
 **Loading state (`yield`) never appears — jumps straight to component:**
 
 - The loading state only shows if there's a real async gap between `yield` and `return`
-- Add a `await new Promise(r => setTimeout(r, 500))` temporarily to verify the yield works, then remove it
+- Add a `await new Promise(r => setTimeout(r, 500))` temporarily to verify the yield works, then
+remove it
 
 **TypeScript error: `display: ReactNode` is not assignable:**
 
@@ -968,28 +1034,41 @@ Run these in order before calling the implementation complete:
 
 **`onGuess` callback never fires:**
 
-- The callback is only useful if you're feeding the result back to the conversation — if you haven't wired that up yet, this is expected
+- The callback is only useful if you're feeding the result back to the conversation — if you
+haven't wired that up yet, this is expected
 - Verify with `onGuess={(film, correct) => console.log(film, correct)}` in the chat page
 
 **OpenRouter returns 401:**
 
 - Confirm `OPENROUTER_API_KEY` is in `.env.local` (not `.env`)
-- Next.js only loads `.env.local` in development; confirm the key is also set in your deployment environment
+- Next.js only loads `.env.local` in development; confirm the key is also set in your deployment
+environment
 
 ---
 
 ## Key Takeaways
 
-1. **The LLM is the casting director, not the set designer.** It decides what to show and what data to populate it with. Your component decides how it looks and works. Keep these concerns completely separated.
+1. **The LLM is the casting director, not the set designer.** It decides what to show and what data
+to populate it with. Your component decides how it looks and works. Keep these concerns completely
+separated.
 
-2. **Two state streams, two different audiences.** `AIState` is text — it goes back to the LLM so it remembers the conversation. `UIState` is React nodes — it goes to the browser so the user sees rich UI. Never conflate them.
+2. **Two state streams, two different audiences.** `AIState` is text — it goes back to the LLM so
+it remembers the conversation. `UIState` is React nodes — it goes to the browser so the user sees
+rich UI. Never conflate them.
 
-3. **`generate` is a generator, not a function.** `yield` sends the loading state immediately. `return` sends the final component. This is what makes the two-phase streaming feel instant.
+3. **`generate` is a generator, not a function.** `yield` sends the loading state immediately.
+`return` sends the final component. This is what makes the two-phase streaming feel instant.
 
-4. **`.describe()` is not documentation — it's an instruction.** The LLM reads Zod field descriptions as part of its tool calling context. Write them like you're telling a junior crew member exactly what to put in each field.
+4. **`.describe()` is not documentation — it's an instruction.** The LLM reads Zod field
+descriptions as part of its tool calling context. Write them like you're telling a junior crew
+member exactly what to put in each field.
 
-5. **`useActions` over direct import.** Server actions called via `useActions` route through the RSC streaming protocol. Direct imports bypass it and break `yield`.
+5. **`useActions` over direct import.** Server actions called via `useActions` route through the RSC
+streaming protocol. Direct imports bypass it and break `yield`.
 
-6. **Build the component first, in isolation.** The hardest part of controlled GenUI is not the AI wiring — it's the component itself. Getting the interaction states right (default, revealed, correct, wrong) before touching `streamUI` saves you hours of debugging with live API calls.
+6. **Build the component first, in isolation.** The hardest part of controlled GenUI is not the AI
+wiring — it's the component itself. Getting the interaction states right (default, revealed,
+correct, wrong) before touching `streamUI` saves you hours of debugging with live API calls.
 
-🎬 You just built your first AI-native UI component — one that the model decides when to show, but you decide how it looks and works.
+🎬 You just built your first AI-native UI component — one that the model decides when to show,
+but you decide how it looks and works.

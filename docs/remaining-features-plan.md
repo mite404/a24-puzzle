@@ -1,6 +1,8 @@
 # A24 Remaining Features — Research & Implementation Plan
 
+> [!NOTE]
 > Living document. Saved from feature roadmap sync (June 2026).
+>
 > Related: [architecture-plan.md](./architecture-plan.md) · Branch: `tv-basement-scene`
 
 ## Implementation checklist
@@ -12,7 +14,8 @@
 - [ ] Add `/api/voice` route + client playback hook on assistant message complete
 - [ ] Create `oracle-personas.ts`; extend `buildSystemPrompt(personaId)` + chat route body
 - [ ] Copy TV assets to `public/a24-assets/tv/`; measure `screenMap`
-- [ ] Layered `oracle-tv-scene` — plate crossfade, screen content, glass overlay, floating composer
+- [ ] Layered `oracle-tv-scene` — plate crossfade, screen content, glass overlay, floating
+composer
 - [ ] Optional: push-to-talk STT on TV bezel feeding existing `sendMessage`
 
 ---
@@ -25,7 +28,10 @@
 | Crossword      | `src/components/games/crossword.tsx` uses fixed `size-9` cells; null cells render as **black blocks**; grid is rectangular, not square or floating |
 | Oracle         | `src/components/intake/oracle-chat.tsx` + OpenRouter via `src/app/api/chat/route.ts`; **text only**, single persona in `src/lib/oracle-prompt.ts` |
 
-Think of the app today like a film set with great props but three unfinished beats: the location cards show one still when you need a B-roll montage, the crossword sits on a flat matte instead of floating in frame, and the oracle reads from a script instead of performing on a TV in a living room.
+Think of the app today like a film set with great props but three unfinished beats: the location
+cards show one still when you need a B-roll montage, the crossword sits on a flat matte instead of
+floating in frame, and the oracle reads from a script instead of performing on a TV in a living
+room.
 
 ---
 
@@ -33,9 +39,12 @@ Think of the app today like a film set with great props but three unfinished bea
 
 ### Photos vs. user data — two different problems
 
-**Photo bytes:** stay on the server in `public/a24-assets/` (or later object storage). A database does not need to hold image files for the carousel to work.
+**Photo bytes:** stay on the server in `public/a24-assets/` (or later object storage). A database
+does not need to hold image files for the carousel to work.
 
-**User/account data:** a database *does* make sense for conversation persistence, favorited palettes, and resumable sessions — but that is **out of scope for the current vertical slice** (architecture doc already defers this to Vercel KV / shareable sessions).
+**User/account data:** a database *does* make sense for conversation persistence, favorited
+palettes, and resumable sessions — but that is **out of scope for the current vertical slice**
+(architecture doc already defers this to Vercel KV / shareable sessions).
 
 | Layer              | Vertical slice (now)                         | Post-slice (your direction)                       |
 | ------------------ | -------------------------------------------- | ------------------------------------------------- |
@@ -44,11 +53,14 @@ Think of the app today like a film set with great props but three unfinished bea
 | Favorited palettes | Not built                                    | `user_id + film_id` join table                    |
 | Auth               | None today                                   | Better Auth / Supabase Auth when favorites matter |
 
-**Carousel does not block on a database.** It only needs an array of path strings wired to the existing placeholder UI (~1–2 hours including data cleanup).
+**Carousel does not block on a database.** It only needs an array of path strings wired to the
+existing placeholder UI (~1–2 hours including data cleanup).
 
 ### Carousel effort estimate
 
-**Yes — quick add.** Stub already exists (dots, media wrapper, CSS). Remaining work: extend types, list URLs in data, ~40 lines of slide logic + interval in `location-pin-card.tsx`. No new dependencies.
+**Yes — quick add.** Stub already exists (dots, media wrapper, CSS). Remaining work: extend types,
+list URLs in data, ~40 lines of slide logic + interval in `location-pin-card.tsx`. No new
+dependencies.
 
 ### Data model change
 
@@ -68,7 +80,8 @@ Populate in `src/data/locations.ts`. Suggested default when `photoUrls` is omitt
 photoUrls ?? [photoUrl, ...filmStillsForFilm(filmId)]
 ```
 
-That gives you per-location galleries when you have them, and **film-wide fallback** (e.g. all 4 Backrooms stills on any Backrooms pin) without duplicating paths everywhere.
+That gives you per-location galleries when you have them, and **film-wide fallback** (e.g. all 4
+Backrooms stills on any Backrooms pin) without duplicating paths everywhere.
 
 ### Carousel implementation (no new library required)
 
@@ -86,13 +99,16 @@ flowchart LR
   Index --> Dots["LocationPinCarousel"]
 ```
 
-- **Right-to-left feel:** track moves left (`translateX(-activeIndex * 100%)`) so the next image enters from the right
+- **Right-to-left feel:** track moves left (`translateX(-activeIndex * 100%)`) so the next image
+enters from the right
 - **Transition:** `transition-transform duration-700 ease-in-out` on the track
 - **Accessibility:** `prefers-reduced-motion` → show first image only, hide autoplay
-- **Performance:** `next/image` with `fill` + `sizes="260px"` (already used); preload next image optionally
+- **Performance:** `next/image` with `fill` + `sizes="260px"` (already used); preload next image
+optionally
 - **Pause on hover** (expanded card only) — nice polish for map popups
 
-**Skip Embla/Swiper** unless you later need swipe gestures. Autoplay-only carousels are ~40 lines of React + CSS.
+**Skip Embla/Swiper** unless you later need swipe gestures. Autoplay-only carousels are ~40 lines of
+React + CSS.
 
 ### Files to touch
 
@@ -109,11 +125,15 @@ Quiz still in `location-quiz.tsx` can keep using single `photoUrl` (hero shot, n
 
 ### The visual goal
 
-Imagine the crossword as a **square matte floating above the page** — like a title card in post. Only **letter cells** read as solid white squares. **Intentional black blocks** stay black. Everything else in the square frame is **see-through**, so the puzzle feels custom-shaped rather than boxed in a rectangle.
+Imagine the crossword as a **square matte floating above the page** — like a title card in post.
+Only **letter cells** read as solid white squares. **Intentional black blocks** stay black.
+Everything else in the square frame is **see-through**, so the puzzle feels custom-shaped rather
+than boxed in a rectangle.
 
 ### Why today's grid fights that illusion
 
-In `crossword.tsx`, `buildGrid()` marks any non-letter cell as `null`, and null renders as `size-9 bg-black`.
+In `crossword.tsx`, `buildGrid()` marks any non-letter cell as `null`, and null renders as `size-9
+bg-black`.
 
 Two problems:
 
@@ -130,10 +150,13 @@ Two problems:
 
 **How to get `block` vs `empty`:**
 
-- **Option A (recommended):** Pad the grid to `size = max(rows, cols)`, center the existing puzzle, mark padding cells as `empty`. Internal nulls from word coverage stay `block`.
-- **Option B:** Pass `layout.table` from `crossword-layout-generator` through `game.ts` — `"-"` = block, outside bounds = empty. More accurate if generator adds blocks not covered by word paths.
+- **Option A (recommended):** Pad the grid to `size = max(rows, cols)`, center the existing puzzle,
+mark padding cells as `empty`. Internal nulls from word coverage stay `block`.
+- **Option B:** Pass `layout.table` from `crossword-layout-generator` through `game.ts` — `"-"` =
+block, outside bounds = empty. More accurate if generator adds blocks not covered by word paths.
 
-For hackathon speed, **Option A** is enough: the generator already trims to a tight bounding box; padding to square creates the "floating shape" effect.
+For hackathon speed, **Option A** is enough: the generator already trims to a tight bounding box;
+padding to square creates the "floating shape" effect.
 
 ### Square + floating layout
 
@@ -144,7 +167,8 @@ Changes in `src/components/games/crossword.tsx`:
 3. **Grid tracks:** both `gridTemplateColumns` and `gridTemplateRows` as `repeat(n, 1fr)`
 4. **Cells:** replace `size-9` with `aspect-square w-full h-full min-h-0`
 5. **Remove chrome:** drop `bg-white/10 p-px` on the grid wrapper (or make transparent)
-6. **Float:** wrap grid in a layer with `relative z-10` and optional subtle `drop-shadow` on letter cells only — clues stay in normal document flow beside/below
+6. **Float:** wrap grid in a layer with `relative z-10` and optional subtle `drop-shadow` on letter
+cells only — clues stay in normal document flow beside/below
 
 ```mermaid
 flowchart TB
@@ -164,7 +188,8 @@ flowchart TB
 - Keyboard navigation, scoring, clue lists
 - `src/data/crosswordBank.ts`
 
-Optional polish: on mobile, stack clues below the square; on desktop, clues to the right with grid centered in left column.
+Optional polish: on mobile, stack clues below the square; on desktop, clues to the right with grid
+centered in left column.
 
 ---
 
@@ -172,7 +197,8 @@ Optional polish: on mobile, stack clues below the square; on desktop, clues to t
 
 ### Architecture: voice is a presentation layer
 
-The existing tool-calling pipeline (`showPalette`, `finalizeExperience`) should **not** change. Voice and persona are **how** the oracle performs, not **what** it decides.
+The existing tool-calling pipeline (`showPalette`, `finalizeExperience`) should **not** change.
+Voice and persona are **how** the oracle performs, not **what** it decides.
 
 ```mermaid
 flowchart TB
@@ -206,11 +232,13 @@ flowchart TB
 
 **Voice input (STT) — phase 2:**
 
-- Fastest hackathon path: **Web Speech API** (`webkitSpeechRecognition`) → transcript → existing `sendMessage({ text })`
+- Fastest hackathon path: **Web Speech API** (`webkitSpeechRecognition`) → transcript → existing
+`sendMessage({ text })`
 - ElevenLabs Scribe if you want one vendor; slightly more setup
 - Push-to-talk button on the TV bezel (fits the remote-control metaphor)
 
-**Latency tip:** TTS after full turn is simplest and matches `stopWhen: stepCountIs(1)` in chat route. Sentence-chunk streaming TTS is smoother but more work.
+**Latency tip:** TTS after full turn is simplest and matches `stopWhen: stepCountIs(1)` in chat
+route. Sentence-chunk streaming TTS is smoother but more work.
 
 ### Three oracle personas
 
@@ -231,9 +259,11 @@ Each persona exports:
 **Persona selection logic (two triggers):**
 
 1. **Auto-assign:** After enough conversation, map `selectedFilmIds` + moods to default persona
-2. **Manual override:** Dial on CRT TV switches `personaId` — next API request sends `personaId` in body; server calls `buildSystemPrompt(personaId)`
+2. **Manual override:** Dial on CRT TV switches `personaId` — next API request sends `personaId`
+in body; server calls `buildSystemPrompt(personaId)`
 
-Dial switch mid-chat: keep message history, inject persona change as a system note — no need to reset `useChat`.
+Dial switch mid-chat: keep message history, inject persona change as a system note — no need to
+reset `useChat`.
 
 Extend `src/app/api/chat/route.ts` to accept `{ personaId?: string }` alongside messages.
 
@@ -249,7 +279,9 @@ Extend `src/app/api/chat/route.ts` to accept `{ personaId?: string }` alongside 
 | `TV-dial-state-02.jpg` | `public/a24-assets/tv/tv-dial-state-02.webp` | **Dial state 2** — same scene, knobs rotated. Swapped (or crossfaded) when user changes oracle channel/persona. Proves the dial interaction diegetically without CSS knob sprites. |
 | `TV-screen.png`        | `public/a24-assets/tv/tv-screen.png`         | **CRT glass overlay** — reflection/transparency layer sized to the screen cutout. Sits **above** oracle UI content. Adds glass glare, bezel edge, and sells depth. Keep PNG for alpha. |
 
-**Future asset (not yet delivered):** `TV-dial-state-03` — third knob position for the third persona (`materialist`). Until then: 2 visual states map to 2 personas, or state-02 cycles through persona 2 ↔ 3 with voice/prompt change only.
+**Future asset (not yet delivered):** `TV-dial-state-03` — third knob position for the third
+persona (`materialist`). Until then: 2 visual states map to 2 personas, or state-02 cycles through
+persona 2 ↔ 3 with voice/prompt change only.
 
 #### Compositing stack (bottom → top)
 
@@ -291,9 +323,13 @@ flowchart TB
 </div>
 ```
 
-- **Plate swap:** `opacity` crossfade (~300ms) between dial states when dial clicked — no rotation animation required for v1
-- **Glass layer:** same `screenMap` rect as content; `object-fit: fill` to align with cutout; optional `mix-blend-mode: screen` if glare needs boost
-- **Screen map:** measure once from `TV-scene-dial-01` → `src/lib/tv-screen-map.ts` (`top`, `left`, `width`, `height` as %). Dial states must share identical framing so plate swap does not drift
+- **Plate swap:** `opacity` crossfade (~300ms) between dial states when dial clicked — no rotation
+animation required for v1
+- **Glass layer:** same `screenMap` rect as content; `object-fit: fill` to align with cutout;
+optional `mix-blend-mode: screen` if glare needs boost
+- **Screen map:** measure once from `TV-scene-dial-01` → `src/lib/tv-screen-map.ts` (`top`,
+`left`, `width`, `height` as %). Dial states must share identical framing so plate swap does not
+drift
 
 #### Split broadcast from input
 
@@ -308,7 +344,8 @@ User messages do **not** appear on the TV.
 
 #### Responsive framing
 
-`TV-scene-dial-01` is already TV-forward (tighter than the full shag-carpet square). Use as `object-fit: cover` hero — less aggressive mobile crop needed than the wide living-room master.
+`TV-scene-dial-01` is already TV-forward (tighter than the full shag-carpet square). Use as
+`object-fit: cover` hero — less aggressive mobile crop needed than the wide living-room master.
 
 #### Dial state → persona mapping (draft)
 
@@ -318,7 +355,8 @@ User messages do **not** appear on the TV.
 | State 2       | `tv-dial-state-02` | `witch`          |
 | State 3 (TBD) | future export      | `materialist`    |
 
-Interaction: click/tap on dial region in scene → cycle state → swap plate + `personaId` + ElevenLabs voice on next turn.
+Interaction: click/tap on dial region in scene → cycle state → swap plate + `personaId` +
+ElevenLabs voice on next turn.
 
 #### New / updated files
 
@@ -352,7 +390,8 @@ Replace `AppShell` centered layout during `intake` in `experience.tsx`.
 | **P3**        | Voice input (Web Speech push-to-talk)               | ~1–2 hrs  | TV bezel affordance            |
 | **Later**     | Auth + conversation persistence + palette favorites | Multi-day | Post vertical slice            |
 
-**Minimum viable hackathon demo:** Oracle speaks in 3 switchable voices inside a CRT frame; games still generate from the same tool pipeline.
+**Minimum viable hackathon demo:** Oracle speaks in 3 switchable voices inside a CRT frame; games
+still generate from the same tool pipeline.
 
 ---
 
@@ -391,6 +430,8 @@ No new deps required for carousel or crossword.
 
 Update [FOR_ETHAN.md](./FOR_ETHAN.md) with:
 
-- **Cast & Crew:** carousel as B-roll reel on location cards; crossword as floating matte; oracle as TV broadcast with three channels
-- **Behind the Scenes:** photos on disk vs. user data in DB (different layers); voice as presentation-layer only
+- **Cast & Crew:** carousel as B-roll reel on location cards; crossword as floating matte; oracle as
+TV broadcast with three channels
+- **Behind the Scenes:** photos on disk vs. user data in DB (different layers); voice as
+presentation-layer only
 - **Director's Commentary:** ElevenLabs as post-production voice-over on the same script

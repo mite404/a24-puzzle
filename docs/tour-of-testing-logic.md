@@ -1,12 +1,17 @@
 # Tour of Testing Logic
 
-A walkthrough of the unit tests added in commit `d48ef4d` (*Implement end screen with oracle features and debug panels*), what they protect, what’s still uncovered, and how developers can preview score tiers without playing through the full experience.
+A walkthrough of the unit tests added in commit `d48ef4d` (*Implement end screen with oracle
+features and debug panels*), what they protect, what’s still uncovered, and how developers can
+preview score tiers without playing through the full experience.
 
 ---
 
 ## The Big Picture
 
-When a player finishes the puzzle, raw scores arrive as a `Scores` object split across two minigames (location quiz + crossword). Before any oracle voice line plays, those numbers pass through a **grading LUT** — `scoreQuipTier()` — that maps overall performance into one of three reaction bands:
+When a player finishes the puzzle, raw scores arrive as a `Scores` object split across two minigames
+(location quiz + crossword). Before any oracle voice line plays, those numbers pass through a
+**grading LUT** — `scoreQuipTier()` — that maps overall performance into one of three reaction
+bands:
 
 | Tier | Threshold | Oracle use |
 | ---- | --------- | ---------- |
@@ -14,7 +19,9 @@ When a player finishes the puzzle, raw scores arrive as a `Scores` object split 
 | `average` | ≥ 40% correct | Middle-of-the-road quip |
 | `bad` | < 40% correct | Gentle roast / encouragement |
 
-Think of it like a **color grade LUT** in post: the footage (scores) stays the same structurally, but the LUT decides which emotional grade gets applied before it hits the screen (the end-screen speaker).
+Think of it like a **color grade LUT** in post: the footage (scores) stays the same structurally,
+but the LUT decides which emotional grade gets applied before it hits the screen (the end-screen
+speaker).
 
 ```mermaid
 flowchart LR
@@ -33,7 +40,8 @@ const tier = scoreQuipTier(scores);
 const line = pickScoreQuip(personaId, tier);
 ```
 
-The commit added **one test file** to lock down that LUT. Everything else in the commit — debug panels, oracle quip copy, hooks — is exercised manually via dev tooling, not automated tests.
+The commit added **one test file** to lock down that LUT. Everything else in the commit — debug
+panels, oracle quip copy, hooks — is exercised manually via dev tooling, not automated tests.
 
 ---
 
@@ -77,11 +85,13 @@ interface Scores {
 }
 ```
 
-`scoreRatio()` sums both sides before dividing, so the tier reflects **combined** performance across minigames.
+`scoreRatio()` sums both sides before dividing, so the tier reflects **combined** performance across
+minigames.
 
 ### The `scores()` helper
 
-Tests don’t pass a bare percentage. The helper builds a realistic `Scores` object by splitting `correct` and `total` across location and crossword:
+Tests don’t pass a bare percentage. The helper builds a realistic `Scores` object by splitting
+`correct` and `total` across location and crossword:
 
 ```ts
 function scores(correct: number, total: number): Scores {
@@ -95,7 +105,9 @@ function scores(correct: number, total: number): Scores {
 }
 ```
 
-For `total = 20`, that yields 10 location slots and 10 crossword slots. The ratio should match `correct / total` regardless of the split — but using the real struct guards against a future bug where only one game gets counted.
+For `total = 20`, that yields 10 location slots and 10 crossword slots. The ratio should match
+`correct / total` regardless of the split — but using the real struct guards against a future bug
+where only one game gets counted.
 
 ### The function under test
 
@@ -108,7 +120,8 @@ export function scoreQuipTier(scores: Scores): ScoreQuipTier {
 }
 ```
 
-`scoreRatio()` was also extracted (refactored out of `fanTier()`) so both tier mappers share one source of truth for the math.
+`scoreRatio()` was also extracted (refactored out of `fanTier()`) so both tier mappers share one
+source of truth for the math.
 
 ---
 
@@ -128,7 +141,8 @@ test("good at 65% or above", () => {
 - `13/20 = 0.65` hits the `>= 0.65` threshold exactly (inclusive).
 - `18/20 = 0.90` is deep in the band.
 
-This lower bound aligns with the `"Letterboxd Devotee"` tier in `fanTier()` (also `>= 0.65`), so voice quips and fan-title copy stay in the same performance neighborhood.
+This lower bound aligns with the `"Letterboxd Devotee"` tier in `fanTier()` (also `>= 0.65`), so
+voice quips and fan-title copy stay in the same performance neighborhood.
 
 ### 2. `"average"` — between 40% and 64%
 
@@ -142,7 +156,8 @@ test("average between 40% and 64%", () => {
 - `10/20 = 0.50` — middle of the band.
 - `8/20 = 0.40` — exactly on the `>= 0.4` lower boundary (inclusive).
 
-Note: `12/20` (60%) would also be `"average"` but is **not** tested. The tests hit the floor of the band, not the ceiling just below `"good"`.
+Note: `12/20` (60%) would also be `"average"` but is **not** tested. The tests hit the floor of the
+band, not the ceiling just below `"good"`.
 
 ### 3. `"bad"` — below 40%
 
@@ -171,7 +186,8 @@ The commit is intentionally narrow: one pure function, three bands, six assertio
 | Uneven location/crossword splits | Untested |
 | Exact boundary between `"average"` and `"good"` | Partially covered (65% yes; 64% no) |
 
-That’s a solid first slice — deterministic logic, clear boundaries — but there’s room to harden the LUT before shipping more oracle copy.
+That’s a solid first slice — deterministic logic, clear boundaries — but there’s room to
+harden the LUT before shipping more oracle copy.
 
 ---
 
@@ -194,7 +210,8 @@ These are the highest-value additions — a single flipped comparator breaks exa
 
 ### Priority 2 — Asymmetric game splits
 
-The `scores()` helper always splits evenly. Real play might skew heavily toward one minigame (e.g. 8/8 location + 2/12 crossword = 10/20 = 50%, but the *shape* of the data differs).
+The `scores()` helper always splits evenly. Real play might skew heavily toward one minigame (e.g.
+8/8 location + 2/12 crossword = 10/20 = 50%, but the *shape* of the data differs).
 
 ```ts
 test("ratio uses combined totals regardless of per-game split", () => {
@@ -220,7 +237,8 @@ test("ratio uses combined totals regardless of per-game split", () => {
 });
 ```
 
-The point is to prove `scoreRatio()` always uses `(location + crossword) / (locationTotal + crosswordTotal)`, not per-game averages or whichever minigame happened to go better.
+The point is to prove `scoreRatio()` always uses `(location + crossword) / (locationTotal +
+crosswordTotal)`, not per-game averages or whichever minigame happened to go better.
 
 ### Priority 3 — Degenerate totals
 
@@ -237,11 +255,13 @@ test("zero total questions returns bad tier", () => {
 });
 ```
 
-`scoreRatio()` returns `0` when `total === 0`. This shouldn’t happen in production, but it’s cheap insurance against divide-by-zero regressions if the helper ever changes.
+`scoreRatio()` returns `0` when `total === 0`. This shouldn’t happen in production, but it’s
+cheap insurance against divide-by-zero regressions if the helper ever changes.
 
 ### Priority 4 — `fanTier()` parity tests
 
-`fanTier()` now shares `scoreRatio()` with `scoreQuipTier()`. A small describe block could assert the ratio thresholds still map to the right titles:
+`fanTier()` now shares `scoreRatio()` with `scoreQuipTier()`. A small describe block could assert
+the ratio thresholds still map to the right titles:
 
 | Ratio | `fanTier` title |
 | ----- | --------------- |
@@ -250,7 +270,8 @@ test("zero total questions returns bad tier", () => {
 | ≥ 40% | Arthouse Regular |
 | < 40% | Casual Viewer |
 
-This documents the relationship between the **4-tier fan label** and the **3-tier voice quip** — same footage, two different LUTs applied for different outputs (title card vs. spoken line).
+This documents the relationship between the **4-tier fan label** and the **3-tier voice quip** —
+same footage, two different LUTs applied for different outputs (title card vs. spoken line).
 
 ### Priority 5 — `pickScoreQuip()` smoke tests
 
@@ -287,13 +308,15 @@ for (const { correct, total, tier } of cases) {
 }
 ```
 
-Keeps the LUT readable as a spec sheet — like a lookup table pinned next to the grading monitor on set.
+Keeps the LUT readable as a spec sheet — like a lookup table pinned next to the grading monitor on
+set.
 
 ---
 
 ## Previewing Tiers Without Playing Through
 
-Automated tests verify the math. **`TierQuipDebugPanel`** lets you hear the performance — same speaker pipeline, any tier, on demand.
+Automated tests verify the math. **`TierQuipDebugPanel`** lets you hear the performance — same
+speaker pipeline, any tier, on demand.
 
 ### When it appears
 
@@ -313,7 +336,10 @@ Two shortcuts skip intake and minigames:
 1. **Debug phase bar** (top-right HUD) — click **“End / tier”**
 2. **URL param** — `?debug=end` on first load (parsed once by `Experience`)
 
-Both call `scoresForDebugJump("end", payload)`, which fabricates scores at roughly 60% location + 65% crossword completion. With the default debug fixture (5 locations, 8 crossword words), that lands around **8/13 ≈ 62%** — an `"average"` tier. So the natural debug jump gives you a middle-band starting point, not a perfect score.
+Both call `scoresForDebugJump("end", payload)`, which fabricates scores at roughly 60% location +
+65% crossword completion. With the default debug fixture (5 locations, 8 crossword words), that
+lands around **8/13 ≈ 62%** — an `"average"` tier. So the natural debug jump gives you a
+middle-band starting point, not a perfect score.
 
 ### What the panel shows
 
@@ -326,7 +352,8 @@ Fixed to the **top-left** of the end screen (`top-14 start-0`). It displays:
 
 ### What the buttons do
 
-Three buttons — **Good**, **Average**, **Bad** — bypass score calculation entirely. They do **not** mutate `scores`. Instead they call `fireDebugQuip(tier)` in `EndScreenWithOracle`:
+Three buttons — **Good**, **Average**, **Bad** — bypass score calculation entirely. They do
+**not** mutate `scores`. Instead they call `fireDebugQuip(tier)` in `EndScreenWithOracle`:
 
 ```ts
 const fireDebugQuip = useCallback((quipTier: ScoreQuipTier) => {
@@ -339,9 +366,12 @@ Beat by beat:
 
 1. **Cancel** any in-progress oracle speech.
 2. **Pick** a quip via `pickScoreQuip(personaId, tier)` — same function the real end flow uses.
-3. **Speak** it through `useOracleSpeaker`, with a debug cache key (`debug:score:good:ladybird_mom`, etc.) so preview audio doesn’t collide with the auto-played score line.
+3. **Speak** it through `useOracleSpeaker`, with a debug cache key (`debug:score:good:ladybird_mom`,
+etc.) so preview audio doesn’t collide with the auto-played score line.
 
-This is the key insight: the panel is a **director’s playback controller** for the voice channel. You’re not re-grading footage — you’re forcing which emotional LUT gets applied to the speaker, independent of the scorecard on screen.
+This is the key insight: the panel is a **director’s playback controller** for the voice channel.
+You’re not re-grading footage — you’re forcing which emotional LUT gets applied to the
+speaker, independent of the scorecard on screen.
 
 ### Typical dev workflow
 
@@ -367,7 +397,8 @@ sequenceDiagram
 3. Click anywhere on the page to unlock audio (browser autoplay policy).
 4. Hear the auto-triggered quip for the fixture’s computed tier.
 5. Use **Good / Average / Bad** to audition every band for the active persona.
-6. Rotate the UHF dial persona (if still on intake elsewhere) or re-jump to end to hear a different character’s copy.
+6. Rotate the UHF dial persona (if still on intake elsewhere) or re-jump to end to hear a different
+character’s copy.
 
 ### Relationship to unit tests
 
@@ -376,7 +407,8 @@ sequenceDiagram
 | `scoring.test.ts` | `scoreQuipTier()` math — which band real scores land in |
 | `TierQuipDebugPanel` | Audio + copy pipeline — how each band *sounds* for each persona |
 
-They’re complementary layers on the same signal chain: tests lock the LUT; the debug panel lets you QC the mix.
+They’re complementary layers on the same signal chain: tests lock the LUT; the debug panel lets
+you QC the mix.
 
 ---
 
