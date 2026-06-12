@@ -403,6 +403,81 @@ restore a private `PaletteCardBase`, export thin wrappers (`CrtPaletteCard`, `Pa
 `variant="crt"` from `tv-oracle-feed.tsx`. Same lesson as the composer: **rename the export is not
 the refactor — the wrapper + private base + call-site cleanup ship together.**
 
+## The Cutting Room Floor (Janitorial Sweep)
+
+**Tool:** Fallow v2.94.0 (static analysis)
+**Date:** 2026-06-12
+**Scope:** Safe dead-code removal — no test files, no scripts, no UI primitives deleted.
+
+### Why Fallow?
+
+Think of it as a **negative cutter** for code: it reads every frame in the can and tells you which
+footage was printed but never made it into the assembly. Unlike a manual search, Fallow builds the
+full module graph before deciding something is "unused" — so it can trace through barrel files,
+re-exports, and dynamic imports with zero ambiguity.
+
+### What got the chop
+
+| Symbol | File | Before | After | Reason |
+|--------|------|--------|-------|--------|
+| `OracleChat` | `src/components/intake/oracle-chat.tsx` | exported component | **file deleted** | deprecated shim — `oracle-tv-scene.tsx` consumes `useOracleChat` directly now |
+| `PaletteCard` | `src/components/intake/palette-card.tsx` | exported | internal | only `CrtPaletteCard` is wired into the TV feed; default variant reserved for a future channel |
+| `ORACLE_OPENING_LINE` | `src/hooks/use-oracle-chat.ts` | exported constant | internal | deprecated — opening line is fetched via `getOraclePersona` at call sites |
+| `clueId` | `src/lib/crossword-oracle-timing.ts` | exported | internal | timing module helper; consumed only inside this file |
+| `canFireIdleQuip` | `src/lib/crossword-oracle-timing.ts` | exported | internal | same — idle-quip cooldown guard |
+| `sortWordsByClueNumber` | `src/lib/crossword-oracle-timing.ts` | exported | internal | consumed inside `firstClueWord` |
+| `DEBUG_PROFILE` | `src/lib/debug-experience.ts` | exported | internal | debug fixture; only `buildDebugPayload` and `scoresForDebugJump` need it |
+| `emptyScoresForPayload` | `src/lib/debug-experience.ts` | exported | internal | helper for `scoresForDebugJump` |
+| `DEBUG_VOICE_OFF_STORAGE_KEY` | `src/lib/debug-voice.ts` | exported | internal | storage key used only by `read/writeDebugVoiceOff` in same file |
+| `ORACLE_PERSONAS` | `src/lib/oracle-personas.ts` | exported | internal | only `getOraclePersona` and `ORACLE_PERSONA_LIST` are external API |
+| `ORACLE_SCORE_QUIPS` | `src/lib/oracle-score-quips.ts` | exported | internal | consumed directly by `pickScoreQuip` in same file |
+| `formatVocalEmotionContext` | `src/lib/oracle-vocal-context.ts` | exported | internal | used inside `injectVocalEmotionForModel` only |
+| `encodePcm16ToWav` | `src/lib/scribe-audio-tap.ts` | exported | internal | WAV encoder; called only by `startScribeAudioTap.stop()` |
+| `VALENCE_SUBMIT_TIMEOUT_MS` | `src/lib/scribe-audio-tap.ts` | exported | internal | default for `resolveVocalEmotion` inside same module |
+| `personaIdForDialState` | `src/lib/tv-dial-states.ts` | exported helper | **deleted** | exact duplicate of inline call `personaForDialState(state).id` |
+| `dialStateForPersonaId` | `src/lib/tv-dial-states.ts` | exported helper | **deleted** | exact duplicate of inline call `dialStateForPersona(id)` |
+| `TV_SCENE_WIDTH` / `TV_SCENE_HEIGHT` | `src/lib/tv-scene-assets.ts` | exported | internal | consumed only to compute `TV_SCENE_ASPECT` |
+| `TV_SCREEN_MAP` / `TV_CONTENT_INSET` | `src/lib/tv-screen-map.ts` | exported | internal | consumed only by internal layout helpers in same file |
+| `VALENCE_*` constants (×6) | `src/lib/valence.ts` | exported | internal | API guard rails — consumed only by `analyzeDiscreteWav` |
+| `trimWavKeepLastSeconds` | `src/lib/valence.ts` | exported | internal | called inside `analyzeDiscreteWav` only |
+| `filmStillsForFilm` | `src/data/locations.ts` | exported | internal | only `getLocationPhotoUrls` consumes it |
+| `haversine` | `src/lib/geo.ts` | exported | internal | only `getNearbyLocations` consumes it |
+| `CrosswordOracleDebugActions` | `crossword-oracle-debug-panel.tsx` | exported type | internal | props interface used only inside the component |
+| `TierQuipDebugActions` | `tier-quip-debug-panel.tsx` | exported type | internal | props interface used only inside the component |
+
+### What we protected
+
+| What Fallow flagged | Why we kept it |
+|---------------------|----------------|
+| `scripts/valence-route-test.ts` / `scripts/wrap-md.js` | One-off scripts; not wired to the app but have archival / rerun value |
+| 4 `.test.ts` files (`scoring`, `crossword-oracle-timing`, `crossword-oracle-quips`, `crossword-oracle-quip-fetch`) | Only test coverage in the repo — Fallow can't see `bun test` auto-discovery |
+| 15 orphaned `ui/*` primitives (avatar, badge, card, dialog, input, progress, scroll-area, separator, skeleton, sonner, textarea, toggle, toggle-group, tooltip) | Future features like `sonner` toasts are planned; premature deletion breaks `npx shadcn add` later |
+| `buttonVariants` in `components/ui/button.tsx` | Standard shadcn boilerplate — other components often depend on it implicitly |
+
+### The pattern: demote, don't delete
+
+When a symbol is **used inside its own module** but has **zero external consumers**, the safe move
+is a **rank demotion**: strip `export` so it becomes a private implementation detail. This shrinks
+the public API surface area without deleting working code. Fallow makes this easy by flagging
+exactly which exports are orphans.
+
+**Verify first.** Before any demotion, grep for dynamic imports or string-based references that
+static analysis might miss:
+
+```bash
+rg 'personaIdForDialState|dialStateForPersonaId' src/
+```
+
+If nothing outside the definition file touches it, the symbol is safe to demote or delete.
+
+### Result
+
+- **32 exports** demoted or deleted across 15 files
+- **1 file** removed (`oracle-chat.tsx`)
+- **0 test files** harmed
+- **0 scripts** removed
+- **Build passes** (`next build`) in 4.3s — zero regressions
+
 ## Director's Commentary
 
 When borrowing a brand’s layout, steal **tokens** (gutter, meta size, footer rhythm) before

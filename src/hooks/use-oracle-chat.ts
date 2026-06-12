@@ -15,8 +15,7 @@ import {
 
 export type OracleChatStatus = "ready" | "submitted" | "streaming" | "error";
 
-/** @deprecated Use persona-specific opening lines from oracle-personas. */
-export const ORACLE_OPENING_LINE = getOraclePersona(
+const ORACLE_OPENING_LINE = getOraclePersona(
   DEFAULT_PERSONA_ID,
 ).openingLine;
 

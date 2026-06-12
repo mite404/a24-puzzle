@@ -9,25 +9,25 @@ import {
 } from "valenceai";
 
 /** Verified 2026-06-06 via scripts/valence-spike.ts — AUDIO_TOO_SHORT (400). */
-export const VALENCE_MIN_CLIP_SECONDS = 4.5;
+const VALENCE_MIN_CLIP_SECONDS = 4.5;
 
 /** Verified 2026-06-06 via scripts/valence-spike.ts — AUDIO_TOO_LONG (400). */
-export const VALENCE_MAX_CLIP_SECONDS = 15;
+const VALENCE_MAX_CLIP_SECONDS = 15;
 
 /**
  * Valence docs recommend dropping weak predictions client-side.
  * Not API-enforced — verified 2026-06-06 (API returns all scores regardless).
  */
-export const VALENCE_CONFIDENCE_GATE = 0.38;
+const VALENCE_CONFIDENCE_GATE = 0.38;
 
-export const VALENCE_DEFAULT_EMOTIONS = [
+const VALENCE_DEFAULT_EMOTIONS = [
   "angry",
   "happy",
   "neutral",
   "sad",
 ] as const;
 
-export const VALENCE_EXTENDED_EMOTIONS = [
+const VALENCE_EXTENDED_EMOTIONS = [
   "surprised",
   "disgusted",
   "nervous",
@@ -154,7 +154,7 @@ export function wavDurationSeconds(buffer: Buffer): number | null {
 }
 
 /** Keep the most recent `maxSeconds` of audio (tone at end of utterance). */
-export function trimWavKeepLastSeconds(
+function trimWavKeepLastSeconds(
   buffer: Buffer,
   maxSeconds: number,
 ): Buffer {

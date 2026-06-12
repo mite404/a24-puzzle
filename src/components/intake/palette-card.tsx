@@ -69,6 +69,6 @@ export function CrtPaletteCard(props: PaletteCardProps) {
   return <PaletteCardBase variant="crt" {...props} />;
 }
 
-export function PaletteCard(props: PaletteCardProps) {
+function PaletteCard(props: PaletteCardProps) {
   return <PaletteCardBase variant="default" {...props} />;
 }

@@ -8,7 +8,7 @@ interface LatLng {
 }
 
 /** Great-circle distance in miles between two lat/lng points. */
-export function haversine(a: LatLng, b: LatLng): number {
+function haversine(a: LatLng, b: LatLng): number {
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
   const dLng = toRad(b.lng - a.lng);

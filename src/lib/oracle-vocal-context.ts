@@ -1,7 +1,7 @@
 import type { OracleUIMessage } from "@/lib/oracle-tools";
 import type { VocalEmotionResult } from "@/lib/valence";
 
-export function formatVocalEmotionContext(
+function formatVocalEmotionContext(
   vocalEmotion: VocalEmotionResult,
 ): string {
   return `[VOCAL_TONE (from mic analysis, confidence ${vocalEmotion.confidence.toFixed(2)}): ${vocalEmotion.emotion}]

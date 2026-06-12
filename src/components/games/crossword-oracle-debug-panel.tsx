@@ -4,7 +4,7 @@ import { DEBUG_EXPERIENCE_ENABLED } from "@/lib/debug-experience";
 import type { OraclePersonaId } from "@/lib/oracle-personas";
 import { Button } from "@/components/ui/button";
 
-export interface CrosswordOracleDebugActions {
+interface CrosswordOracleDebugActions {
   readClue: () => void;
   idle20: () => void;
   idle45: () => void;

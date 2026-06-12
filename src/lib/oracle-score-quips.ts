@@ -7,7 +7,7 @@ export interface PersonaScoreQuips {
   bad: string[];
 }
 
-export const ORACLE_SCORE_QUIPS: Record<OraclePersonaId, PersonaScoreQuips> = {
+const ORACLE_SCORE_QUIPS: Record<OraclePersonaId, PersonaScoreQuips> = {
   ladybird_mom: {
     good: [
       "Oooh — you're a real A 24 fan. I knew you had it in you.",

@@ -11,6 +11,7 @@
  *   - Table rows (starting with |) are never wrapped (would break markdown)
  *   - Headings (starting with #) are never wrapped
  *   - Blockquote lines (starting with >) wrap with the prefix preserved on each line
+ *   - Lines containing inline code spans (`...`) never wrap mid-span
  *   - All other lines over 100 bytes are wrapped at the nearest word boundary
  *
  * Why bytes, not characters?
@@ -28,40 +29,77 @@ function byteLen(str) {
   return Buffer.byteLength(str, "utf8");
 }
 
-// Wrap plain text to under maxBytes, splitting at word boundaries
-function wrapContent(content, maxBytes) {
-  if (byteLen(content) <= maxBytes) return [content];
+// True if this line contains unclosed backtick spans
+function hasUnclosedBackticks(str) {
+  // Count backticks that aren't in ``` fences
+  const nonFenceBackticks = str.replace(/```/g, "").split("`").length - 1;
+  return nonFenceBackticks % 2 !== 0;
+}
 
-  const words = content.split(" ");
-  const outputLines = [];
-  let current = "";
+// Find the rightmost safe split point in a string, before maxByteLen,
+// that doesn't break an inline code span.
+function findSafeSplit(str, maxByteLen) {
+  let best = null;
+  let inBackticks = false;
+  let byteCount = 0;
 
-  for (const word of words) {
-    const candidate = current ? current + " " + word : word;
-    if (byteLen(candidate) <= maxBytes) {
-      current = candidate;
-    } else {
-      if (current) outputLines.push(current);
-      current = word;
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+    const charBytes = Buffer.byteLength(char, "utf8");
+    byteCount += charBytes;
+
+    if (char === "`") {
+      // Skip ``` fences completely — we never split in code blocks anyway,
+      // but this keeps the state machine correct for inline spans.
+      if (str.slice(i, i + 3) === "```") {
+        i += 2;
+        continue;
+      }
+      inBackticks = !inBackticks;
+      continue;
+    }
+
+    if (!inBackticks && char === " " && byteCount <= maxByteLen) {
+      best = i;
     }
   }
 
-  if (current) outputLines.push(current);
-  return outputLines;
+  return best;
 }
 
-// Wrap a single line to under MAX_BYTES, preserving blockquote prefixes
-function wrapLine(line) {
+// Wrap a single long line, never breaking inside backtick spans.
+function wrapLine(line, maxBytes) {
   const blockquoteMatch = line.match(/^(>\s?)(.*)$/);
   if (blockquoteMatch) {
     const prefix = blockquoteMatch[1];
-    const maxContentBytes = MAX_BYTES - byteLen(prefix);
-    return wrapContent(blockquoteMatch[2], maxContentBytes).map(
+    const maxContentBytes = maxBytes - byteLen(prefix);
+    return wrapLineSmart(blockquoteMatch[2], maxContentBytes).map(
       (wrapped) => prefix + wrapped,
     );
   }
 
-  return wrapContent(line, MAX_BYTES);
+  return wrapLineSmart(line, maxBytes);
+}
+
+function wrapLineSmart(content, maxBytes) {
+  if (byteLen(content) <= maxBytes) return [content];
+
+  const lines = [];
+  let remaining = content;
+
+  while (byteLen(remaining) > maxBytes) {
+    const splitAt = findSafeSplit(remaining, maxBytes);
+    if (splitAt === null) {
+      // Cannot find safe split — bail out, keep the rest as one line
+      lines.push(remaining);
+      return lines;
+    }
+    lines.push(remaining.slice(0, splitAt));
+    remaining = remaining.slice(splitAt + 1); // skip the space
+  }
+
+  if (remaining) lines.push(remaining);
+  return lines;
 }
 
 // Process a single file
@@ -85,11 +123,15 @@ function processFile(filePath) {
       line.startsWith("|") ||
       line.startsWith("#");
 
-    if (isProtected || byteLen(line) <= MAX_BYTES) {
+    // Also protect lines that have unclosed backticks (spans that cross the line)
+    // This shouldn't happen in well-formed markdown, but protects us.
+    const isInlineCodeSpan = !inCodeBlock && hasUnclosedBackticks(line);
+
+    if (isProtected || isInlineCodeSpan || byteLen(line) <= MAX_BYTES) {
       output.push(line);
     } else {
       // Wrap and push potentially multiple lines
-      for (const wrapped of wrapLine(line)) {
+      for (const wrapped of wrapLine(line, MAX_BYTES)) {
         output.push(wrapped);
       }
     }
@@ -99,7 +141,11 @@ function processFile(filePath) {
 
   // Report how many lines are still over limit (should only be tables/code)
   const remaining = output.filter(
-    (l) => !l.startsWith("|") && byteLen(l) > MAX_BYTES
+    (l) =>
+      !l.startsWith("|") &&
+      !l.startsWith("    ") && // indented code
+      !l.trim().startsWith("```") &&
+      byteLen(l) > MAX_BYTES,
   ).length;
 
   console.log(`✓ ${filePath} — ${remaining} long non-table lines remaining`);
