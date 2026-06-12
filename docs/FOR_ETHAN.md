@@ -484,6 +484,235 @@ When borrowing a brand’s layout, steal **tokens** (gutter, meta size, footer r
 stealing **components**. One CSS variable (`--a24-meta`) buys consistent “small gray caps”
 everywhere without re-measuring Figma.
 
+### IIFEs and nested ternaries — flatten the staircase, not every branch
+
+After the readability audit (`docs/readability-patterns-tutorial.md`), two patterns worth keeping
+in muscle memory:
+
+**IIFE = scratch dialogue.** When you need 3–5 branches to compute *one* value (a label, a class
+string) and the logic won't be reused, wrap an anonymous function and invoke it immediately:
+
+```tsx
+// floating-composer.tsx — mic button copy
+const micLabel = (() => {
+  if (mic?.listening) return "Stop and send";
+  if (mic?.connecting) return "Connecting mic…";
+  return "Speak to the oracle";
+})();
+```
+
+The trailing `()()` is what *runs* the function and assigns the string. Without it you're storing
+the function itself — like leaving a line on the teleprompter instead of reading it aloud.
+
+**Two pairs of `()` — decode the syntax:**
+
+```tsx
+const micLabel = (() => { ... })();
+//               ^^^^^^^^^^^^^^  ^^
+//               group 1: DEFINE  group 2: CALL
+```
+
+- **Group 1** `( () => { ... } )` — creates an anonymous function. Outer parens *group* it as one
+  value (same idea as `(2 + 3) * 4`).
+- **Group 2** `()` — a normal function call. "Run what group 1 created, right now."
+
+Same grammar as `getOraclePersona(id)()` — only the function is written inline instead of referenced
+by name. **I**mmediately **I**nvoked **F**unction **E**xpression.
+
+```tsx
+// ❌ micLabel is a function — TypeScript error at aria-label={micLabel}
+const micLabel = (() => { return "Speak to the oracle"; });
+
+// ✅ micLabel is a string
+const micLabel = (() => { return "Speak to the oracle"; })();
+```
+
+**IIFE vs callback — same arrow shape, different job:**
+
+A **callback** is a function you **hand off** for something else to call later. An **IIFE** is a
+function you **run yourself immediately** and throw away — you keep the return value, not the fn.
+
+| | Callback | IIFE (`micLabel`) |
+| --- | --- | --- |
+| **Who calls it?** | Someone else (React, `.filter`, a hook…) | You, on the same line |
+| **When?** | Later — on click, after render, per item | Synchronously, right now |
+| **What you keep** | Often the function reference | The **return value** (string) |
+| **Film analogy** | "Call me when talent's in place" (1st AD holds the walkie) | Scratch dialogue — ad lib once, write final line on slate |
+
+From this codebase:
+
+```tsx
+// CALLBACK — passed to React; React calls it when user clicks
+onClick={mic?.onToggle}
+
+// CALLBACK — React calls on every keystroke
+onChange={(e) => onTextChange(e.target.value)}
+
+// IIFE — not passed anywhere; invoked immediately for micLabel string
+const micLabel = (() => {
+  if (mic?.listening) return "Stop and send";
+  if (mic?.connecting) return "Connecting mic…";
+  return "Speak to the oracle";
+})();
+```
+
+`micLabel`'s anonymous function is **not** a callback — nothing receives it to run later. It's a
+one-shot worker: define → call → assign string → discard the function.
+
+**Not every ternary is evil.** One level is fine when both sides are the same *kind* of thing:
+
+```tsx
+{mic.connecting ? <Spinner /> : <MicIcon />}                    // UI swap
+{errors.voice ? `Voice: …` : `Mic: ${errors.scribe?.message}`} // two strings, one slot
+```
+
+**Nested ternaries go bad when they stack unrelated questions** — three `?` levels picking among
+listening / connecting / idle, or an `aria-label` buried inside JSX with a `channelLabel` branch
+then a `state === 0` branch then a fallback (`tv-volume-dial.tsx`). That's a staircase: each `:`
+waits for the previous answer to fail. Flatten with an IIFE (one-off) or a named helper (reused /
+testable).
+
+**Cohesive 2-level ternaries can stay.** `ComposeStatus` picks one status string from `status` +
+`modelResponding` — same output type, one thought. Don't refactor for sport; refactor when depth
+or placement (inside JSX attributes) makes you lose the plot.
+
+Full field guide with before/after tables: `docs/readability-patterns-tutorial.md` (Pattern 2).
+
+### React hooks — what they are, and `useOracleChat` as a case study
+
+A React component is a function that runs **every time** the UI needs to update (every "take").
+Plain functions can't remember yesterday's take or talk to the outside world between takes.
+**Hooks** are React's API for giving components **memory** and **side effects** — continuity notes
+taped to the monitor so the performer doesn't forget their line or miss a cue.
+
+**Custom hooks** (names start with `use`) bundle one feature's wiring. `useOracleChat` is a
+**department head** for intake chat: it owns messages, textarea state, busy flags, and the
+"intake is done" handoff — the TV scene component just calls the hook and renders.
+
+#### Hook cheat sheet (what each one does here)
+
+| Hook | Film analogy | What it remembers / does | In `useOracleChat` |
+| ---- | ------------ | ------------------------ | ------------------ |
+| `useState` | Slate on the monitor | Value that **triggers re-render** when it changes | `text` / `setText` — composer textarea |
+| `useRef` | Flag pin on the script | Mutable box that **persists** but **doesn't** re-render when flipped | `finalized` — "already called `onFinalize`" latch |
+| `useEffect` | "When X changes, run this beat" | Runs **after** paint; syncs with outside world | Scan messages for finalize tool; reset latch on persona change |
+| `useMemo` | Pre-computed logline | Recompute derived value only when deps change | `assistantStreamingText` — is the oracle visibly typing? |
+| `useChat` (library hook) | Satellite feed | AI SDK owns `messages`, `sendMessage`, `status`, `error` | The actual chat stream |
+| Custom `useOracleChat` | Department head | Composes the above + submit helpers + opening line | What `OracleTvScene` imports |
+
+**Rules of the road:** only call hooks at the **top level** of a component or custom hook — never
+inside `if`, loops, or nested functions. That's how React keeps continuity consistent take to take.
+
+#### Pure helper vs effect — who does what
+
+| Piece | Role |
+| ----- | ---- |
+| `extractFinalizedProfile` | **What** to find — search nested messages (pure, no React) |
+| `useEffect` | **When** to act — after render, when `messages` changes |
+| `finalized` ref | **How many times** — exactly once per intake until persona resets |
+
+The verb **extract** describes the runtime job (pull a profile out of nested message parts), not
+the refactor move of "extracting into a helper." Same family as `findLastAssistant`, `formatChatError`.
+
+#### Annotated snippets — helper + effects
+
+Script supervisor searching dailies (`extractFinalizedProfile`), then the floor manager effects that
+call it. Comments trace **data flow** — what enters, what gets checked, what exits.
+
+**Pure helper** — no React; `messages` in, profile or `undefined` out:
+
+```tsx
+// src/hooks/use-oracle-chat.ts
+function extractFinalizedProfile(
+  messages: Array<OracleUIMessage>,
+): ExperienceProfile | undefined {
+  // DATA IN: full chat transcript from useChat — grows on every streamed chunk
+
+  for (const message of messages) {
+    // Walk transcript in order (oldest → newest)
+
+    for (const part of message.parts) {
+      // Each message is sliced into parts: text, tool calls, etc.
+
+      if (
+        part.type === "tool-finalizeExperience" &&
+        // Gate 1: oracle invoked the "lock the experience" tool — not plain text
+
+        (part.state === "input-available" || part.state === "output-available") &&
+        // Gate 2: tool is far enough along (args in, or finished) — skip pending/error
+
+        part.input
+        // Gate 3: payload actually exists
+      ) {
+        return part.input as ExperienceProfile;
+        // DATA OUT: first matching part wins — stop scanning immediately
+        // Cast: SDK types input loosely; we know this tool's shape is ExperienceProfile
+      }
+    }
+  }
+  // DATA OUT: implicit undefined — finalize tool hasn't appeared yet;
+  // the useEffect below will run again when messages updates
+}
+```
+
+**Latch reset** — when the UHF dial swaps persona, clear the "already finalized" flag:
+
+```tsx
+const finalized = useRef(false);
+// Persists across renders WITHOUT triggering re-render when flipped
+// Think: flag pin on the script — "we already called onFinalize"
+
+useEffect(() => {
+  finalized.current = false;
+  // DATA FLOW: personaId changes (dial detent) → allow finalize again for new channel
+}, [personaId]);
+```
+
+**Main finalize effect** — orchestrates; delegates search to the helper:
+
+```tsx
+useEffect(() => {
+  if (finalized.current) return;
+  // GUARD: if we already handed off, bail — prevents onFinalize firing on every later message tick
+
+  const profile = extractFinalizedProfile(messages);
+  // DATA FLOW: messages (from useChat) → helper → ExperienceProfile | undefined
+  // Runs after each render where messages or onFinalize changed
+
+  if (profile) {
+    finalized.current = true;
+    // Set latch BEFORE calling parent — if onFinalize triggers re-render mid-flight,
+    // next effect run hits the guard above and won't double-fire
+
+    onFinalize(profile);
+    // SIDE EFFECT OUT: parent (OracleTvScene) advances phase → quiz, crossword, etc.
+    // Hook doesn't navigate itself — it only notifies upstream
+  }
+}, [messages, onFinalize]);
+// Re-run when: new streamed chunk (messages) or parent passes new callback (onFinalize)
+```
+
+Why set the latch **before** `onFinalize`? If the parent re-renders mid-call, the next effect run
+hits the guard immediately and won't double-fire.
+
+#### Signal flow
+
+```mermaid
+flowchart TD
+  A[messages update from useChat] --> B{finalized.current?}
+  B -->|yes| C[return — already handled]
+  B -->|no| D[extractFinalizedProfile messages]
+  D --> E{profile found?}
+  E -->|no| F[done — wait for next messages]
+  E -->|yes| G[finalized.current = true]
+  G --> H[onFinalize profile]
+  H --> I[parent changes phase / UI]
+
+  P[personaId changes] --> Q[finalized.current = false]
+```
+
+Full walkthrough with readability patterns: `docs/readability-patterns-tutorial.md` (Pattern 3).
+
 ### Refactor rule: interface + call site ship together
 
 Prop grouping is a **two-location change** — like updating both the call sheet template *and* the

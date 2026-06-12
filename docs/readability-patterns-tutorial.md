@@ -133,7 +133,15 @@ const micLabel = mic?.listening
 
 ### Option A: The IIFE (Immediately Invoked Function Expression)
 
+**What it is:** An IIFE is a tiny anonymous function you define and call in the same breath —
+`(() => { ... })()`. Think of it like **scratch dialogue on set**: the director needs one line
+right now, not a new script page in the binder. You write a mini-scene with early returns, run it
+once, and assign the result to a `const`.
+
+**Shipped in this codebase** — `floating-composer.tsx` after flattening the mic label staircase:
+
 ```tsx
+// src/components/intake/floating-composer.tsx
 const micLabel = (() => {
   if (mic?.listening) return "Stop and send";
   if (mic?.connecting) return "Connecting mic…";
@@ -141,14 +149,31 @@ const micLabel = (() => {
 })();
 ```
 
+The `()()` at the end is the invoke — without it you'd assign a *function*, not a string.
+
 **Pros:**
 - Flat structure — each condition is at the same indentation
 - Early returns — no mental stack tracking
 - Easy to add logging or breakpoints between branches
+- Stays local — no new export when the logic is one-off to this component
 
 **Cons:**
 - Slightly unusual pattern for beginners
 - The `()()` syntax is noise
+- Wrong tool if the logic is reused or needs unit tests (use a named function instead)
+
+**When to reach for an IIFE vs something else:**
+
+| Situation | Tool |
+|-----------|------|
+| 3–5 branches, one component, assign to a `const` | IIFE |
+| Same branch logic in 2+ files | Named function at module scope |
+| 4+ discrete states with fixed labels | Lookup map + small function |
+| Branches return JSX trees | Early `return` in the component, or a sub-component — not an IIFE in JSX |
+
+> [!CAUTION]
+> Don't put IIFEs inline in JSX: `{(() => { ... })()}`. That hides render logic inside markup.
+> Compute the value above the `return`, then reference it: `{micLabel}`.
 
 ### Option B: A Lookup Map (for Many States)
 
@@ -172,6 +197,107 @@ function micLabel(mic: MicState | undefined): string {
 - IIFE → 3-5 branches, especially when the logic is one-off
 - Lookup map → 4+ branches, or when the same lookup is needed in multiple components
 - Named function → when the label logic needs to be unit tested or reused
+
+### Which Nested Ternaries Are Bad (and Which Aren't)
+
+Not every `?` is a smell. The problem is **stack depth** and **mixed intent** — when each `:`
+branch asks a *different question* than the one above it.
+
+#### Bad: the priority staircase (3+ levels, same variable)
+
+Each `?` waits for the previous branch to fail. Your eyes track indentation like steps on a
+staircase:
+
+```tsx
+// Before — floating-composer.tsx (mic label)
+const micLabel = mic?.listening
+  ? "Stop and send"
+  : mic?.connecting
+    ? "Connecting mic…"
+    : "Speak to the oracle";
+```
+
+Same pattern, worse placement — nested **inside a JSX attribute** so you can't scan the component
+body first:
+
+```tsx
+// tv-volume-dial.tsx — aria-label (still a staircase; IIFE or helper would flatten it)
+aria-label={
+  channelLabel
+    ? `${channelLabel} — click to change oracle channel`
+    : state === 0
+      ? "Tune the oracle channel"
+      : `Oracle channel ${state + 1} — click to change`
+}
+```
+
+**Why it's bad:** three unrelated predicates (`channelLabel`, then `state === 0`, then fallback)
+stacked in one expression. Adding a fourth channel state means a fourth step.
+
+#### Bad: nested ternaries that pick different *kinds* of thing
+
+When the false branch isn't "the same decision, other answer" but a whole new question:
+
+```tsx
+// Hypothetical — don't write this
+{busy
+  ? <Spinner />
+  : mic?.listening
+    ? "Stop and send"
+    : <MicIcon />}
+```
+
+Strings and components in the same chain — the reader can't predict what type `{...}` evaluates to.
+
+#### Fine: one level, one decision
+
+Binary choices with the same shape on both sides:
+
+```tsx
+// floating-composer.tsx — icon swap inside the mic button
+{mic.connecting ? (
+  <Spinner className="size-4 text-[#9dff9d]/80" aria-hidden />
+) : (
+  <MicIcon className="size-4" aria-hidden />
+)}
+
+// floating-composer.tsx — optional channel line
+{channelLabel ? (
+  <p className="oracle-tv-composer__channel ...">{channelLabel}</p>
+) : null}
+
+// floating-composer.tsx — two error sources, same output type (string)
+{errors.voice ? `Voice: ${errors.voice.message}` : `Mic: ${errors.scribe?.message}`}
+```
+
+**Rule:** one `?` / one `:` answering one yes/no question → keep the ternary.
+
+#### Fine: two levels when both inputs serve one label
+
+```tsx
+// floating-composer.tsx — ComposeStatus
+const label =
+  status === "submitted"
+    ? "Signal sent — waiting for the set."
+    : modelResponding
+      ? "On air."
+      : "Tuning in…";
+```
+
+All three branches return the same type (string) from the same two inputs (`status`,
+`modelResponding`). It's one thought: "what should the status line say?" Extract only if it grows
+past three levels or gets reused.
+
+#### Quick reference
+
+| Pattern | Verdict | Example in repo |
+|---------|---------|-----------------|
+| 1 level, same type both sides | Keep | `mic.connecting ? <Spinner /> : <MicIcon />` |
+| `x ? a : null` optional render | Keep | `{channelLabel ? <p>…</p> : null}` |
+| 2 levels, one cohesive string | Borderline OK | `ComposeStatus` label |
+| 3+ levels, priority chain | Flatten (IIFE / helper / map) | Mic label (before → IIFE after) |
+| 3+ levels inside JSX `{...}` | Flatten + hoist above `return` | `tv-volume-dial` `aria-label` |
+| Branches return JSX *and* strings | Never | — (hypothetical anti-pattern) |
 
 ### A Note on `ComposeStatus`
 
@@ -573,8 +699,9 @@ After extraction:
 1. **Name the operation, not just the variable.** `findLastAssistant(messages)` is better than
 `messages.filter(...).at(-1)` because the name tells you the *intent*.
 
-2. **Ternaries are a code smell past 2 levels.** IIFEs, lookup maps, and named functions all flatten
-mental stack depth. Pick the one that matches the number of branches.
+2. **Ternaries are fine at one level; nested staircases are not.** Priority chains (3+ `?` levels)
+and ternaries inside JSX attributes are code smells — flatten with IIFEs, lookup maps, or named
+helpers. Single binary choices and cohesive 2-level string picks can stay.
 
 3. **`useEffect` should orchestrate, not compute.** If an effect has a search loop, a data
 transform, or a complex conditional, extract a pure helper. Effects are hard to test; pure functions
