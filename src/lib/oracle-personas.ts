@@ -176,7 +176,7 @@ ${catalog}`;
   },
 };
 
-export const ORACLE_PERSONAS: Record<OraclePersonaId, OraclePersona> = {
+const ORACLE_PERSONAS: Record<OraclePersonaId, OraclePersona> = {
   ladybird_mom: LADYBIRD_MOM,
   witch: WITCH,
   materialist: MATERIALIST,

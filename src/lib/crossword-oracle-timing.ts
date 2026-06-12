@@ -28,7 +28,7 @@ export function createInitialTimingState(nowMs = 0): CrosswordOracleTimingState 
   };
 }
 
-export function clueId(word: PlacedWord | null | undefined): string | null {
+function clueId(word: PlacedWord | null | undefined): string | null {
   return word?.id ?? null;
 }
 
@@ -91,7 +91,7 @@ export function markFirstClueAutoRead(
   return { ...state, firstClueAutoReadDone: true };
 }
 
-export function canFireIdleQuip(
+function canFireIdleQuip(
   state: CrosswordOracleTimingState,
   nowMs: number,
 ): boolean {
@@ -134,7 +134,7 @@ export function applyDwellTierFired(
   };
 }
 
-export function sortWordsByClueNumber(words: PlacedWord[]): PlacedWord[] {
+function sortWordsByClueNumber(words: PlacedWord[]): PlacedWord[] {
   return [...words].sort((a, b) => a.position - b.position);
 }
 

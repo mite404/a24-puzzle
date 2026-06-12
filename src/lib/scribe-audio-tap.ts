@@ -37,7 +37,7 @@ function mergeArrayBuffers(buffers: ArrayBuffer[]): ArrayBuffer {
 }
 
 /** Encode mono PCM16 LE samples into a WAV container. */
-export function encodePcm16ToWav(pcm: ArrayBuffer, sampleRate: number): ArrayBuffer {
+function encodePcm16ToWav(pcm: ArrayBuffer, sampleRate: number): ArrayBuffer {
   const dataSize = pcm.byteLength;
   const buffer = new ArrayBuffer(44 + dataSize);
   const view = new DataView(buffer);
@@ -142,7 +142,7 @@ export async function startScribeAudioTap(
 }
 
 /** Fail-open Valence analyze with wall-clock cap so submit never blocks long. */
-export const VALENCE_SUBMIT_TIMEOUT_MS = 2500;
+const VALENCE_SUBMIT_TIMEOUT_MS = 2500;
 
 function estimateWavDurationSec(blob: Blob): number {
   return Math.max(0, (blob.size - 44) / 2 / TARGET_SAMPLE_RATE);

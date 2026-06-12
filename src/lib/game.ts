@@ -26,7 +26,7 @@ function shuffle<T>(arr: T[]): T[] {
  * could not interlock (orientation "none") are dropped. The third-party generator
  * is chatty on stdout, so console.log is muted for the duration of the call.
  */
-export function buildCrosswordLayout(entries: CrosswordEntry[]): CrosswordLayout {
+function buildCrosswordLayout(entries: CrosswordEntry[]): CrosswordLayout {
   const input = entries.map((e) => ({
     clue: e.clue,
     answer: e.word.toUpperCase(),
@@ -51,9 +51,8 @@ export function buildCrosswordLayout(entries: CrosswordEntry[]): CrosswordLayout
     )
     .map((w) => {
       const entry =
-        entries.find(
-          (e) => e.word.toUpperCase() === w.answer && e.clue === w.clue,
-        ) ?? entries.find((e) => e.word.toUpperCase() === w.answer);
+        entries.find((e) => e.word.toUpperCase() === w.answer && e.clue === w.clue) ??
+        entries.find((e) => e.word.toUpperCase() === w.answer);
       return {
         id: entry?.id ?? w.answer,
         answer: w.answer,
@@ -69,7 +68,7 @@ export function buildCrosswordLayout(entries: CrosswordEntry[]): CrosswordLayout
 }
 
 /** Resolves crossword ids from the profile, falling back to a sensible default set. */
-export function resolveCrosswordEntries(ids: string[]): CrosswordEntry[] {
+function resolveCrosswordEntries(ids: string[]): CrosswordEntry[] {
   const resolved = ids
     .map((id) => getCrosswordEntry(id))
     .filter((e): e is CrosswordEntry => Boolean(e));
@@ -86,10 +85,8 @@ export function resolveCrosswordEntries(ids: string[]): CrosswordEntry[] {
 }
 
 /** Resolves location ids from the profile, falling back to a sensible default set. */
-export function resolveLocations(ids: string[]): FilmLocation[] {
-  const resolved = ids
-    .map((id) => getLocation(id))
-    .filter((l): l is FilmLocation => Boolean(l));
+function resolveLocations(ids: string[]): FilmLocation[] {
+  const resolved = ids.map((id) => getLocation(id)).filter((l): l is FilmLocation => Boolean(l));
 
   if (resolved.length >= 3) return resolved;
 
@@ -102,12 +99,10 @@ export function resolveLocations(ids: string[]): FilmLocation[] {
 }
 
 /** Builds quiz questions: each location plus 3 distractor film options. */
-export function buildLocationQuestions(locs: FilmLocation[]): LocationQuestion[] {
+function buildLocationQuestions(locs: FilmLocation[]): LocationQuestion[] {
   const allFilmIds = films.map((f) => f.id);
   return locs.map((location) => {
-    const distractors = shuffle(
-      allFilmIds.filter((id) => id !== location.filmId),
-    ).slice(0, 3);
+    const distractors = shuffle(allFilmIds.filter((id) => id !== location.filmId)).slice(0, 3);
     const options = shuffle([location.filmId, ...distractors]);
     return { location, options };
   });

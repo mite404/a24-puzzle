@@ -1,6 +1,6 @@
 import { DEBUG_EXPERIENCE_ENABLED } from "@/lib/debug-experience";
 
-export const DEBUG_VOICE_OFF_STORAGE_KEY = "a24-debug-voice-off";
+const DEBUG_VOICE_OFF_STORAGE_KEY = "a24-debug-voice-off";
 
 export const DEBUG_VOICE_CHANGE_EVENT = "a24-debug-voice-change";
 

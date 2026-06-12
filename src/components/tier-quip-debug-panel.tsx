@@ -5,7 +5,7 @@ import type { OraclePersonaId } from "@/lib/oracle-personas";
 import type { ScoreQuipTier } from "@/lib/scoring";
 import { Button } from "@/components/ui/button";
 
-export interface TierQuipDebugActions {
+interface TierQuipDebugActions {
   good: () => void;
   average: () => void;
   bad: () => void;

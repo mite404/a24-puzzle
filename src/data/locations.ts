@@ -21,7 +21,7 @@ const FILM_STILLS: Partial<Record<FilmId, string[]>> = {
   ],
 };
 
-export function filmStillsForFilm(filmId: FilmId): string[] {
+function filmStillsForFilm(filmId: FilmId): string[] {
   return FILM_STILLS[filmId] ?? [];
 }
 

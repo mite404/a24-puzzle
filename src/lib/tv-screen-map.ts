@@ -1,8 +1,8 @@
 import type { CSSProperties } from "react";
 
 /** Master plate pixel size — all maps are percentage of this canvas. */
-export const TV_SCENE_WIDTH = 2400;
-export const TV_SCENE_HEIGHT = 1792;
+const TV_SCENE_WIDTH = 2400;
+const TV_SCENE_HEIGHT = 1792;
 
 /** Visual QA nudge on the 2400×1792 plate (move overlay up/left). */
 const TV_GLASS_NUDGE_PX = { top: -68, left: -102 } as const;
@@ -19,21 +19,17 @@ const TV_GLASS_DETECTED = {
  * Overlays share the plate coordinate space (object-fill frame, no letterboxing).
  */
 export const TV_GLASS_MAP = {
-  top:
-    TV_GLASS_DETECTED.top +
-    (TV_GLASS_NUDGE_PX.top / TV_SCENE_HEIGHT) * 100,
-  left:
-    TV_GLASS_DETECTED.left +
-    (TV_GLASS_NUDGE_PX.left / TV_SCENE_WIDTH) * 100,
+  top: TV_GLASS_DETECTED.top + (TV_GLASS_NUDGE_PX.top / TV_SCENE_HEIGHT) * 100,
+  left: TV_GLASS_DETECTED.left + (TV_GLASS_NUDGE_PX.left / TV_SCENE_WIDTH) * 100,
   width: TV_GLASS_DETECTED.width,
   height: TV_GLASS_DETECTED.height,
 } as const;
 
 /** Alias — chat content is clipped inside the same CRT bounds as the glass. */
-export const TV_SCREEN_MAP = TV_GLASS_MAP;
+const TV_SCREEN_MAP = TV_GLASS_MAP;
 
 /** Keep phosphor copy off the curved CRT corners. */
-export const TV_CONTENT_INSET = {
+const TV_CONTENT_INSET = {
   top: 9,
   right: 8,
   bottom: 11,

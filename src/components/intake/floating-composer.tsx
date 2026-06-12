@@ -50,11 +50,11 @@ export function FloatingComposer({
   const dismissAudioError = errors.voice?.onDismiss ??
     errors.scribe?.onDismiss;
   const micActive = mic?.listening || mic?.connecting;
-  const micLabel = mic?.listening
-    ? "Stop and send"
-    : mic?.connecting
-      ? "Connecting mic…"
-      : "Speak to the oracle";
+  const micLabel = (() => {
+    if (mic?.listening) return "Stop and send";
+    if (mic?.connecting) return "Connecting mic…";
+    return "Speak to the oracle";
+  })();
 
   return (
     <div className="oracle-tv-composer pointer-events-none absolute inset-x-0 bottom-0 z-30">

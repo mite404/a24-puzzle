@@ -25,6 +25,10 @@ interface UseOracleVoiceOptions {
   openingLine?: string;
 }
 
+function findLastAssistantMessage(messages: Array<OracleUIMessage>): OracleUIMessage | undefined {
+  return messages.filter((m) => m.role === "assistant").at(-1);
+}
+
 /**
  * Presentation layer: after each assistant turn finishes streaming, synthesize
  * speech via /api/voice and play through the TV "speaker."
@@ -49,11 +53,7 @@ export function useOracleVoice({
   } = useOracleSpeaker(personaId);
 
   const speak = useCallback(
-    async (
-      text: string,
-      cacheKey: string,
-      emotionForTurn?: VocalEmotionResult | null,
-    ) => {
+    async (text: string, cacheKey: string, emotionForTurn?: VocalEmotionResult | null) => {
       const completed = await speakRaw(text, cacheKey, emotionForTurn);
       if (completed) {
         lastSpokenMessageId.current = cacheKey;
@@ -67,9 +67,7 @@ export function useOracleVoice({
    * speak effect never voices a reply the user talked over.
    */
   const consumePendingReplies = useCallback(() => {
-    const lastAssistantMessage = messages
-      .filter((message) => message.role === "assistant")
-      .at(-1);
+    const lastAssistantMessage = findLastAssistantMessage(messages);
 
     if (lastAssistantMessage) {
       lastSpokenMessageId.current = lastAssistantMessage.id;
@@ -89,16 +87,14 @@ export function useOracleVoice({
   useEffect(() => {
     if (status !== "ready") return;
 
-    const lastAssistant = [...messages]
-      .reverse()
-      .find((message) => message.role === "assistant");
-    if (!lastAssistant) return;
+    const lastAssistantMessage = findLastAssistantMessage(messages);
+    if (!lastAssistantMessage) return;
 
-    const text = extractAssistantText(lastAssistant);
-    if (!text || lastSpokenMessageId.current === lastAssistant.id) return;
+    const text = extractAssistantText(lastAssistantMessage);
+    if (!text || lastSpokenMessageId.current === lastAssistantMessage.id) return;
     if (!audioUnlockedRef.current) return;
 
-    void speak(text, lastAssistant.id, vocalEmotion);
+    void speak(text, lastAssistantMessage.id, vocalEmotion);
   }, [messages, status, speak, vocalEmotion, audioUnlockedRef]);
 
   return {

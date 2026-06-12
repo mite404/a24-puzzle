@@ -12,7 +12,7 @@ export type DebugJumpTarget = Extract<
 >;
 
 /** Fixture profile — same assembly path as a real finalizeExperience call. */
-export const DEBUG_PROFILE: ExperienceProfile = {
+const DEBUG_PROFILE: ExperienceProfile = {
   selectedFilmIds: ["uncut-gems", "moonlight", "good-time"],
   moods: ["debug fixture"],
   crosswordWordIds: crosswordBank.slice(0, 8).map((e) => e.id),
@@ -29,7 +29,7 @@ export function buildDebugPayload(): GamePayload {
   return buildGamePayload(DEBUG_PROFILE);
 }
 
-export function emptyScoresForPayload(payload: GamePayload): Scores {
+function emptyScoresForPayload(payload: GamePayload): Scores {
   return {
     location: 0,
     locationTotal: payload.locations.length,
