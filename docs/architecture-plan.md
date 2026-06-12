@@ -1,5 +1,6 @@
 # A24 Puzzle — Architecture
 
+> [!NOTE]
 > Living document. Last updated after the Mapbox location map integration
 > (adaptive quiz threshold + explore surface with nearby pins).
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { areVoiceApisEnabled } from "@/lib/debug-voice";
 import { loadScribeAudioProcessor } from "@/lib/scribe-audio-worklet";
 import type { VocalEmotionResult } from "@/lib/valence";
 
@@ -157,6 +158,11 @@ export async function resolveVocalEmotion(
   wavBlob: Blob | null,
   timeoutMs = VALENCE_SUBMIT_TIMEOUT_MS,
 ): Promise<VocalEmotionResult | null> {
+  if (!areVoiceApisEnabled()) {
+    logValenceDev("skipped — voice APIs disabled in debug");
+    return null;
+  }
+
   if (!wavBlob?.size) {
     logValenceDev("skipped — no audio captured");
     return null;

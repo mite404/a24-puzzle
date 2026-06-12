@@ -2,11 +2,17 @@
 
 ## The Story So Far
 
-A conversational “oracle” intake leads into location-guess rounds and a crossword. The UI now tracks **shop.a24films.com** more closely: generous gutters, centered content columns, vector A24 mark in the header, PREORDER-style meta type, still captions **below** photos, and a decorative black footer.
+A conversational “oracle” intake leads into location-guess rounds and a crossword. The UI now
+tracks **shop.a24films.com** more closely: generous gutters, centered content columns, vector A24
+mark in the header, PREORDER-style meta type, still captions **below** photos, and a decorative
+black footer.
 
 ## Cast & Crew (Architecture)
 
-Think of the page like a **single-camera master shot**: `SiteHeader` is the slate at the top, `AppShell` is the dolly track that keeps the action in a centered column, phase components (`OracleTvScene`, `LocationQuiz`, etc.) are the performers, and `SiteFooter` is the end credits roll — same framing whether the scene is chat or games.
+Think of the page like a **single-camera master shot**: `SiteHeader` is the slate at the top,
+`AppShell` is the dolly track that keeps the action in a centered column, phase components
+(`OracleTvScene`, `LocationQuiz`, etc.) are the performers, and `SiteFooter` is the end credits roll
+— same framing whether the scene is chat or games.
 
 ### Basement TV intake (oracle landing)
 
@@ -15,13 +21,59 @@ The intake is no longer a text column — it’s a **VFX comp**:
 1. **Plate** — `TV-scene-dial-01.png` (full basement set)
 2. **Insert** — oracle stream + palette bars mapped into the CRT cutout (`tv-screen-map.ts`)
 3. **Glass pass** — `TV-screen.png` reflection overlay on top
-4. **Off-camera** — `FloatingComposer` at the bottom of the viewport (you talk from the couch; your lines never appear on the TV)
+4. **Off-camera** — `FloatingComposer` at the bottom of the viewport (you talk from the couch;
+your lines never appear on the TV)
 
-Phosphor-green broadcast type, scanlines, and a warm glass composer bar sell the 70s basement without building a 3D TV in CSS.
+Phosphor-green broadcast type, scanlines, and a warm glass composer bar sell the 70s basement
+without building a 3D TV in CSS.
+
+#### Palette insert — two deliverables, one grade
+
+When the oracle calls `showPalette`, the film's color signature appears inline in the broadcast.
+Same **footage** (swatches + prompt from `getPalette`), two **deliverables**:
+
+| Export | Screen | Look |
+| ------ | ------ | ---- |
+| `CrtPaletteCard` | CRT insert (`tv-oracle-feed.tsx`) | Compact phosphor bars, oracle-TV CSS |
+| `PaletteCard` | Normal chat UI (reserved / future) | Taller bars, hover labels, muted caption |
+
+Call sites pick the export that matches their screen — they never pass `variant="crt"`. Think of
+it like choosing **Broadcast** vs **Theater** on export: same color grade, different framing.
+
+**File layout (`palette-card.tsx`) — all in one module:**
+
+```
+PaletteCardBase   ← private engine (variant branching lives here)
+CrtPaletteCard    ← exported preset: variant="crt"
+PaletteCard       ← exported preset: variant="default"
+```
+
+The **wrapper** is a one-line preset button on the shared engine:
+
+```tsx
+export function CrtPaletteCard(props: PaletteCardProps) {
+  return <PaletteCardBase variant="crt" {...props} />;
+}
+```
+
+`{...props}` passes the call sheet down unchanged — `filmId` and `promptText` flow through without
+the caller knowing about `variant`.
+
+**Two layers to keep straight:**
+
+| Layer | Rule |
+| ----- | ---- |
+| **Public API** (other files) | Named exports only — `CrtPaletteCard`, `PaletteCard`. No `variant` prop. |
+| **Private implementation** (same file) | `PaletteCardBase` holds `if (variant === "crt")` — variant is an internal dial, not a public contract. |
+
+This is *not* compound-component composability (Item 3 in
+`docs/lessons-learned/vercel-composition-patterns.md` — that's for when layout wiring needs to
+flex). It's **explicit variant names** so readers know what renders without opening the file.
 
 ### Three-channel oracle (voice + persona)
 
-The right-hand **UHF dial** cycles three broadcast personas — same tool pipeline underneath, different **performance** on top (like swapping announcers on the same teleprompter):
+The right-hand **UHF dial** cycles three broadcast personas — same tool pipeline underneath,
+different **performance** on top (like swapping announcers on the same teleprompter):
 
 | Dial | Persona | Character | Film anchor |
 | ---- | ------- | --------- | ----------- |
@@ -29,13 +81,18 @@ The right-hand **UHF dial** cycles three broadcast personas — same tool pipeli
 | 1 | `witch` | William | *The Witch* |
 | 2 | `materialist` | Lucy | *Materialists* |
 
-- **Prompt layer** — `src/lib/oracle-personas.ts` wraps the shared catalog + tool rules in character voice. Dialogue cadence comes from the **shooting scripts** in `docs/scripts/` (Lady Bird, The Witch, Materialists) — not generic film knowledge.
-- **Speech layer** — `POST /api/voice` calls ElevenLabs TTS server-side; `useOracleVoice` plays each assistant turn after streaming completes. CRT flicker (`is-speaking`) fires while audio plays.
-- **Dial wiring** — `TvVolumeDial` → `personaId` in `/api/chat` body via `DefaultChatTransport`. Mid-chat channel changes keep history; only the next reply shifts character.
+- **Prompt layer** — `src/lib/oracle-personas.ts` wraps the shared catalog + tool rules in
+character voice. Dialogue cadence comes from the **shooting scripts** in `docs/scripts/` (Lady Bird,
+The Witch, Materialists) — not generic film knowledge.
+- **Speech layer** — `POST /api/voice` calls ElevenLabs TTS server-side; `useOracleVoice` plays
+each assistant turn after streaming completes. CRT flicker (`is-speaking`) fires while audio plays.
+- **Dial wiring** — `TvVolumeDial` → `personaId` in `/api/chat` body via `DefaultChatTransport`.
+Mid-chat channel changes keep history; only the next reply shifts character.
 
 #### Input track — Scribe realtime voice (composer mic)
 
-You can **talk to the oracle** from the couch, not just type. Think of it as a second input bus into the same chat splice — like feeding ADR into the same timeline as the typed lines.
+You can **talk to the oracle** from the couch, not just type. Think of it as a second input bus into
+the same chat splice — like feeding ADR into the same timeline as the typed lines.
 
 | Piece | Role (film analogy) |
 | ----- | ------------------- |
@@ -45,15 +102,82 @@ You can **talk to the oracle** from the couch, not just type. Think of it as a s
 | `buildScribeKeyterms()` | Script supervisor's name list — A24 proper nouns (films, directors, NYC locations, persona names) bias Scribe; capped at **50 terms × 20 chars** per SDK |
 | `useOracleVoice` guards | Floor manager — `cancelSpeech()` kills in-flight TTS; `consumePendingReplies()` drops any reply you talked over |
 
-**Tap lifecycle:** tap 1 → silence the TV character + fetch token + listen; partial words appear in the textarea; tap 2 → `commit()` → auto-send if non-empty → oracle streams back → TTS plays. Mic is **disabled while the model is replying** (`chat.busy`) so you can't barge in mid-stream.
+**Tap lifecycle:** tap 1 → silence the TV character + fetch token + listen; partial words appear
+in the textarea; tap 2 → `commit()` → auto-send if non-empty → oracle streams back → TTS
+plays. Mic is **disabled while the model is replying** (`chat.busy`) so you can't barge in
+mid-stream.
 
-**Turn-taking:** TTS is reactive (fires when streaming finishes), so grabbing the mic also bumps `speakGenerationRef` and marks pending assistant ids as "already spoken" — anything the character was about to say when you start talking is permanently dropped.
+**Turn-taking:** TTS is reactive (fires when streaming finishes), so grabbing the mic also bumps
+`speakGenerationRef` and marks pending assistant ids as "already spoken" — anything the character
+was about to say when you start talking is permanently dropped.
 
-**Token route:** unauthenticated for the demo; `requireScribeAccess()` is a no-op seam — harden before any public deploy (rate-limit / origin / shared secret).
+**Token route:** unauthenticated for the demo; `requireScribeAccess()` is a no-op seam — harden
+before any public deploy (rate-limit / origin / shared secret).
+
+#### Error bus — three channels, one dismiss loop
+
+`FloatingComposer` doesn't own errors — it **displays** what the parent assembles. Think of three
+monitoring feeds on the sound cart: **Chat** (text/API), **Voice** (TTS playback), **Scribe**
+(mic/STT). Each feed has its own source; the composer only reads the labeled inputs it's handed.
+
+| Slot | Hook source | What broke |
+| ---- | ----------- | ---------- |
+| `errors.chat` | `chat.error` / `chat.clearError` | Oracle text chat / API |
+| `errors.voice` | `voice.voiceError` / `voice.clearVoiceError` | TTS / speaker playback |
+| `errors.scribe` | `scribe.scribeError` / `scribe.clearScribeError` | Mic permission / Scribe connection |
+
+**Hook layer — `null` means "all clear."** Voice and scribe hooks use `useState<string |
+null>(null)`. No error → `null`. Dismiss → back to `null`. Chat uses `Error | undefined` from
+`useChat`, same idea.
+
+**Props assembly — `undefined` means "don't build an envelope."** In `OracleTvScene`, a ternary
+runs per channel:
+
+```tsx
+voice: voice.voiceError
+  ? { message: voice.voiceError, onDismiss: voice.clearVoiceError }
+  : undefined,
+```
+
+No error → no `{ message, onDismiss }` object → slot is `undefined`. The child never sees hook
+`null` directly — the parent translates hook dialect into prop dialect.
+
+**Child layer — read and wire back.** `FloatingComposer` checks each slot:
+
+- `errors.chat` → its own alert (formatted via `formatChatError`)
+- `errors.voice` + `errors.scribe` → one shared **audio** banner (both are "sound department")
+
+Voice and scribe merge with a fallback chain:
+
+```tsx
+errors.voice?.message ?? errors.scribe?.message
+```
+
+Try Voice first; if that's `undefined`, try Scribe. `?.` guards the slot (might be `undefined`).
+`??` picks the backup. Voice wins if both exist.
+
+**Dismiss closes the loop.** `onDismiss` in each `DismissableError` is a live wire to the hook's
+clear function — not local state in the composer. User clicks Dismiss → hook clears to `null`
+→ next render assembly yields `undefined` → banner vanishes.
+
+```
+Error appears  →  hook holds message  →  parent builds { message, onDismiss }
+User dismisses →  hook → null         →  parent → undefined  →  UI clears
+```
+
+**Gotcha:**
+
+> [!WARNING]
+> `errors.voice?.message` only protects `voice` — not `errors` itself. If the whole
+> `errors` prop is `undefined` (broken call site), you get `Cannot read properties of undefined
+> (reading 'voice')`. Safe read: `errors?.voice?.message`. Real fix: always pass a proper assembled
+> object from the parent.
 
 ### Valence emotion bus (mic tone → oracle)
 
-Scribe gives the oracle the **script** (what you said). Valence reads the **performance** (how you sounded). Think of it as a second input bus on the sound stage — a **tone meter** running parallel to the transcript, never replacing the words.
+Scribe gives the oracle the **script** (what you said). Valence reads the **performance** (how you
+sounded). Think of it as a second input bus on the sound stage — a **tone meter** running parallel
+to the transcript, never replacing the words.
 
 | Phase | Beat | What shipped |
 | ----- | ---- | ------------ |
@@ -74,12 +198,29 @@ tap 2 → commit transcript → POST /api/valence (WAV) → vocalEmotion JSON
 
 Typed turns skip the emotion bus entirely — no regression.
 
+#### Debug voice mute (dev only)
+
+The **Debug — skip intake** HUD has a **Voice off** toggle. Think of it as pulling the XLRs from
+the booth — chat still runs on typed input, but no paid API calls fire:
+
+| Bus | What stops |
+| --- | ---------- |
+| TTS | `/api/voice` — oracle stays silent (intake, crossword quips, end-screen tier line) |
+| Scribe | `/api/scribe-token` + realtime mic — composer mic button hides |
+| Valence | `/api/valence` — mic commits skip tone analysis |
+
+State persists in `localStorage` (`a24-debug-voice-off`) so a refresh keeps credits safe. Production
+builds ignore the flag.
+
 #### Phase 1 spike script (reference — deleted after pass)
 
-Before wiring the app, we ran a **throwaway location scout**: a Bun script that never touched the Next.js app. It loaded `VALENCE_API_KEY` from `.env.local`, synthesized mono WAV probes (sine tones at 44.1 kHz), and logged pass/fail for three questions:
+Before wiring the app, we ran a **throwaway location scout**: a Bun script that never touched the
+Next.js app. It loaded `VALENCE_API_KEY` from `.env.local`, synthesized mono WAV probes (sine tones
+at 44.1 kHz), and logged pass/fail for three questions:
 
 1. **Discrete baseline (6 s)** — does the key work at all?
-2. **Limit probes (3 s / 20 s)** — where does the API reject clips (`AUDIO_TOO_SHORT` / `AUDIO_TOO_LONG`)?
+2. **Limit probes (3 s / 20 s)** — where does the API reject clips (`AUDIO_TOO_SHORT` /
+`AUDIO_TOO_LONG`)?
 3. **Streaming WebSocket** — is live PCM analysis enabled on our account, or docs-only?
 
 Representative excerpt (full script was ~300 lines; deleted **2026-06-06** after Phase 1 passed):
@@ -119,22 +260,33 @@ const streaming = await probeStreaming(client);
 // JSON summary → pasted into docs/valence-oracle-plan.md spike log
 ```
 
-**What it proved (2026-06-06):** Discrete 6 s clip → PASS (~1.3 s wall-clock). 3 s → `AUDIO_TOO_SHORT` (floor **4.5 s**). 20 s → `AUDIO_TOO_LONG` (ceiling **15 s**). Streaming WebSocket → PASS (first prediction ~2.9 s after connect). Confidence gate 0.38 is app-side only — API returns all scores. Details live in `docs/valence-oracle-plan.md` spike log; `scripts/valence-route-test.ts` remains for Phase 2 route checks.
+**What it proved (2026-06-06):** Discrete 6 s clip → PASS (~1.3 s wall-clock). 3 s →
+`AUDIO_TOO_SHORT` (floor **4.5 s**). 20 s → `AUDIO_TOO_LONG` (ceiling **15 s**). Streaming
+WebSocket → PASS (first prediction ~2.9 s after connect). Confidence gate 0.38 is app-side only
+— API returns all scores. Details live in `docs/valence-oracle-plan.md` spike log;
+`scripts/valence-route-test.ts` remains for Phase 2 route checks.
 
 ### Crossword as floating matte (Round 2)
 
-The crossword grid is a **square title card** — not a fixed rectangle of black tiles. Think post-production: the puzzle sits on a transparent matte over the page background.
+The crossword grid is a **square title card** — not a fixed rectangle of black tiles. Think
+post-production: the puzzle sits on a transparent matte over the page background.
 
-- **Three cell kinds** — `letter` (white inputs), `block` (black squares inside the puzzle), `empty` (transparent padding that lets the page show through).
-- **Square frame** — the tight generator bounding box is centered inside `max(rows, cols)`, so non-square puzzles get see-through gutters instead of a heavy black box.
-- **Fluid sizing** — `aspect-square w-full max-w-[min(72vw,55dvh,28rem)]` scales the grid to the largest square that fits; cells use `1fr` tracks and `aspect-square` instead of fixed `size-9`.
-- **Layout** — grid floats in a `relative z-10` layer with a subtle letter-cell shadow; clues stay in normal flow beside (desktop) or below (mobile) the square.
+- **Three cell kinds** — `letter` (white inputs), `block` (black squares inside the puzzle),
+`empty` (transparent padding that lets the page show through).
+- **Square frame** — the tight generator bounding box is centered inside `max(rows, cols)`, so
+non-square puzzles get see-through gutters instead of a heavy black box.
+- **Fluid sizing** — `aspect-square w-full max-w-[min(72vw,55dvh,28rem)]` scales the grid to the
+largest square that fits; cells use `1fr` tracks and `aspect-square` instead of fixed `size-9`.
+- **Layout** — grid floats in a `relative z-10` layer with a subtle letter-cell shadow; clues stay
+in normal flow beside (desktop) or below (mobile) the square.
 
 ### Crossword host — persona voice in Round 2
 
-Round 2 keeps the **scorekeeper blind**: no green cells, no per-word lock. The oracle you picked at intake becomes a **host** — reacting to moves, never confirming answers until **Reveal my tier**.
+Round 2 keeps the **scorekeeper blind**: no green cells, no per-word lock. The oracle you picked at
+intake becomes a **host** — reacting to moves, never confirming answers until **Reveal my tier**.
 
-Think of it like ADR over the puzzle: the grid is the picture lock; the voice is a separate track that never burns in correctness.
+Think of it like ADR over the puzzle: the grid is the picture lock; the voice is a separate track
+that never burns in correctness.
 
 | Piece | Role (film analogy) |
 | ----- | ------------------- |
@@ -144,44 +296,200 @@ Think of it like ADR over the puzzle: the grid is the picture lock; the voice is
 | `crossword.tsx` events | Slate marks — emits `onActiveClueChange` + `onWordFilled`; 🔊 on the focused clue |
 | `POST /api/oracle-quip` | Improv coach — 45 s stall → one LLM zinger; fail-open → `idle45` bank |
 
-**Four speech triggers:** auto-read clue #1 on mount; 🔊 on demand; 20 s / 45 s dwell teases on the *focused* clue; one cryptic line when the active word becomes **filled** (right or wrong — same pool).
+**Four speech triggers:** auto-read clue #1 on mount; 🔊 on demand; 20 s / 45 s dwell teases on
+the *focused* clue; one cryptic line when the active word becomes **filled** (right or wrong —
+same pool).
 
-**Timer resets** when the focused clue changes **or** the active word becomes fully filled — so teasing never leaks “you’re wrong.”
+**Timer resets** when the focused clue changes **or** the active word becomes fully filled — so
+teasing never leaks “you’re wrong.”
 
-**Guards:** no overlapping audio; ~12 s global cooldown between idle quips; one dwell escalation cycle per clue; everything yields while the oracle is already speaking.
+**Guards:** no overlapping audio; ~12 s global cooldown between idle quips; one dwell escalation
+cycle per clue; everything yields while the oracle is already speaking.
 
-**Non-telegraphing rule:** correctness is computed only in `check()`. The voice must never behave differently for right vs. wrong words.
+**Non-telegraphing rule:** correctness is computed only in `check()`. The voice must never behave
+differently for right vs. wrong words.
 
 ## Behind the Scenes (Decisions)
 
-- **Centered column, left-aligned copy** — Shop product pages feel editorial because the *block* is centered, not because every line is centered. `mx-auto` on `AppShell` does that while keeping prose left-aligned.
-- **`a24-meta` vs `a24-caption`** — Grid “PREORDER” / price lines use tiny all-caps gray (`a24-meta`). Location hints use sentence-case italic under the still (`a24-caption`) so we never fight the image with white/black overlays.
-- **Footer mockup** — Inert links for visual parity only; keeps the puzzle demo honest without implying a real shop checkout.
-- **Crossword padding vs blocks** — One `null` type made every non-letter cell black, including square padding outside the puzzle. Option A from the plan: pad to a square, center the puzzle, mark outer cells `empty` (transparent) and inner nulls `block` (black). Arrow keys skip `empty` via `isCell()` on letter cells only.
-- **Voice is presentation-only** — `showPalette` / `finalizeExperience` unchanged. ElevenLabs is post-production VO on the same script OpenRouter writes; API key stays on the server.
-- **Autoplay unlock** — first click/keypress unlocks TTS (browser policy). Opening line speaks after unlock when you change channels.
-- **Scribe tap-to-toggle** — realtime STT is manual commit (not always-on VAD) to avoid TV speaker bleed; echo cancellation on the mic stream; typed Send remains the fallback if permission is denied.
-- **Scribe keyterms vs catalog copy** — film titles in `films.ts` can exceed Scribe's 20-char keyterm cap; the bias list uses shorthand, not a verbatim dump of catalog strings.
-- **Script-sourced personas** — Marion, William, and Lucy prompts were tuned from primary-source PDFs: `docs/scripts/LADY_BIRD_shooting_script.pdf`, `docs/scripts/the-witch-shooting-script.pdf`, and `docs/scripts/MATERIALISTS-shooting-script.pdf`. Each persona carries signature lines, speech patterns, and tonal beats from those scripts (Marion's practical guilt-as-love; William's Early Modern conscience; Lucy's matchmaker market pragmatism).
-- **Crossword oracle fail-open** — `/api/oracle-quip` uses OpenRouter with `reasoning.effort: none` so Kimi K2.6 returns spoken text, not thinking tokens only. Any route error → authored `idle45` bank; puzzle stays fully playable mute.
+- **Centered column, left-aligned copy** — Shop product pages feel editorial because the *block*
+is centered, not because every line is centered. `mx-auto` on `AppShell` does that while keeping
+prose left-aligned.
+- **`a24-meta` vs `a24-caption`** — Grid “PREORDER” / price lines use tiny all-caps gray
+(`a24-meta`). Location hints use sentence-case italic under the still (`a24-caption`) so we never
+fight the image with white/black overlays.
+- **Footer mockup** — Inert links for visual parity only; keeps the puzzle demo honest without
+implying a real shop checkout.
+- **Crossword padding vs blocks** — One `null` type made every non-letter cell black, including
+square padding outside the puzzle. Option A from the plan: pad to a square, center the puzzle, mark
+outer cells `empty` (transparent) and inner nulls `block` (black). Arrow keys skip `empty` via
+`isCell()` on letter cells only.
+- **Voice is presentation-only** — `showPalette` / `finalizeExperience` unchanged. ElevenLabs is
+post-production VO on the same script OpenRouter writes; API key stays on the server.
+- **Autoplay unlock** — first click/keypress unlocks TTS (browser policy). Opening line speaks
+after unlock when you change channels.
+- **Scribe tap-to-toggle** — realtime STT is manual commit (not always-on VAD) to avoid TV speaker
+bleed; echo cancellation on the mic stream; typed Send remains the fallback if permission is denied.
+- **Scribe keyterms vs catalog copy** — film titles in `films.ts` can exceed Scribe's 20-char
+keyterm cap; the bias list uses shorthand, not a verbatim dump of catalog strings.
+- **Script-sourced personas** — Marion, William, and Lucy prompts were tuned from primary-source
+PDFs: `docs/scripts/LADY_BIRD_shooting_script.pdf`, `docs/scripts/the-witch-shooting-script.pdf`,
+and `docs/scripts/MATERIALISTS-shooting-script.pdf`. Each persona carries signature lines, speech
+patterns, and tonal beats from those scripts (Marion's practical guilt-as-love; William's Early
+Modern conscience; Lucy's matchmaker market pragmatism).
+- **Crossword oracle fail-open** — `/api/oracle-quip` uses OpenRouter with `reasoning.effort:
+none` so Kimi K2.6 returns spoken text, not thinking tokens only. Any route error → authored
+`idle45` bank; puzzle stays fully playable mute.
+- **Grouped composer props** — Mic and errors are structured objects at the `FloatingComposer`
+boundary (`mic?: MicState`, `errors: { chat?, voice?, scribe? }`), not 17 loose booleans/strings.
+Parent assembles; child displays. Keeps the component digestible without a Provider (only one level
+of prop passing).
+- **Named palette exports over `variant="crt"`** — Vercel composition pattern
+`patterns-explicit-variants`: callers get self-documenting names (`CrtPaletteCard`), not mode
+strings. Shared logic stays in a private `PaletteCardBase`; thin exported wrappers preset `variant`
+internally. Public `PaletteCardProps` has no `variant` field — that key exists only on the
+internal type. Same file, same module — wrappers aren't a separate package unless the base
+outgrows the file.
 
 ## Bloopers (Bugs & Fixes)
 
-- **Hint on stills** — Gradient + white/gray text on photos failed on unpredictable frames (like bad lower-thirds on a documentary). Moved hints to `figcaption` under the image.
-- **Footer flush to edge** — A global `* { padding: 0 }` sat *outside* Tailwind’s `@layer`, so it beat `.a24-gutter` in the cascade. Reset moved into `@layer base`; footer uses symmetric `a24-footer-inset` (~20–40px).
-- **Gray Mapbox map (pins only)** — [PR #3](https://github.com/mite404/a24-puzzle/pull/3) already proved the map on `main`: simple `location-map.tsx` + `NEXT_PUBLIC_MAPBOX_TOKEN`. The regression on `styling-details` came from layering *more* Mapbox wiring on top — `mapLib`, CSP worker `postinstall`, debug probes, `transpilePackages: ["mapbox-gl"]`. You got logo, zoom, and pins on gray; `NaN LngLat` was usually fallout from a map that never reached `load`, not bad data in `locations.ts`. **Fix:** revert to the PR pattern (plain `<Map mapboxAccessToken mapStyle=…>`), drop worker/debug extras, `bun run dev:clean`. **Not the culprit:** missing files, zero-size container, or quota — style/tile API calls could still return **200** while the canvas stayed blank; a **304** on `_next/.../mapbox-gl.css` is just local bundle cache. Healthy Network tab: `api.mapbox.com` style + lots of `/v4/...vector.pbf` after the quiz reveals the map.
-- **Scribe mic: `1008 invalid_request` + “WebSocket is not connected”** — Token mint succeeded (`/api/scribe-token` → 200), but the browser WebSocket died on connect. Root cause: two catalog keyterms exceeded ElevenLabs' client limit (**20 characters each** — see `@elevenlabs/client` `scribe.d.ts`): `"Everything Everywhere All at Once"` and `"Lotte New York Palace"`. Those strings ride on the WebSocket **query string** at connect time (model, token, keyterms, etc.); invalid params fail the handshake before any audio flows. The second error is a **symptom**: server closes the socket → mic capture still tries `send()` → “WebSocket is not connected.” **Fix:** `buildScribeKeyterms()` enforces 50×20, drops oversize terms, and maps long titles to spoken shorthand (`"All at Once"`, `"Lotte Palace"`). Separate gotcha: API key needs **Speech-to-Text** permission, not just TTS — missing scope surfaces as 401 on token mint, not on the WebSocket.
-- **Valence mic tap: SDK vs manual PCM (path b)** — Early plan assumed `@elevenlabs/react` might expose the underlying `MediaStream` for a shared fork to Valence, or a second `getUserMedia` as fallback. Investigation showed the SDK's built-in mic mode owns capture internally — no stream handle, no clean dual-consumer hook. **Fix:** switched to **manual PCM mode** (`audioFormat: PCM_16000` + `sendAudio`): `startScribeAudioTap()` grabs one `getUserMedia`, runs an AudioWorklet that resamples to 16 kHz, forwards base64 chunks to Scribe *and* accumulates PCM locally. On commit, chunks become a WAV blob → `POST /api/valence`. A second mic request was never needed — one boom, two mix buses.
+- **Hint on stills** — Gradient + white/gray text on photos failed on unpredictable frames (like
+bad lower-thirds on a documentary). Moved hints to `figcaption` under the image.
+- **Footer flush to edge** — A global `* { padding: 0 }` sat *outside* Tailwind’s `@layer`, so
+it beat `.a24-gutter` in the cascade. Reset moved into `@layer base`; footer uses symmetric
+`a24-footer-inset` (~20–40px).
+- **Gray Mapbox map (pins only)** — [PR #3](https://github.com/mite404/a24-puzzle/pull/3) already
+proved the map on `main`: simple `location-map.tsx` + `NEXT_PUBLIC_MAPBOX_TOKEN`. The regression on
+`styling-details` came from layering *more* Mapbox wiring on top — `mapLib`, CSP worker
+`postinstall`, debug probes, `transpilePackages: ["mapbox-gl"]`. You got logo, zoom, and pins on
+gray; `NaN LngLat` was usually fallout from a map that never reached `load`, not bad data in
+`locations.ts`. **Fix:** revert to the PR pattern (plain `<Map mapboxAccessToken mapStyle=…>`),
+drop worker/debug extras, `bun run dev:clean`. **Not the culprit:** missing files, zero-size
+container, or quota — style/tile API calls could still return **200** while the canvas stayed
+blank; a **304** on `_next/.../mapbox-gl.css` is just local bundle cache. Healthy Network tab:
+`api.mapbox.com` style + lots of `/v4/...vector.pbf` after the quiz reveals the map.
+- **Scribe mic: `1008 invalid_request` + “WebSocket is not connected”** — Token mint succeeded
+(`/api/scribe-token` → 200), but the browser WebSocket died on connect. Root cause: two catalog
+keyterms exceeded ElevenLabs' client limit (**20 characters each** — see `@elevenlabs/client`
+`scribe.d.ts`): `"Everything Everywhere All at Once"` and `"Lotte New York Palace"`. Those strings
+ride on the WebSocket **query string** at connect time (model, token, keyterms, etc.); invalid
+params fail the handshake before any audio flows. The second error is a **symptom**: server closes
+the socket → mic capture still tries `send()` → “WebSocket is not connected.” **Fix:**
+`buildScribeKeyterms()` enforces 50×20, drops oversize terms, and maps long titles to spoken
+shorthand (`"All at Once"`, `"Lotte Palace"`). Separate gotcha: API key needs **Speech-to-Text**
+permission, not just TTS — missing scope surfaces as 401 on token mint, not on the WebSocket.
+- **Valence mic tap: SDK vs manual PCM (path b)** — Early plan assumed `@elevenlabs/react` might
+expose the underlying `MediaStream` for a shared fork to Valence, or a second `getUserMedia` as
+fallback. Investigation showed the SDK's built-in mic mode owns capture internally — no stream
+handle, no clean dual-consumer hook. **Fix:** switched to **manual PCM mode** (`audioFormat:
+PCM_16000` + `sendAudio`): `startScribeAudioTap()` grabs one `getUserMedia`, runs an AudioWorklet
+that resamples to 16 kHz, forwards base64 chunks to Scribe *and* accumulates PCM locally. On commit,
+chunks become a WAV blob → `POST /api/valence`. A second mic request was never needed — one
+boom, two mix buses.
+- **Composition refactor half-shipped — `errors.voice` runtime crash** — `FloatingComposer` was
+refactored from 17 flat props to a grouped interface (`mic?: MicState`, `errors: { chat?, voice?,
+scribe? }`), but `OracleTvScene` still passed the old API: `errors={chat.error}`, plus orphaned
+`voiceError` / `scribeError` props. On the happy path `chat.error` is `undefined`, so the entire
+`errors` prop was `undefined` → `errors.voice?.message` threw because `?.` only protects `.voice`,
+not `errors`. TypeScript caught it at `tsc` (`Type 'Error | undefined' is not assignable…`); the
+IDE linter on the child file didn't. **Fix:** assemble `composerErrors:
+FloatingComposerProps["errors"]` in the parent (same beat as `micState`), use `message` not `error`,
+pass `errors={composerErrors}`, remove flat props. Lesson: **grouped interface requires grouped
+assembly at every call site in the same commit.**
+- **Palette named-export refactor half-shipped** — Commit renamed `PaletteCard` →
+`CrtPaletteCard` and changed the signature to `(props: Omit<PaletteCardProps>)` but left the old
+function body: `filmId`, `variant`, and `promptText` were never destructured from `props`, and
+`Omit` was missing its second type argument. `tsc` failed with `Cannot find name 'filmId'`. **Fix:**
+restore a private `PaletteCardBase`, export thin wrappers (`CrtPaletteCard`, `PaletteCard`), remove
+`variant="crt"` from `tv-oracle-feed.tsx`. Same lesson as the composer: **rename the export is not
+the refactor — the wrapper + private base + call-site cleanup ship together.**
 
 ## Director's Commentary
 
-When borrowing a brand’s layout, steal **tokens** (gutter, meta size, footer rhythm) before stealing **components**. One CSS variable (`--a24-meta`) buys consistent “small gray caps” everywhere without re-measuring Figma.
+When borrowing a brand’s layout, steal **tokens** (gutter, meta size, footer rhythm) before
+stealing **components**. One CSS variable (`--a24-meta`) buys consistent “small gray caps”
+everywhere without re-measuring Figma.
+
+### Refactor rule: interface + call site ship together
+
+Prop grouping is a **two-location change** — like updating both the call sheet template *and* the
+production office that fills it in.
+
+| Location | Job |
+| -------- | --- |
+| Child interface (`floating-composer.tsx`) | Defines the contract — what shape the component accepts |
+| Parent assembly (`oracle-tv-scene.tsx`) | Builds grouped objects from hooks before JSX |
+
+`micState` was assembled; `composerErrors` wasn't. Child was ready; parent still spoke the old
+language. Result: cleaner types on paper, runtime crash in production.
+
+**Checklist for grouped-prop refactors:**
+
+1. Update the child `interface`
+2. Update **every** call site to build matching `const` objects
+3. Run `bunx tsc --noEmit` on the whole project — not just the file you edited
+4. Smoke-test the happy path (no errors) — that's when `undefined` props expose missing `?.` on
+the parent object
+
+A half-refactor is worse than none: you lose the old working props *and* don't satisfy the new
+contract. Ship both sides or neither.
+
+> [!IMPORTANT]
+> Prop grouping is a **two-location change** — child interface + parent assembly ship in the same
+> commit. Run `bunx tsc --noEmit` on the whole project, not just the file you edited.
+
+### Wrapper components — preset buttons on a shared engine
+
+Beginner→intermediate confusion often sounds like: "Do I delete `variant`? Do wrappers live in
+another file? Is this for using the component outside the TV?"
+
+> [!IMPORTANT]
+> Callers get **names**, not **modes**. `variant="crt"` is a hidden contract; `CrtPaletteCard` is a
+> readable slate.
+
+**Why a wrapper exists:** when two presentations share most logic (same `getPalette`, same null
+check, same swatch loop) but differ in JSX framing. The wrapper presets one choice so call sites
+can't typo the mode or grep the codebase to learn valid strings.
+
+**Where it lives:** same file as the base, usually. The base is **private** (`function
+PaletteCardBase`, not exported) so nobody imports it and passes `variant="crt"` again — that would
+undo the refactor. Split to a second file only when the base grows large enough to extract shared
+swatch markup.
+
+**What `{...props}` does:** spreads the caller's props onto the base — like handing a call sheet
+down unchanged while the wrapper adds one line the caller never sees (`variant="crt"`).
+
+**When *not* to use wrappers:** variants that need different state, providers, or sub-parts
+(Slack-style `ThreadComposer` vs `EditMessageComposer`). Then build fully separate explicit
+components that compose shared *parts*, not one `if (variant)` tree. That's the compound-composer
+path — saved for when `FloatingComposer` gets a second intake layout.
+
+**Mental model:**
+
+```
+PUBLIC (what composition patterns teach)
+  CrtPaletteCard  →  "TV palette insert"
+  PaletteCard     →  "chat palette card"
+  ❌ variant="crt"
+
+PRIVATE (implementation detail — fine to branch here)
+  PaletteCardBase(variant)  →  shared engine
+```
 
 ### Location map hover cards (Figma → code)
 
-After the quiz, **Beat 2** is explore mode: hover a nearby pin and a **collapsed card** (346×364, rounded top, still + gradient + neighborhood / film / venue / “more info…”) appears. Click **more info…** and the popup grows to the **expanded card** (518px) with the A24 logo, carousel ticks, and black footer — like a push-in from a wide shot to a close-up on the same set.
+After the quiz, **Beat 2** is explore mode: hover a nearby pin and a **collapsed card** (346×364,
+rounded top, still + gradient + neighborhood / film / venue / “more info…”) appears. Click
+**more info…** and the popup grows to the **expanded card** (518px) with the A24 logo, carousel
+ticks, and black footer — like a push-in from a wide shot to a close-up on the same set.
 
-- **Component:** `LocationPinCard` in `src/components/games/location-pin-card.tsx`; `LocationMap` only holds hover/expanded state.
-- **Assets:** stills from each `FilmLocation.photoUrl`; logo from `/a24-assets/A24-Films-Logo-Vector.png` (no duplicate Figma exports).
-- **Data:** optional `venueLabel` on locations (e.g. St. Barts Cathedral); film row uses `getFilmShortTitle()` (drops leading “The”).
-- **Carousel:** expanded cards auto-advance film stills every 4s (RTL slide via `translateX`); segment dots track `activeIndex`; autoplay pauses on hover and respects `prefers-reduced-motion`. Collapsed cards keep the single `photoUrl` hero. Gallery comes from optional `photoUrls` on a location, or falls back to `getLocationPhotoUrls()` (primary still + `filmStillsForFilm()` pool in `locations.ts`).
+- **Component:** `LocationPinCard` in `src/components/games/location-pin-card.tsx`; `LocationMap`
+only holds hover/expanded state.
+- **Assets:** stills from each `FilmLocation.photoUrl`; logo from
+`/a24-assets/A24-Films-Logo-Vector.png` (no duplicate Figma exports).
+- **Data:** optional `venueLabel` on locations (e.g. St. Barts Cathedral); film row uses
+`getFilmShortTitle()` (drops leading “The”).
+- **Carousel:** expanded cards auto-advance film stills every 4s (RTL slide via `translateX`);
+segment dots track `activeIndex`; autoplay pauses on hover and respects `prefers-reduced-motion`.
+Collapsed cards keep the single `photoUrl` hero. Gallery comes from optional `photoUrls` on a
+location, or falls back to `getLocationPhotoUrls()` (primary still + `filmStillsForFilm()` pool in
+`locations.ts`).

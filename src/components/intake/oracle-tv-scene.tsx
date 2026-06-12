@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { VocalEmotionResult } from "@/lib/valence";
 import Image from "next/image";
 import type { ExperienceProfile } from "@/lib/types";
 import type { OraclePersonaId } from "@/lib/oracle-personas";
 import { personaForDialState } from "@/lib/oracle-personas";
 import { setActiveOraclePersonaId } from "@/lib/oracle-chat-persona";
+import { useDebugVoice } from "@/hooks/use-debug-voice";
 import { useOracleChat } from "@/hooks/use-oracle-chat";
 import { useOracleVoice } from "@/hooks/use-oracle-voice";
 import { useOracleScribe } from "@/hooks/use-oracle-scribe";
@@ -25,6 +26,7 @@ import {
 import { TvOracleFeed } from "@/components/intake/tv-oracle-feed";
 import { FloatingComposer } from "@/components/intake/floating-composer";
 import { TvVolumeDial } from "@/components/intake/tv-volume-dial";
+import type { FloatingComposerProps, MicState } from "@/components/intake/floating-composer";
 
 interface OracleTvSceneProps {
   onFinalize: (profile: ExperienceProfile) => void;
@@ -36,6 +38,7 @@ export function OracleTvScene({ onFinalize }: OracleTvSceneProps) {
     useState<VocalEmotionResult | null>(null);
   const persona = personaForDialState(dialState);
   const personaId = persona.id as OraclePersonaId;
+  const { voiceApisEnabled } = useDebugVoice();
 
   const chat = useOracleChat(onFinalize, personaId);
 
@@ -68,11 +71,17 @@ export function OracleTvScene({ onFinalize }: OracleTvSceneProps) {
   }, [voice.cancelSpeech, voice.consumePendingReplies]);
 
   const scribe = useOracleScribe({
-    disabled: chat.busy,
+    disabled: chat.busy || !voiceApisEnabled,
     onPartial: chat.setText,
     onSubmit: handleOracleSubmit,
     onStartListening: handleStartListening,
   });
+
+  useEffect(() => {
+    if (!voiceApisEnabled) {
+      voice.cancelSpeech();
+    }
+  }, [voiceApisEnabled, voice.cancelSpeech]);
 
   const handleDialChange = useCallback((state: TvDialState) => {
     setActiveOraclePersonaId(personaForDialState(state).id);
@@ -83,6 +92,17 @@ export function OracleTvScene({ onFinalize }: OracleTvSceneProps) {
   const onAir =
     voice.isSpeaking ||
     (chat.status === "streaming" && chat.assistantStreamingText);
+  const micState: MicState = {
+    listening: scribe.isListening,
+    connecting: scribe.isConnecting,
+    disabled: chat.busy,
+    onToggle: voiceApisEnabled ? scribe.toggleMic : undefined,
+  };
+  const composerErrors: FloatingComposerProps["errors"] = {
+    chat: chat.error ? { message: chat.error, onDismiss: chat.clearError } : undefined,
+    voice: voice.voiceError ? { message: voice.voiceError, onDismiss: voice.clearVoiceError} : undefined,
+    scribe: scribe.scribeError ? { message: scribe.scribeError, onDismiss: scribe.clearScribeError } : undefined,
+  }
 
   return (
     <section
@@ -160,16 +180,8 @@ export function OracleTvScene({ onFinalize }: OracleTvSceneProps) {
         busy={chat.busy}
         status={chat.status}
         modelResponding={chat.assistantStreamingText}
-        error={chat.error}
-        onDismissError={chat.clearError}
-        voiceError={voice.voiceError}
-        onDismissVoiceError={voice.clearVoiceError}
-        scribeError={scribe.scribeError}
-        onDismissScribeError={scribe.clearScribeError}
-        micListening={scribe.isListening}
-        micConnecting={scribe.isConnecting}
-        micDisabled={chat.busy}
-        onMicToggle={scribe.toggleMic}
+        errors={composerErrors}
+        mic={micState}
         channelLabel={persona.label}
       />
     </section>

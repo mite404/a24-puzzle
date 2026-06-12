@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { areVoiceApisEnabled } from "@/lib/debug-voice";
 import type { OraclePersonaId } from "@/lib/oracle-personas";
 import { resolveOracleVoiceSettings } from "@/lib/oracle-voice-settings";
 import type { VocalEmotionResult } from "@/lib/valence";
@@ -43,6 +44,7 @@ export function useOracleSpeaker(personaId: OraclePersonaId) {
       vocalEmotion?: VocalEmotionResult | null,
     ): Promise<boolean> => {
       if (!text.trim()) return false;
+      if (!areVoiceApisEnabled()) return false;
 
       const generation = ++speakGenerationRef.current;
       stopPlayback();
