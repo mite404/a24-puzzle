@@ -6,20 +6,24 @@ import { getLocationPhotoUrls } from "@/data/locations";
 import { getFilmShortTitle, getFilmTitle } from "@/data/films";
 import type { FilmLocation } from "@/lib/types";
 
+// ── Config ──
 const A24_LOGO_SRC = "/a24-assets/A24-Films-Logo-Vector.png";
 const CAROUSEL_INTERVAL_MS = 4000;
 
+// ── Types ──
 interface LocationPinCardProps {
   location: FilmLocation;
   expanded: boolean;
   onMoreInfo: () => void;
 }
 
+// ── Pure helpers ──
 function venueLabel(location: FilmLocation): string {
   return location.venueLabel ?? location.address;
 }
 
-function LocationPinCardMedia({
+// ── Leaf: photo gallery (no card state) ──
+function PinCardPhotoGallery({
   photos,
   alt,
   activeIndex,
@@ -71,26 +75,31 @@ function LocationPinCardMedia({
   );
 }
 
-function LocationPinCarousel({
+// ── Leaf: slide dots (no card state; receives onSelect) ──
+function PinCardSlideDots({
   count,
   activeIndex,
+  onSelect,
 }: {
   count: number;
   activeIndex: number;
+  onSelect: (index: number) => void;
 }) {
   if (count <= 1) return null;
 
   return (
     <div
       className="location-pin-card__carousel"
-      role="tablist"
+      role="group"
       aria-label="Location photos"
     >
       {Array.from({ length: count }, (_, i) => (
-        <span
+        <button
+          type="button"
           key={i}
-          role="presentation"
-          aria-hidden={i !== activeIndex}
+          aria-label={`Photo ${i + 1} of ${count}`}
+          aria-current={i === activeIndex ? "true" : undefined}
+          onClick={() => onSelect(i)}
           className={
             i === activeIndex
               ? "location-pin-card__carousel-seg is-active"
@@ -102,16 +111,8 @@ function LocationPinCarousel({
   );
 }
 
-export function LocationPinCard(props: LocationPinCardProps) {
-  return (
-    <LocationPinCardInner
-      key={`${props.location.id}-${props.expanded}`}
-      {...props}
-    />
-  );
-}
-
-function LocationPinCardInner({
+// ── Root: state + composition (THE PARENT) ──
+function LocationPinCardRoot({
   location,
   expanded,
   onMoreInfo,
@@ -137,6 +138,12 @@ function LocationPinCardInner({
     setActiveIndex((prev) => (prev + 1) % galleryPhotos.length);
   }, [galleryPhotos.length]);
 
+
+  const goToSlide = useCallback((index: number) => {
+    setActiveIndex(index);
+  }, []);
+
+  // effects, derive photos, return <article> with Gallery + SlideDots
   useEffect(() => {
     if (!expanded || paused || reducedMotion || galleryPhotos.length <= 1) {
       return;
@@ -144,7 +151,7 @@ function LocationPinCardInner({
 
     const id = window.setInterval(advance, CAROUSEL_INTERVAL_MS);
     return () => window.clearInterval(id);
-  }, [expanded, paused, reducedMotion, galleryPhotos.length, advance]);
+  }, [expanded, paused, reducedMotion, galleryPhotos.length, advance, activeIndex]);
 
   const alt = `${getFilmTitle(location.filmId)} — ${location.neighborhood}`;
   const photos = expanded ? galleryPhotos : collapsedPhoto;
@@ -163,7 +170,7 @@ function LocationPinCardInner({
       onMouseLeave={() => setPaused(false)}
     >
       <div className="location-pin-card__body">
-        <LocationPinCardMedia
+        <PinCardPhotoGallery
           photos={photos}
           alt={alt}
           activeIndex={carouselIndex}
@@ -199,9 +206,10 @@ function LocationPinCardInner({
       </div>
       {expanded ? (
         <footer className="location-pin-card__footer">
-          <LocationPinCarousel
+          <PinCardSlideDots
             count={galleryPhotos.length}
             activeIndex={carouselIndex}
+            onSelect={goToSlide}
           />
           <div className="location-pin-card__footer-copy">
             <p className="location-pin-card__footer-location">{venue}</p>
@@ -212,5 +220,15 @@ function LocationPinCardInner({
         </footer>
       ) : null}
     </article>
+  );
+}
+
+// ── Public export (remount when location / expanded changes) ──
+export function LocationPinCard(props: LocationPinCardProps) {
+  return (
+    <LocationPinCardRoot
+      key={`${props.location.id}-${props.expanded}`}
+      {...props}
+    />
   );
 }

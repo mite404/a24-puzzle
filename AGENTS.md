@@ -2,7 +2,8 @@
 
 # This is NOT the Next.js you know
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+This version has breaking changes — APIs, conventions, and file structure may all differ from your
+training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 
 <!-- END:nextjs-agent-rules -->
 
@@ -42,11 +43,15 @@ Maintain a living document at `docs/FOR_ETHAN.md`.
 Update this file after every major feature implementation or refactor.
 
 - **Structure:**
-  1. **The Story So Far:** High-level narrative of the project.
-  2. **Cast & Crew (Architecture):** How components talk to each other (using film analogies).
-  3. **Behind the Scenes (Decisions):** Why we chose Stack X over Stack Y.
-  4. **Bloopers (Bugs & Fixes):** Detailed breakdown of bugs, why they
-     happened, and the logic used to solve them.
-  5. **Director's Commentary:** Best practices and "Senior Engineer" mindset
-     tips derived from the current work.
+    1. **The Story So Far:** High-level narrative of the project.
+    2. **Cast & Crew (Architecture):** How components talk to each other (using film analogies).
+    3. **Behind the Scenes (Decisions):** Why we chose Stack X over Stack Y.
+    4. **Bloopers (Bugs & Fixes):** Detailed breakdown of bugs, why they
+       happened, and the logic used to solve them.
+    5. **Director's Commentary:** Best practices and "Senior Engineer" mindset
+       tips derived from the current work.
+- **Insight format (Director's Commentary):** When an insight needs diagram support, use
+  **commented code snippet → mermaid immediately after** (see the template at the top of
+  Director's Commentary in `docs/FOR_ETHAN.md`). Snippet grounds the reader in repo code; diagram
+  shows flow (sequence for round-trips, flowchart for structure). Don't lead with diagram alone.
 - **Tone:** Engaging, magazine-style, memorable. Not a textbook.

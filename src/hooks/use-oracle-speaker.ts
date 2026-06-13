@@ -17,6 +17,7 @@ export function useOracleSpeaker(personaId: OraclePersonaId) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const speakGenerationRef = useRef(0);
   const unlockedRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const stopPlayback = useCallback(() => {
     const audio = audioRef.current;
@@ -34,6 +35,7 @@ export function useOracleSpeaker(personaId: OraclePersonaId) {
   /** Stop playback and discard any in-flight /api/voice synth fetch when it resolves. */
   const cancelSpeech = useCallback(() => {
     speakGenerationRef.current += 1;
+    abortControllerRef.current?.abort();
     stopPlayback();
   }, [stopPlayback]);
 
@@ -47,6 +49,8 @@ export function useOracleSpeaker(personaId: OraclePersonaId) {
       if (!areVoiceApisEnabled()) return false;
 
       const generation = ++speakGenerationRef.current;
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = new AbortController();
       stopPlayback();
       setVoiceError(null);
 
@@ -57,6 +61,7 @@ export function useOracleSpeaker(personaId: OraclePersonaId) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text, personaId, voiceSettings }),
+          signal: abortControllerRef.current.signal,
         });
 
         if (generation !== speakGenerationRef.current) return false;
@@ -104,9 +109,8 @@ export function useOracleSpeaker(personaId: OraclePersonaId) {
       } catch (error) {
         if (generation !== speakGenerationRef.current) return false;
         setIsSpeaking(false);
-        const message =
-          error instanceof Error ? error.message : "Voice synthesis failed.";
-        if (/interrupted|abort/i.test(message)) return false;
+        const message = error instanceof Error ? error.message : "Voice synthesis failed.";
+        if (error instanceof DOMException && error.name === "AbortError") return false;
         setVoiceError(message);
         if (process.env.NODE_ENV === "development") {
           console.warn("[oracle-speaker]", message);

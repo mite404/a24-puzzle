@@ -15,10 +15,16 @@ export async function fetchOracleQuipLine(
   personaId: string,
   word: { clue: string; position: number; orientation: string },
   fetchImpl: typeof fetch = fetch,
+  externalSignal?: AbortSignal,
 ): Promise<string | null> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8_000);
+
+    const signal = externalSignal
+      ? AbortSignal.any([externalSignal, controller.signal])
+      : controller.signal;
+
     const res = await fetchImpl("/api/oracle-quip", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -28,8 +34,9 @@ export async function fetchOracleQuipLine(
         position: word.position,
         orientation: word.orientation,
       }),
-      signal: controller.signal,
+      signal,
     });
+
     clearTimeout(timeout);
     if (!res.ok) return null;
     const data = (await res.json()) as { line?: string };
