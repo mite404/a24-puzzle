@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Volume2 } from "lucide-react";
 import type { CrosswordLayout, PlacedWord } from "@/lib/types";
 import { A24CtaButton } from "@/components/a24-cta-button";
 
@@ -426,6 +425,11 @@ export function Crossword({
             activeWordId={activeWord?.orientation === "down" ? activeWord.id : null}
             onReadClue={onReadClue}
           />
+          {onReadClue ? (
+            <p className="text-sm italic text-muted-foreground">
+              Click on a clue to <strong>hear</strong> more.
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -508,29 +512,27 @@ function ClueList({
       <ol className="flex flex-col gap-1.5">
         {words.map((w) => {
           const isActive = w.id === activeWordId;
+          const base = "flex w-full gap-2 text-left";
+          const style = isActive
+            ? `${base} rounded-sm bg-amber-100/80 px-1 py-0.5 text-foreground`
+            : `${base} text-foreground/75`;
+          const clickable = onReadClue
+            ? "cursor-pointer transition-colors hover:text-foreground"
+            : "";
           return (
-            <li
-              key={w.id}
-              className={
-                isActive
-                  ? "flex gap-2 rounded-sm bg-amber-100/80 px-1 py-0.5 text-foreground"
-                  : "flex gap-2 text-foreground/75"
-              }
-            >
-              <span className="font-mono text-xs text-muted-foreground">
-                {w.position}.
-              </span>
-              <span className="flex-1">{w.clue}</span>
-              {isActive && onReadClue ? (
-                <button
-                  type="button"
-                  className="shrink-0 text-muted-foreground transition-colors hover:text-foreground"
-                  aria-label={`Read clue ${w.position} aloud`}
-                  onClick={() => onReadClue(w)}
-                >
-                  <Volume2 className="size-5" aria-hidden />
-                </button>
-              ) : null}
+            <li key={w.id}>
+              <button
+                type="button"
+                disabled={!onReadClue}
+                className={`${style} ${clickable}`.trim()}
+                aria-label={`Read clue ${w.position} aloud`}
+                onClick={() => onReadClue?.(w)}
+              >
+                <span className="font-mono text-xs text-muted-foreground">
+                  {w.position}.
+                </span>
+                <span className="flex-1">{w.clue}</span>
+              </button>
             </li>
           );
         })}
@@ -541,8 +543,10 @@ function ClueList({
 
 function cellClass(isActive: boolean, inWord: boolean) {
   const base =
-    "aspect-square h-full min-h-0 w-full bg-white text-center font-mono text-[clamp(0.65rem,4vw,1rem)] font-semibold uppercase text-black caret-transparent outline-none";
-  if (isActive) return `${base} bg-amber-300`;
-  if (inWord) return `${base} bg-amber-100`;
-  return base;
+    "aspect-square h-full min-h-0 w-full text-center font-mono text-[clamp(0.65rem,4vw,1rem)] font-semibold uppercase text-black caret-transparent outline-none";
+  const bg = isActive ? "bg-amber-300" : inWord ? "bg-amber-100" : "bg-white";
+  const focus = isActive
+    ? "focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:z-10"
+    : "";
+  return `${base} ${bg} ${focus}`.trim();
 }

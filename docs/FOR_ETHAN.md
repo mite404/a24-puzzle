@@ -352,8 +352,13 @@ outgrows the file.
 
 ## Bloopers (Bugs & Fixes)
 
-- **Hint on stills** — Gradient + white/gray text on photos failed on unpredictable frames (like
-bad lower-thirds on a documentary). Moved hints to `figcaption` under the image.
+- **Crossword cell highlight invisible** — Active square and word band used `bg-amber-300` /
+`bg-amber-100` *after* `bg-white` in the same `className` string. In Tailwind, conflicting
+utilities don't follow HTML class order — whichever rule appears **last in the compiled CSS**
+wins, and `bg-white` was winning. Every cell stayed white; clue list amber still worked because
+it never stacked two backgrounds. **Fix:** pick exactly one background per state in `cellClass()`
+(`isActive` → amber-300, `inWord` → amber-100, else white) and add `focus-visible:ring` only on
+the active cell for keyboard users.
 - **Footer flush to edge** — A global `* { padding: 0 }` sat *outside* Tailwind’s `@layer`, so
 it beat `.a24-gutter` in the cascade. Reset moved into `@layer base`; footer uses symmetric
 `a24-footer-inset` (~20–40px).
