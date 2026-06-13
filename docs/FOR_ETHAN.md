@@ -484,6 +484,29 @@ When borrowing a brand’s layout, steal **tokens** (gutter, meta size, footer r
 stealing **components**. One CSS variable (`--a24-meta`) buys consistent “small gray caps”
 everywhere without re-measuring Figma.
 
+### How to write an insight (with optional diagram)
+
+Insights in this section follow a **commented snippet → diagram** rhythm when a concept needs
+visual backup. The code grounds the reader in *our* repo; the diagram shows the *flow* without
+re-reading JSX.
+
+**Template:**
+
+1. **One-line rule** — the takeaway in plain language
+2. **Optional table** — when comparing two approaches (props vs callbacks, `()` vs `{}`, etc.)
+3. **Commented code snippet** — minimal, from this codebase, arrows or labels in comments
+4. **Mermaid diagram immediately after** — sequence for round-trips (click → callback →
+re-render);
+flowchart for static structure (parent/child boxes)
+5. **One sentence** — how to read the diagram + film analogy if it clicks
+
+**Example (the pattern to copy):** see **Props down, callbacks up** below — table, snippet with
+`// data ↓` / `// event ↑` comments, then `sequenceDiagram`, then "Read the diagram…"
+
+> [!NOTE]
+> **Insight + diagram checklist:** snippet first (concrete) → mermaid second (flow). Don't lead
+> with the diagram alone — the reader needs anchors in real code before the abstract picture.
+
 ### IIFEs and nested ternaries — flatten the staircase, not every branch
 
 After the readability audit (`docs/readability-patterns-tutorial.md`), two patterns worth keeping
@@ -516,7 +539,8 @@ const micLabel = (() => { ... })();
   value (same idea as `(2 + 3) * 4`).
 - **Group 2** `()` — a normal function call. "Run what group 1 created, right now."
 
-Same grammar as `getOraclePersona(id)()` — only the function is written inline instead of referenced
+Same grammar as `getOraclePersona(id)()` — only the function is written inline instead of
+referenced
 by name. **I**mmediately **I**nvoked **F**unction **E**xpression.
 
 ```tsx
@@ -578,6 +602,200 @@ or placement (inside JSX attributes) makes you lose the plot.
 
 Full field guide with before/after tables: `docs/readability-patterns-tutorial.md` (Pattern 2).
 
+### Arrow functions in JSX — `() => (...)` vs `() => { }`
+
+You *did* know this — it's the same grammar as the IIFE section above, just easy to forget when
+you're inside `.map()` and reach for `{` out of habit.
+
+**Two shapes:**
+
+```tsx
+(i) => expression     // implicit return — the expression IS the return value
+(i) => { statements } // function body — returns nothing unless you write return
+```
+
+**In JSX lists, parentheses mean "return this element":**
+
+```tsx
+// ✅ PinCardPhotoGallery already does this
+photos.map((src, i) => (
+  <div key={src}>...</div>
+))
+
+// ❌ PinCardSlideDots bug — curly body, no return → void[]
+Array.from({ length: count }, (_, i) => {
+  <button ... />
+})
+```
+
+JavaScript treats `{ <button /> }` as a block where JSX is evaluated and **discarded**. React
+expects `[<button>, <button>, …]`; TypeScript reported `Type void[] is not assignable to
+ReactNode`.
+
+**Fix — pick one:**
+
+```tsx
+(_, i) => ( <button key={i} /> )           // implicit return
+(_, i) => { return <button key={i} />; }   // explicit return
+```
+
+| Syntax after `=>` | Returns | Use when |
+| ----------------- | ------- | -------- |
+| `( … )` | The wrapped expression | Single JSX node or value |
+| `{ return … }` | Whatever you return | Multiple statements, guards, locals first |
+| `{ … }` without `return` | **`undefined`** | Almost never in `.map()` |
+
+**Film analogy:** parentheses are a **single printed line** on the teleprompter — read it aloud.
+Curly braces are **stage directions** — you must explicitly say "and the line is…" (`return`) or
+the crew hears silence.
+
+### React parent/child — who renders whom (names lie)
+
+Parent vs child is **not** decided by function names like `Inner` or `Carousel`. It's decided by
+**who writes the JSX tag**:
+
+```tsx
+function LocationPinCardRoot(...) {
+  return (
+    <article>
+      <PinCardSlideDots onSelect={goToSlide} />  // Root WRITES this → Root is parent
+    </article>
+  );
+}
+```
+
+| Component | Role | Why the name misleads |
+| --------- | ---- | -------------------- |
+| `LocationPinCard` | Export shell + `key` remount | Looks like "the card" but is a thin wrapper |
+| `LocationPinCardRoot` | **Parent** — state, effects, composition | "Root" = owns the tree |
+| `PinCardPhotoGallery` | **Child** — photo strip | Leaf UI |
+| `PinCardSlideDots` | **Child** — dot row | Leaf UI; receives `onSelect` |
+
+### Props down, callbacks up — React's one-way street
+
+React parent/child wiring follows one rule everywhere in the app — intake composer, pin card,
+location
+quiz:
+
+| Direction | Vehicle | Carries | Example |
+| --------- | ------- | ------- | ------- |
+| **Down** | Props | Data, config, **functions the child may call** | `activeIndex={2}`, `onSelect={goToSlide}` |
+| **Up** | Callback props | User intent, events | Child calls `onSelect(2)` → parent runs `goToSlide` |
+
+The parent **owns state**. The child **reports events**. The child never calls `setActiveIndex`
+directly — it calls the callback the parent handed down.
+
+**Concrete example (`location-pin-card.tsx`):**
+
+```tsx
+// Parent — owns state + handler
+const [activeIndex, setActiveIndex] = useState(0);
+const goToSlide = (i: number) => setActiveIndex(i);
+
+<PinCardSlideDots
+  count={4}
+  activeIndex={activeIndex}   // data ↓
+  onSelect={goToSlide}        // callback fn ↓ (still a prop!)
+/>;
+
+// Child — displays + fires callback
+<button onClick={() => onSelect(i)} />  // event ↑
+```
+
+```mermaid
+sequenceDiagram
+  participant Root as LocationPinCardRoot
+  participant Dots as PinCardSlideDots
+
+  Note over Root: activeIndex = 0
+  Root->>Dots: props ↓ count, activeIndex, onSelect
+  Note over Dots: dot 2 highlighted from activeIndex
+  Dots->>Root: onSelect(2) ↑
+  Note over Root: goToSlide(2) → setActiveIndex(2)
+  Root->>Dots: re-render — activeIndex = 2 ↓
+```
+
+**Read the diagram:** solid arrows on the way down are **props** (parent renders child with new
+values). The arrow back up is the child **invoking** `onSelect` — same function reference the
+parent passed, now running in the parent's scope where `setActiveIndex` lives.
+
+**Film analogy:** props are **call sheet + walkie channel** handed to a department. Callbacks are
+the department **keying the mic** — "slide 2" — back to the director, who updates the master
+timeline (`activeIndex`).
+
+The child never imports `goToSlide` by name. It only calls the **`onSelect` prop** — whatever
+function the parent plugged in. Same pattern as `onMoreInfo`, `onComplete`, `onDismiss`.
+
+### Props are a two-socket contract (send *and* receive)
+
+Passing a prop from the parent is **half** the wiring. TypeScript errors that look unrelated often
+share one root cause:
+
+| Error | Meaning |
+| ----- | ------- |
+| `Property onSelect does not exist on type …` | Parent sends; child type doesn't list it |
+| `Cannot find name 'onSelect'` | Child uses it in JSX but didn't destructure it |
+| `Type void[] is not assignable to ReactNode` | `.map` returned `undefined` (see arrow-fn section) |
+
+**Checklist when adding a callback prop:**
+
+1. Parent JSX: `onSelect={goToSlide}`
+2. Child destructuring: `onSelect,`
+3. Child type: `onSelect: (index: number) => void`
+4. Child usage: `onClick={() => onSelect(i)}`
+
+Same pattern as `photos` → `PinCardPhotoGallery` and `onMoreInfo` → the "more info" button. If
+you've wired one prop successfully in a file, every other prop uses the same three steps.
+
+**Scope rule:** each function is its own box. `PinCardSlideDots` cannot see `photos`, `goToSlide`,
+or `setActiveIndex` from the parent — only what arrives as props. Use `count` to loop dots, not
+`photos.map`.
+
+### Module file order — tell the composition story
+
+Two valid orders; pick one and stay consistent:
+
+| Order | Story | This file |
+| ----- | ----- | --------- |
+| **Bottom-up** | Bricks → house | Config → types → leaf UI → `LocationPinCardRoot` → export |
+| **Top-down** | Headline → details | Export first, helpers below |
+
+For learning wiring, **bottom-up** matches dependency: read `PinCardSlideDots` before the root
+that uses it. **File order ≠ React tree** — the parent can appear later in the file as long as
+it
+renders the children above it.
+
+Rename by **UI job**, not hierarchy: `PinCardPhotoGallery`, `PinCardSlideDots`,
+`LocationPinCardRoot`
+— not `Inner`, `Media`, `Carousel`.
+
+### Carousel dots — product + accessibility together
+
+**Product:** dots jump to slide *i*; auto-advance (4 s interval) already lives in
+`LocationPinCardRoot` — it only needed `goToSlide` wired to the same `activeIndex` state.
+
+**ARIA:** use a **`role="group"` of `<button>`s**, not `role="tablist"`, unless you also ship
+arrow-key tab semantics. `tablist` promises keyboard tabs; decorative spans broke that contract
+(Rams audit). Each dot: `aria-label="Photo 2 of 4"`, `aria-current="true"` on the active one.
+
+**Target size:** WCAG cares about the **button** hit area (44×44 px), not the icon or the 4 px
+visible bar. Bumping `MicIcon` from `size-4` → `size-5` inside a `size-10` button doesn't fix
+touch targets — change the **button** to `size-11`.
+
+Full audit write-up: `docs/codebase-audits/rams-accessibility-ux-review.md`.
+
+### Git stash — quick ref (branch hygiene)
+
+| Flag | Job |
+| ---- | --- |
+| *(none)* | Stash tracked changes (staged + unstaged) |
+| `-u` | Also stash **untracked** files (new folders like `docs/codebase-audits/`) |
+| `-m "message"` | Label the stash so `git stash list` is readable |
+
+You do **not** need to `git add` before stashing. To land commits on `main` and move WIP to a new
+branch: `git stash push -u -m "…"` → checkout/merge `main` → `git checkout -b new-branch` →
+`git stash pop`.
+
 ### React hooks — what they are, and `useOracleChat` as a case study
 
 A React component is a function that runs **every time** the UI needs to update (every "take").
@@ -612,7 +830,8 @@ inside `if`, loops, or nested functions. That's how React keeps continuity consi
 | `finalized` ref | **How many times** — exactly once per intake until persona resets |
 
 The verb **extract** describes the runtime job (pull a profile out of nested message parts), not
-the refactor move of "extracting into a helper." Same family as `findLastAssistant`, `formatChatError`.
+the refactor move of "extracting into a helper." Same family as `findLastAssistant`,
+`formatChatError`.
 
 #### Annotated snippets — helper + effects
 
@@ -793,7 +1012,7 @@ only holds hover/expanded state.
 - **Data:** optional `venueLabel` on locations (e.g. St. Barts Cathedral); film row uses
 `getFilmShortTitle()` (drops leading “The”).
 - **Carousel:** expanded cards auto-advance film stills every 4s (RTL slide via `translateX`);
-segment dots track `activeIndex`; autoplay pauses on hover and respects `prefers-reduced-motion`.
-Collapsed cards keep the single `photoUrl` hero. Gallery comes from optional `photoUrls` on a
-location, or falls back to `getLocationPhotoUrls()` (primary still + `filmStillsForFilm()` pool in
-`locations.ts`).
+segment dots are **clickable buttons** (`onSelect` → `goToSlide`) that jump to a slide; autoplay
+pauses on hover and respects `prefers-reduced-motion`. Collapsed cards keep the single `photoUrl`
+hero. Gallery comes from optional `photoUrls` on a location, or falls back to
+`getLocationPhotoUrls()` (primary still + `filmStillsForFilm()` pool in `locations.ts`).
