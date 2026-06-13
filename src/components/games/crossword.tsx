@@ -528,7 +528,7 @@ function ClueList({
                   aria-label={`Read clue ${w.position} aloud`}
                   onClick={() => onReadClue(w)}
                 >
-                  <Volume2 className="size-4" aria-hidden />
+                  <Volume2 className="size-5" aria-hidden />
                 </button>
               ) : null}
             </li>

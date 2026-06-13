@@ -18,11 +18,13 @@ import {
 import { A24CtaButton } from "@/components/a24-cta-button";
 import { LocationPinCard } from "@/components/games/location-pin-card";
 
+// ── Config ──
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
 /** Brief delay so the cursor can travel pin → card without dismissing collapsed hover. */
 const HOVER_BRIDGE_MS = 120;
 
+// ── Types ──
 interface LocationMapProps {
   heroLocation: FilmLocation;
   nearbyLocations: FilmLocation[];
