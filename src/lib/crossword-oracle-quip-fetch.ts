@@ -14,7 +14,7 @@ export function resolveIdle45Line(
 export async function fetchOracleQuipLine(
   personaId: string,
   word: { clue: string; position: number; orientation: string },
-  fetchImpl: typeof fetch = fetch,
+  fetchImpl: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>,
   externalSignal?: AbortSignal,
 ): Promise<string | null> {
   try {
