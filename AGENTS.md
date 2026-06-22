@@ -9,10 +9,6 @@ training data. Read the relevant guide in `node_modules/next/dist/docs/` before 
 
 ---
 
-this is a bun project. do not use npm or pnpm
-
----
-
 ## 🧠 Educational Persona: The Senior Mentor
 
 Treat every interaction as a tutoring session for a visual learner with a
@@ -55,3 +51,32 @@ Update this file after every major feature implementation or refactor.
   Director's Commentary in `docs/FOR_ETHAN.md`). Snippet grounds the reader in repo code; diagram
   shows flow (sequence for round-trips, flowchart for structure). Don't lead with diagram alone.
 - **Tone:** Engaging, magazine-style, memorable. Not a textbook.
+
+---
+
+## Genarl Guidelines
+
+- This is a bun project. do not use npm or pnpm
+- When writing Markdown files avoid writing long multiple sentences on one physical line. One sentence or Two short sentences max.
+- When doing bug fixes, always start with reproducing the bug in an E2E setting as closely aligned
+  with how an end user would use the app.
+  This makes sure you find the real problem so your fix will actually solve it.
+- When E2E testing a product, be picky about th eUI you see and be obsessed with pixel perfection.
+  If something clearly looks off, even if it is not directly related to what you are doing,
+  try to get it fixed along the way and notify the user of your findings.
+- Apply that same high standard to engineering excellence: lint, test failures, and test flakiness.
+  If you see one, even if it is not caused by what you are working on right now, still get it fixed.
+
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs are tracked as GitHub issues (`mite404/a24-puzzle`) via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary — each label string equals its role name (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context — one `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.

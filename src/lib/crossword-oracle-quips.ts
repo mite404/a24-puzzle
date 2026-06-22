@@ -57,11 +57,7 @@ export const CROSSWORD_ORACLE_QUIPS: Record<OraclePersonaId, PersonaQuips> = {
     ],
   },
   materialist: {
-    clueRead: [
-      "Clue: {clue}",
-      "Read it back to yourself — {clue}",
-      "Here's the prompt: {clue}",
-    ],
+    clueRead: ["Clue: {clue}", "Read it back to yourself — {clue}", "Here's the prompt: {clue}"],
     idle20: [
       "You've been on that clue a while.",
       "Nothing wrong with a pause — but the grid's still waiting.",
@@ -72,26 +68,21 @@ export const CROSSWORD_ORACLE_QUIPS: Record<OraclePersonaId, PersonaQuips> = {
       "The clue isn't getting easier while you stare at it.",
       "Move. Even a wrong guess gives you information.",
     ],
-    completed: [
-      "Hmmmm.",
-      "Noted.",
-      "Okay.",
-      "…are you sure?",
-      "That's a choice.",
-    ],
+    completed: ["Hmmmm.", "Noted.", "Okay.", "…are you sure?", "That's a choice."],
   },
 };
 
 /** Never return the same line twice in a row. */
-export function pickQuip(pool: string[], lastSpoken?: string): string {
+export function pickQuip(
+  pool: string[],
+  lastSpoken?: string,
+  random: () => number = Math.random,
+): string {
   if (pool.length === 0) return "";
   if (pool.length === 1) return pool[0] ?? "";
-  const candidates =
-    lastSpoken !== undefined
-      ? pool.filter((line) => line !== lastSpoken)
-      : pool;
+  const candidates = lastSpoken !== undefined ? pool.filter((line) => line !== lastSpoken) : pool;
   const pickFrom = candidates.length > 0 ? candidates : pool;
-  const index = Math.floor(Math.random() * pickFrom.length);
+  const index = Math.floor(random() * pickFrom.length);
   return pickFrom[index] ?? pool[0] ?? "";
 }
 
