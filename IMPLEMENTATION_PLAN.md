@@ -193,7 +193,14 @@ accuracy rule. `pdftotext` is installed.
 
 See `specs/eval-harness.md`. Build the pipeline before spending any API budget.
 
-- [ ] Write `evals/RUBRIC.md` with the five judge checks, before any run exists.
+- [x] Write `evals/RUBRIC.md` with the five judge checks, before any run exists.
+      Authored `evals/RUBRIC.md` from the spec's judge checklist: c1 on-topic, c2 solvable,
+      c3 mixed difficulty, c4 no near-duplicates, c5 factually-correct (flagged NEVER DROP).
+      Each check is binary (pass/false + one-line rationale), scored absolute/one-puzzle-at-a-
+      time. Documented what the judge sees (transcript, words, clues, ASCII grid) vs never sees
+      (persona, arm, run index), the JSON output shape judge.ts emits, and the per-block +
+      CEILING reporting rule that score.ts must honour. No code touched; all four validations
+      still pass (55 tests).
 
 - [ ] Write at least 10 persona sheets in `evals/personas/` covering the required axes.
 
