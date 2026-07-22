@@ -357,6 +357,44 @@ out of scope for Phase 0.)
 - The `must(v)` helper (throws on undefined) is used in `score.test.ts` in place of
   `find(...)!` — lint bans non-null assertions as an error (see the gates note above).
 
+## Phase 4 — smoke sweep (done)
+
+- **`claude -p` is NOT logged in in this container.** No `ANTHROPIC_API_KEY` in env; the
+  CLI prints `Not logged in · Please run /login` to **stdout** and exits 1. So `judge.ts`'s
+  real transport cannot run here. The full Phase-5 sweep needs a logged-in `claude -p` (or an
+  `ANTHROPIC_API_KEY`) for a trustworthy c5. The pure judge core (`parseJudgeResponse`,
+  `scoreBlindRecord`, injected `JudgeFn`) works regardless — only the CLI backend is blocked.
+- **Bug fixed (test-first): `claudeJudge` dropped stdout on failure.** It reported
+  `err.trim() || "(no stderr)"`, but the CLI's real error was on **stdout**, so the failure
+  was undiagnosable. Extracted pure `describeClaudeFailure(code, stdout, stderr)` (stderr →
+  stdout → `(no output)`), exported + 3 tests (judge.test.ts, now 22). Failing test committed
+  first. Lesson for any spawned CLI: on non-zero exit, surface stdout too — not every tool
+  writes errors to stderr.
+- **OpenRouter latency ≈ 12s/call for `moonshotai/kimi-k2.6`.** A `turn_cap: 12` cell is up
+  to ~24 model calls ≈ 5–8 min; two cells exceed a 550s foreground timeout. **Run sweeps
+  detached** (`nohup … &` / run_in_background) and watch `evals/runs/` fill — `run.ts` writes
+  one file per cell on completion and is resumable, so a killed foreground wrapper never
+  loses finished cells. Do NOT pipe the sweep through `tail` while waiting: `tail` buffers
+  until EOF, so a killed run shows an empty log even though cells completed.
+- **Both smoke cells finalized in 5 turns; all six gates PASS.** director-ari-aster requested
+  9 ids, placed 9 (density 0.318); single-film-uncut-gems similar. Note the oracle requested
+  **9** ids here (below the Phase-5 target of >= 10) yet all placed — luck, not reliability;
+  Phase 5 still raises the requested count.
+- **Observed drift the eval is meant to catch:** the uncut-gems oracle put `CONNIE` (Good
+  Time) into a puzzle whose user *explicitly rejected* Good Time; the ari-aster oracle put
+  `the-witch` into `selectedFilmIds` but requested no Witch words. Both are exactly the c1
+  "centre of gravity" drift RUBRIC.md warns about — one word each, so c1 still passes, but
+  worth watching once the full sweep runs with a real judge.
+- **Eval artifacts (`runs/ blind/ scores/`, `*.log`) are gitignored** — reproducible sweep
+  outputs, not source. The evidence lives in the plan + these notes, not committed JSON.
+- **Smoke judge caveat:** because `claude -p` was blocked, the two blinded puzzles were
+  judged by the Claude *agent* from the blinded content only (transcript/words/clues/grid),
+  fed through the real `scoreBlindRecord` path so the score files match the CLI schema
+  byte-for-byte. This proves the pipeline mechanically (run→blind→judge→score, CEILING fires
+  on 2/2 saturation). It is NOT a blind judgment (the agent had seen the run identities),
+  so the 100%/CEILING numbers are a plumbing check, not an eval result. Phase 5 must use the
+  real logged-in `claude -p`.
+
 ## Corrected assumptions
 
 Record any case where a measurement contradicted something written in the plan or the

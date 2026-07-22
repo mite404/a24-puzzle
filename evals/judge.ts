@@ -233,6 +233,22 @@ export function scoreIsDone(scoresDir: string, blindId: string): boolean {
 }
 
 /**
+ * Build the error message for a non-zero `claude -p` exit. Prefers stderr, then falls
+ * back to stdout, then to a marker. The fallback to stdout matters: some CLI failures
+ * (notably "Not logged in · Please run /login") are printed to STDOUT, so an stderr-only
+ * message would report "(no stderr)" and hide the real cause — which is exactly what the
+ * first smoke sweep hit.
+ */
+export function describeClaudeFailure(
+  code: number,
+  stdout: string,
+  stderr: string,
+): string {
+  const detail = stderr.trim() || stdout.trim() || "(no output)";
+  return `claude -p exited ${code}: ${detail}`;
+}
+
+/**
  * The default judge backend: the `claude` CLI in print mode. The prompt goes in on stdin
  * (not as an argv, which would blow the length limit on a full rubric + transcript), and
  * the model's text comes back on stdout. A non-zero exit is surfaced as a throw so the cell
@@ -251,7 +267,7 @@ function claudeJudge(prompt: string): Promise<string> {
       proc.exited,
     ]);
     if (code !== 0) {
-      throw new Error(`claude -p exited ${code}: ${err.trim() || "(no stderr)"}`);
+      throw new Error(describeClaudeFailure(code, out, err));
     }
     return out;
   })();

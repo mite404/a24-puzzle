@@ -39,3 +39,9 @@ next-env.d.ts
 # rumdl
 .rumdl_cache
 .fallow/
+
+# eval harness artifacts — reproducible sweep outputs, not source
+/evals/runs/
+/evals/blind/
+/evals/scores/
+/evals/*.log

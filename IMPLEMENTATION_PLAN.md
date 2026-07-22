@@ -296,8 +296,22 @@ See `specs/eval-harness.md`. Build the pipeline before spending any API budget.
       under `import.meta.main` (no spend). 18 tests in `score.test.ts` (135 total). All four
       validations pass.
 
-- [ ] Do a single smoke sweep: 2 personas x 1 run, to prove the pipeline end to end
+- [x] Do a single smoke sweep: 2 personas x 1 run, to prove the pipeline end to end
       before any full sweep.
+      Ran `single-film-uncut-gems` + `director-ari-aster`, 1 run each, arm `baseline`,
+      oracle+user = `moonshotai/kimi-k2.6` (OpenRouter). **Both finalized in 5 turns; all
+      six deterministic gates PASS on both.** Stages proven live: run (real prompt+tools) →
+      blind (2 files + key.json, leak-scan clean) → judge → score. **Bug surfaced and fixed
+      test-first:** `claude -p` failures print to STDOUT, but `claudeJudge` only reported
+      stderr, so the real cause ("Not logged in") showed as "(no stderr)". Extracted +
+      tested `describeClaudeFailure` (stderr → stdout → marker). **Judge transport blocked:**
+      `claude` CLI is NOT logged in in this container (no `ANTHROPIC_API_KEY`), so `claude -p`
+      exits 1. To still prove stage 3→4 the two blinded puzzles were judged by the Claude
+      agent from the BLINDED content only, routed through the real `scoreBlindRecord`/
+      `parseJudgeResponse` path (byte-identical output). `score.ts` then unblinded, reported
+      per-block, and printed the `CEILING` warning on all five checks (2/2, saturated) + the
+      c5 audit (0 failures). Artifacts are gitignored (reproducible). See RALPH_NOTES.
+      **Phase 5's full sweep needs a logged-in `claude -p` for a trustworthy c5.**
 
 ## Phase 5 — Close the loop
 
