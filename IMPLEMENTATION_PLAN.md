@@ -135,8 +135,13 @@ accuracy rule. `pdftotext` is installed.
       are not approved films, so they keep no cast. Only well-established leads/principals
       included per the accuracy rule; walk-ons left out. All four validations pass.
 
-- [ ] Add a bank integrity test: single alphabetic token, length > 1, uppercase, no
+- [x] Add a bank integrity test: single alphabetic token, length > 1, uppercase, no
       duplicate answers, no duplicate ids, every `filmId` exists in `films.ts`.
+      New file `src/data/crosswordBank.test.ts`, 4 tests: R3 (`/^[A-Z]+$/` + length > 1),
+      R4 no dup answers, R4 no dup ids, and every `filmId` in the `films.ts` id set. All
+      pass on the current 14-entry bank. R1 (~70 entries) and R2 (>= 6 per approved film)
+      are deliberately NOT asserted yet — the bank is still being mined; those land after
+      the mining tasks below. These integrity checks must hold on every entry ever added.
 
 - [ ] Mine `moonlight`, `hereditary`, `midsommar` to at least 6 entries each.
 
