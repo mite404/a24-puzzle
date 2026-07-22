@@ -265,8 +265,21 @@ See `specs/eval-harness.md`. Build the pipeline before spending any API budget.
       spend). 19 tests in `blind.test.ts` incl. a serialised-record leak scan and a collision
       guard. All four validations pass (98 tests).
 
-- [ ] Write `evals/judge.ts` — scores one blinded puzzle at a time via `claude -p`,
+- [x] Write `evals/judge.ts` — scores one blinded puzzle at a time via `claude -p`,
       resumable, absolute scoring only.
+      Stage 3: `blind/<id>.json` -> `scores/<id>.json`. Pure core: `buildJudgePrompt`
+      inlines RUBRIC.md verbatim + the four judge-visible fields (transcript, placed words,
+      numbered clues, ASCII grid) and pins the output to one JSON object; `extractJson`
+      recovers the object from a ```json fence or surrounding prose (throws if none, so a
+      garbled reply fails loudly not silently-all-false); `parseJudgeResponse` validates the
+      five checks (c1..c5), requires a real boolean `pass` per check, defaults a missing
+      `why`, and — critically — takes `blindId` from the caller, never the model's echo, so
+      a stray echo can't mislabel a score. Judge backend (`JudgeFn`) is injected so tests
+      feed canned JSON; the real `claude -p` call (prompt on stdin to dodge argv limits,
+      non-zero exit -> throw so the cell stays unscored + retriable) and all FS/CLI run only
+      under `import.meta.main`. `loadBlindRecords` skips `key.json` explicitly (never opened);
+      `scoreIsDone` gives resumability. 19 tests in `judge.test.ts`, no CLI spend. All four
+      validations pass (117 tests, tsc clean, 0 lint errors).
 
 - [ ] Write `evals/score.ts` — unblind, aggregate, per-block reporting, with an explicit
       CEILING warning when a block saturates.

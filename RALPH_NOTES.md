@@ -304,6 +304,33 @@ out of scope for Phase 0.)
   generator coord convention (startx=col, starty=row, 1-indexed); crossing cells overwrite
   deterministically to the same letter in a valid puzzle.
 
+## Phase 4 — eval `judge.ts` (done)
+
+- **The judge's `blindId` is the caller's, never the model's echo.** `parseJudgeResponse`
+  sets `blindId` from the argument we pass (the id of the puzzle we handed the judge) and
+  ignores the `blindId` the model writes into its JSON. The judge only ever knows one
+  puzzle's id, so trusting our own value means a hallucinated/copy-pasted echo can't attach
+  a verdict to the wrong puzzle when `score.ts` unblinds.
+- **A garbled judge reply throws; it is NOT scored all-false.** `extractJson` recovers the
+  object from a ```json fence or from surrounding prose, but throws if there is no `{...}`
+  at all, and `parseJudgeResponse` throws if any of c1..c5 is missing or `pass` isn't a
+  boolean. The CLI catches per-cell and leaves that `scores/<id>.json` unwritten, so a
+  failed judging is retriable on the next run — never silently recorded as five fails. This
+  matters because "all false" and "couldn't parse" are different states and conflating them
+  would poison the c5 rate (the never-drop check).
+- **`why` is soft, `pass` is hard.** A missing rationale defaults to `(no rationale given)`
+  rather than throwing — the machine-readable verdict is what `score.ts` aggregates; the
+  rationale is only for human audit, so a judge that omits it still yields a usable score.
+- **`claude -p` gets the prompt on stdin, not argv.** RUBRIC.md + a full transcript easily
+  exceeds a safe argv length, so `claudeJudge` pipes the prompt via `Bun.spawn` stdin. A
+  non-zero exit is surfaced as a throw (with stderr) rather than returning partial stdout.
+  NOTE: like run.ts's OpenRouter wiring, the real `claude -p` call is unrun so far — the CLI
+  path only fires under `import.meta.main`; the 19 tests exercise the pure core with an
+  injected `JudgeFn` and spend nothing. First real invocation lands with the smoke sweep.
+- **`loadBlindRecords` skips `key.json` by name.** The unblinding key sits in the same
+  `blind/` dir as the records; filtering `f !== "key.json"` keeps the judge from ever
+  reading identity, enforced by a test that plants a key.json and asserts it's excluded.
+
 ## Corrected assumptions
 
 Record any case where a measurement contradicted something written in the plan or the
