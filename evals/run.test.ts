@@ -1,4 +1,6 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   cellIsDone,
@@ -224,6 +226,46 @@ describe("resumability helpers", () => {
     expect(cellIsDone(import.meta.dir, "does-not-exist__baseline__run1.json")).toBe(
       false,
     );
+  });
+
+  test("cellIsDone is false for an errored run — a transient failure is retriable", () => {
+    // run.ts writes a record even when runCell catches an exception (empty
+    // transcript, error message). If cellIsDone treated that as done, a transient
+    // API error like "Invalid JSON response" would be baked in permanently and
+    // never retried, poisoning the sweep's per-block results.
+    const dir = mkdtempSync(join(tmpdir(), "ralph-cell-"));
+    const name = "sample__baseline__run1.json";
+    writeFileSync(
+      join(dir, name),
+      JSON.stringify({
+        persona: "sample",
+        finalized: false,
+        reachedCap: false,
+        transcript: [],
+        profile: null,
+        error: "Invalid JSON response",
+      }),
+    );
+    expect(cellIsDone(dir, name)).toBe(false);
+  });
+
+  test("cellIsDone is true for a clean run that tripped the turn cap (error null)", () => {
+    // A cap-tripped run is a legitimate, completed data point (the oracle failed
+    // to finalize) — NOT an exception. It must stay done so it is not re-run.
+    const dir = mkdtempSync(join(tmpdir(), "ralph-cell-"));
+    const name = "sample__baseline__run2.json";
+    writeFileSync(
+      join(dir, name),
+      JSON.stringify({
+        persona: "sample",
+        finalized: false,
+        reachedCap: true,
+        transcript: [{ role: "user", text: "hi" }],
+        profile: null,
+        error: null,
+      }),
+    );
+    expect(cellIsDone(dir, name)).toBe(true);
   });
 });
 
