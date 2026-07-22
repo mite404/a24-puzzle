@@ -71,6 +71,12 @@ export interface CrosswordLayout {
   rows: number;
   cols: number;
   words: PlacedWord[];
+  /**
+   * Bank ids of requested entries the generator could not interlock (returned with
+   * `orientation: "none"`). Empty when every requested word reached the grid. Makes the
+   * silent drop observable to the caller — see spec `crossword-layout.md` R6.
+   */
+  droppedIds: string[];
 }
 
 /** Structured output of the conversation, emitted by Claude via finalizeExperience. */

@@ -57,8 +57,16 @@ Fill these in as they are measured. Later phases depend on them.
 
 ## Known constraints
 
-- `buildCrosswordLayout` (`src/lib/game.ts:44`) silently drops any word the generator
-  cannot interlock. This is the central thing the tests exist to pin down.
+- `buildCrosswordLayout` (`src/lib/game.ts`) used to silently drop any word the generator
+  could not interlock. **Fixed (Phase 2, R6):** `CrosswordLayout` now carries
+  `droppedIds: string[]` — the bank ids the generator returned with `orientation: "none"`.
+  Placed vs dropped are split on one `isPlaced` predicate over `layout.result`, so they
+  are exhaustive (`words.length + droppedIds.length === entries.length` for that call).
+  Number of dropped words = `droppedIds.length`.
+- Placement is **input-order dependent**, not just count dependent: the full 14-entry bank
+  places all 14, but `crosswordBank.slice(0, 8)` deterministically drops `cw-liminal`
+  (LIMINAL) — 7 placed. So a smaller set can drop while the whole bank does not. This is
+  why the fuzz per-size mean placed (e.g. 7.55 at 8) is below the count.
 - `resolveCrosswordEntries` only tops up the entry list when fewer than **4** ids
   resolve. Five valid ids therefore yields a five-word puzzle.
 - `validateExperienceProfile` checks that ids *exist*. It does not check how many there

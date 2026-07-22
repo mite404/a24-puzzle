@@ -94,8 +94,17 @@ anything in this phase.
       (0,1]) are asserted; R1 is deliberately NOT asserted — measuring its failure is the
       point of this phase.
 
-- [ ] Make dropped words observable (spec `crossword-layout.md` R6) — the caller must be
+- [x] Make dropped words observable (spec `crossword-layout.md` R6) — the caller must be
       able to tell that requested words did not make it onto the grid. Failing test first.
+      Added `droppedIds: string[]` to `CrosswordLayout` (`types.ts`), populated in
+      `buildCrosswordLayout` from the same `layout.result`: placed vs dropped split on one
+      `isPlaced` predicate so they stay exhaustive. `droppedIds` holds the bank ids the
+      generator returned with `orientation: "none"`; the count is `droppedIds.length`.
+      Three tests in `game.test.ts`: (1) `words.length + droppedIds.length ===
+      crosswordWords.length` for the full bank (nothing vanishes unaccounted); (2) the
+      first 8 bank ids deterministically drop `cw-liminal` (7 placed, 1 dropped); (3) the
+      full 14-entry bank drops nothing, so `droppedIds` is `[]`. Failing test committed
+      first (field absent → undefined), then the fix.
 
 - [ ] Fix any other defect Phase 1 documented. One defect per iteration, each with its
       failing test committed first.

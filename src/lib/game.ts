@@ -41,30 +41,35 @@ function buildCrosswordLayout(entries: CrosswordEntry[]): CrosswordLayout {
     console.log = originalLog;
   }
 
-  const words: PlacedWord[] = layout.result
-    .filter(
-      (w) =>
-        w.orientation !== "none" &&
-        typeof w.startx === "number" &&
-        typeof w.starty === "number" &&
-        typeof w.position === "number",
-    )
-    .map((w) => {
-      const entry =
-        entries.find((e) => e.word.toUpperCase() === w.answer && e.clue === w.clue) ??
-        entries.find((e) => e.word.toUpperCase() === w.answer);
-      return {
-        id: entry?.id ?? w.answer,
-        answer: w.answer,
-        clue: w.clue,
-        startx: w.startx as number,
-        starty: w.starty as number,
-        orientation: w.orientation as "across" | "down",
-        position: w.position as number,
-      };
-    });
+  // The generator returns *every* requested word in `layout.result`; the ones it could
+  // not interlock carry `orientation: "none"`. A placed word additionally needs valid
+  // numeric coords. Splitting on the same predicate keeps placed + dropped exhaustive.
+  const isPlaced = (w: (typeof layout.result)[number]) =>
+    w.orientation !== "none" &&
+    typeof w.startx === "number" &&
+    typeof w.starty === "number" &&
+    typeof w.position === "number";
 
-  return { rows: layout.rows, cols: layout.cols, words };
+  const idFor = (w: (typeof layout.result)[number]) =>
+    (
+      entries.find((e) => e.word.toUpperCase() === w.answer && e.clue === w.clue) ??
+      entries.find((e) => e.word.toUpperCase() === w.answer)
+    )?.id ?? w.answer;
+
+  const words: PlacedWord[] = layout.result.filter(isPlaced).map((w) => ({
+    id: idFor(w),
+    answer: w.answer,
+    clue: w.clue,
+    startx: w.startx as number,
+    starty: w.starty as number,
+    orientation: w.orientation as "across" | "down",
+    position: w.position as number,
+  }));
+
+  // R6: expose what fell off the grid instead of swallowing it silently.
+  const droppedIds = layout.result.filter((w) => !isPlaced(w)).map(idFor);
+
+  return { rows: layout.rows, cols: layout.cols, words, droppedIds };
 }
 
 /** Resolves crossword ids from the profile, falling back to a sensible default set. */
