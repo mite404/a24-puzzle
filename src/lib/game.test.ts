@@ -122,6 +122,44 @@ describe("buildGamePayload — resolveCrosswordEntries via crosswordWords", () =
 });
 
 /**
+ * RUBRIC c4 ("no near-duplicates"): a role and the actor who plays it can each be a bank
+ * entry whose clue names the other (e.g. HARRY "played by Pedro Pascal" and PASCAL "Pedro
+ * who plays Harry"). Placed in one grid, the two clues are each other's mirror — a
+ * near-duplicate the full sweep flagged (evals/RESULTS.md, terse-one-word). Entries in the
+ * same mirror pair share a `pairId`; `resolveCrosswordEntries` keeps only the first-seen
+ * member, so both `crosswordWords` and the placed grid can never carry both halves.
+ */
+describe("buildGamePayload — mirror pairs never co-occur (RUBRIC c4)", () => {
+  test("requesting both halves of a mirror pair keeps only the first-seen half", () => {
+    // cw-pascal is seen before cw-harry, so pascal is kept and harry (its mirror) dropped.
+    const ids = ["cw-pascal", "cw-harry", "cw-lucy", "cw-john", "cw-song"];
+    const payload = buildGamePayload(baseProfile({ crosswordWordIds: ids }));
+    const resolvedIds = payload.crosswordWords.map((e) => e.id);
+    expect(resolvedIds).toContain("cw-pascal");
+    expect(resolvedIds).not.toContain("cw-harry");
+    // no unrelated entry was disturbed
+    expect(resolvedIds).toContain("cw-lucy");
+    expect(resolvedIds).toContain("cw-john");
+    expect(resolvedIds).toContain("cw-song");
+  });
+
+  test("no placed layout ever carries both members of a mirror pair", () => {
+    // The full bank contains all three mutual role/actor pairs.
+    const payload = buildGamePayload(baseProfile({ crosswordWordIds: crosswordBank.map((e) => e.id) }));
+    const resolvedIds = new Set(payload.crosswordWords.map((e) => e.id));
+    const pairs = [
+      ["cw-harry", "cw-pascal"],
+      ["cw-lucy", "cw-johnson"],
+      ["cw-connie", "cw-pattinson"],
+    ];
+    for (const [a, b] of pairs) {
+      // at most one half of each pair survives resolution
+      expect(resolvedIds.has(a) && resolvedIds.has(b)).toBe(false);
+    }
+  });
+});
+
+/**
  * Grid integrity: for whatever grid the (deterministic) generator produces, the placed
  * words must be internally consistent. These pin spec `crossword-layout.md`:
  *   R2 — every placed word carries the id of the bank entry it came from.
