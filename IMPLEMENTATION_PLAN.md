@@ -235,8 +235,20 @@ See `specs/eval-harness.md`. Build the pipeline before spending any API budget.
       validations pass (70 tests). No sweep was run — that needs OpenRouter budget and is a
       later task.
 
-- [ ] Add the deterministic gates from the spec to `run.ts` and record pass/fail per run.
+- [x] Add the deterministic gates from the spec to `run.ts` and record pass/fail per run.
       These need no judge and no extra API spend.
+      Pure `evaluateGates(GateInput) -> GateReport` in `run.ts`, one `GateOutcome`
+      ({pass, detail}) per spec gate: finalize-called, all returned ids in bank, >= 8 words
+      placed, 0 duplicate placed ids, >= 60% of placed words from `selectedFilmIds`, >= 2
+      distinct difficulty levels. Grid fill density (distinct occupied cells / rows*cols) is
+      *recorded only* — no threshold, per the spec. `report.passed` is the AND of the six
+      gated checks; density never affects it. Wired into `RunRecord.gates` (both success and
+      error paths, so a crashed cell still carries a fully-failing report) and surfaced in the
+      sweep console via `describeGateFailures`. Failure shapes handled without throwing: null
+      profile / null crossword fail the affected gates and leave density null. 9 new tests in
+      `run.test.ts` (24 total in file, 79 total): happy path passes all six, plus one
+      targeted failure per gate (synthetic inputs from real uncut-gems bank entries) and one
+      integration check against a real `buildGamePayload` grid. No API spend — all pure.
 
 - [ ] Write `evals/blind.ts` — salted hash, `key.json`, judge never sees identity.
 

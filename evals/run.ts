@@ -33,9 +33,11 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { oracleTools } from "@/lib/oracle-tools";
 import { buildSystemPrompt } from "@/lib/oracle-prompt";
 import { buildGamePayload } from "@/lib/game";
+import { crosswordBank } from "@/data/crosswordBank";
 import type {
   CrosswordEntry,
   CrosswordLayout,
+  Difficulty,
   ExperienceProfile,
   FilmId,
 } from "@/lib/types";
@@ -261,6 +263,194 @@ export async function driveConversation(opts: {
   return { transcript, finalized, reachedCap, userTurns, profile };
 }
 
+// --- Deterministic gates (pure; no judge, no API cost) ---------------------
+
+/**
+ * The gates from specs/eval-harness.md. Each is computed in code from a finished run;
+ * a run FAILS if any gated check fails. Grid fill density is recorded but not gated
+ * ("recorded, no gate yet" in the spec). These prove the grid is *structurally* right
+ * for the conversation; the LLM judge later scores whether it is *about* the right
+ * things — the two layers are deliberately separate.
+ */
+const MIN_PLACED = 8;
+const MIN_SELECTED_SHARE = 0.6;
+const MIN_DISTINCT_DIFFICULTY = 2;
+
+/** Every id the bank actually knows — the ground truth for the "ids exist" gate. */
+const BANK_IDS = new Set(crosswordBank.map((e) => e.id));
+
+/** One gate's verdict plus a one-line reason, so a human can audit a failure. */
+export interface GateOutcome {
+  pass: boolean;
+  detail: string;
+}
+
+export interface GateReport {
+  /** `finalizeExperience` fired (vs the turn cap tripping). */
+  finalizeCalled: GateOutcome;
+  /** Every id the oracle returned in `crosswordWordIds` is a real bank id. */
+  idsExistInBank: GateOutcome;
+  /** At least `MIN_PLACED` words actually interlocked on the grid. */
+  wordsPlaced: GateOutcome;
+  /** No bank id appears twice among the placed words. */
+  noDuplicateIds: GateOutcome;
+  /** >= `MIN_SELECTED_SHARE` of placed words come from `selectedFilmIds`. */
+  selectedFilmShare: GateOutcome;
+  /** Placed words span at least `MIN_DISTINCT_DIFFICULTY` difficulty levels. */
+  distinctDifficulty: GateOutcome;
+  /** Occupied cells / (rows*cols). Recorded only — no threshold yet. */
+  gridFillDensity: number | null;
+  /** True only when every gated check above passed. */
+  passed: boolean;
+}
+
+export interface GateInput {
+  finalized: boolean;
+  profile: ExperienceProfile | null;
+  crossword: CrosswordLayout | null;
+  crosswordWords: CrosswordEntry[];
+}
+
+/** Distinct grid cells covered by the placed words (crossings counted once). */
+function countOccupiedCells(layout: CrosswordLayout): number {
+  const cells = new Set<string>();
+  for (const w of layout.words) {
+    for (let k = 0; k < w.answer.length; k += 1) {
+      const x = w.startx + (w.orientation === "across" ? k : 0);
+      const y = w.starty + (w.orientation === "down" ? k : 0);
+      cells.add(`${x},${y}`);
+    }
+  }
+  return cells.size;
+}
+
+/**
+ * Score a finished run against the deterministic gates. Pure: same input → same report,
+ * no filesystem, no network. Handles the failure shapes (no finalize, null crossword)
+ * by failing the affected gates rather than throwing.
+ */
+export function evaluateGates(input: GateInput): GateReport {
+  const { finalized, profile, crossword, crosswordWords } = input;
+
+  const finalizeCalled: GateOutcome =
+    finalized && profile !== null
+      ? { pass: true, detail: "finalizeExperience was called" }
+      : { pass: false, detail: "run never finalized (turn cap tripped)" };
+
+  const requestedIds = profile?.crosswordWordIds ?? [];
+  const unknownIds = requestedIds.filter((id) => !BANK_IDS.has(id));
+  const idsExistInBank: GateOutcome =
+    profile === null
+      ? { pass: false, detail: "no profile: nothing to check" }
+      : unknownIds.length === 0
+        ? { pass: true, detail: `${requestedIds.length} returned ids all in bank` }
+        : { pass: false, detail: `unknown ids: ${unknownIds.join(", ")}` };
+
+  const placed = crossword?.words ?? [];
+  const wordsPlaced: GateOutcome =
+    placed.length >= MIN_PLACED
+      ? { pass: true, detail: `${placed.length} words placed on the grid` }
+      : {
+          pass: false,
+          detail: `${placed.length} words placed (need >= ${MIN_PLACED})`,
+        };
+
+  const idCounts = new Map<string, number>();
+  for (const w of placed) idCounts.set(w.id, (idCounts.get(w.id) ?? 0) + 1);
+  const duplicated = [...idCounts.entries()]
+    .filter(([, n]) => n > 1)
+    .map(([id]) => id);
+  const noDuplicateIds: GateOutcome =
+    duplicated.length === 0
+      ? { pass: true, detail: "no duplicate ids on the grid" }
+      : { pass: false, detail: `duplicate ids: ${duplicated.join(", ")}` };
+
+  const entryById = new Map(crosswordWords.map((e) => [e.id, e]));
+  const selectedFilms = new Set<string>(profile?.selectedFilmIds ?? []);
+  let fromSelected = 0;
+  for (const w of placed) {
+    const entry = entryById.get(w.id);
+    if (entry && selectedFilms.has(entry.filmId)) fromSelected += 1;
+  }
+  const share = placed.length === 0 ? 0 : fromSelected / placed.length;
+  const sharePct = (share * 100).toFixed(0);
+  const selectedFilmShare: GateOutcome =
+    placed.length > 0 && share >= MIN_SELECTED_SHARE
+      ? {
+          pass: true,
+          detail: `${fromSelected}/${placed.length} placed from selected films (${sharePct}%)`,
+        }
+      : {
+          pass: false,
+          detail:
+            placed.length === 0
+              ? "no placed words to measure"
+              : `${sharePct}% from selected films (need >= 60%)`,
+        };
+
+  const difficulties = new Set<Difficulty>();
+  for (const w of placed) {
+    const entry = entryById.get(w.id);
+    if (entry) difficulties.add(entry.difficulty);
+  }
+  const distinctDifficulty: GateOutcome =
+    difficulties.size >= MIN_DISTINCT_DIFFICULTY
+      ? {
+          pass: true,
+          detail: `${difficulties.size} difficulty levels: ${[...difficulties].join("/")}`,
+        }
+      : {
+          pass: false,
+          detail: `${difficulties.size} difficulty level(s) (need >= ${MIN_DISTINCT_DIFFICULTY})`,
+        };
+
+  const gridFillDensity =
+    crossword && crossword.rows > 0 && crossword.cols > 0
+      ? countOccupiedCells(crossword) / (crossword.rows * crossword.cols)
+      : null;
+
+  const passed =
+    finalizeCalled.pass &&
+    idsExistInBank.pass &&
+    wordsPlaced.pass &&
+    noDuplicateIds.pass &&
+    selectedFilmShare.pass &&
+    distinctDifficulty.pass;
+
+  return {
+    finalizeCalled,
+    idsExistInBank,
+    wordsPlaced,
+    noDuplicateIds,
+    selectedFilmShare,
+    distinctDifficulty,
+    gridFillDensity,
+    passed,
+  };
+}
+
+/** The gated (pass/fail) outcomes of a report, in spec order, with stable labels. */
+export function gatedOutcomes(
+  report: GateReport,
+): { label: string; outcome: GateOutcome }[] {
+  return [
+    { label: "finalize", outcome: report.finalizeCalled },
+    { label: "ids-exist", outcome: report.idsExistInBank },
+    { label: "words-placed", outcome: report.wordsPlaced },
+    { label: "no-dupes", outcome: report.noDuplicateIds },
+    { label: "selected-share", outcome: report.selectedFilmShare },
+    { label: "difficulty-mix", outcome: report.distinctDifficulty },
+  ];
+}
+
+/** One-line summary of which gates failed and why — for the sweep console. */
+export function describeGateFailures(report: GateReport): string {
+  return gatedOutcomes(report)
+    .filter((g) => !g.outcome.pass)
+    .map((g) => `${g.label} (${g.outcome.detail})`)
+    .join("; ");
+}
+
 // --- Model wiring (impure; only reached from the CLI) ----------------------
 
 interface FinalizeInput {
@@ -367,6 +557,8 @@ export interface RunRecord {
   profile: ExperienceProfile | null;
   crossword: CrosswordLayout | null;
   crosswordWords: CrosswordEntry[];
+  /** Deterministic gate report — pass/fail per check, no judge involved. */
+  gates: GateReport;
   error: string | null;
   finishedAt: string;
 }
@@ -414,6 +606,7 @@ async function runCell(config: CellConfig): Promise<RunRecord> {
     | "profile"
     | "crossword"
     | "crosswordWords"
+    | "gates"
     | "error"
   > = {
     persona: persona.id,
@@ -457,6 +650,12 @@ async function runCell(config: CellConfig): Promise<RunRecord> {
       profile: conversation.profile,
       crossword,
       crosswordWords,
+      gates: evaluateGates({
+        finalized: conversation.finalized,
+        profile: conversation.profile,
+        crossword,
+        crosswordWords,
+      }),
       error: null,
     };
   } catch (error) {
@@ -469,6 +668,12 @@ async function runCell(config: CellConfig): Promise<RunRecord> {
       profile: null,
       crossword: null,
       crosswordWords: [],
+      gates: evaluateGates({
+        finalized: false,
+        profile: null,
+        crossword: null,
+        crosswordWords: [],
+      }),
       error: error instanceof Error ? error.message : String(error),
     };
   }
@@ -565,6 +770,10 @@ async function main(): Promise<void> {
           ? `finalized in ${record.userTurns} turns`
           : `NO finalize (cap ${record.turnCap})`;
       console.log(`        ${status}`);
+      const gateLine = record.gates.passed
+        ? "gates: PASS"
+        : `gates: FAIL — ${describeGateFailures(record.gates)}`;
+      console.log(`        ${gateLine}`);
     }
   }
 

@@ -258,6 +258,28 @@ out of scope for Phase 0.)
 - The run record does **not** yet compute gate pass/fail or a judge score — that is the
   next two tasks. `run.ts` is deliberately just the generator stage.
 
+## Phase 4 — deterministic gates in `run.ts` (done)
+
+- **Which data each spec gate reads matters.** The "all returned ids exist in the bank"
+  gate checks `profile.crosswordWordIds` — the ids the *oracle returned* in finalize — not
+  the placed words (placed words always carry real bank ids, so checking them is vacuous;
+  the point is to catch the oracle hallucinating a bank id). The other four content gates
+  (>= 8 placed, 0 duplicate ids, >= 60% from `selectedFilmIds`, >= 2 difficulty levels) read
+  the **placed grid words** (`crossword.words`), because a word only counts once it actually
+  interlocks. filmId/difficulty per placed id come from the run's `crosswordWords` (the
+  resolved entries), mapped by id.
+- **Grid fill density is recorded, not gated** (spec says "no gate yet"). Computed as
+  distinct occupied cells / (rows*cols); crossings counted once via a `${x},${y}` Set.
+  `report.passed` is the AND of the *six* gated checks only — density is excluded so it can
+  never flip a pass/fail. Null crossword => density null.
+- `evaluateGates` is **pure and total** — no throw on the failure shapes. Null profile / no
+  finalize / null crossword each just fail the affected gates. So the error path in `runCell`
+  can call it with all-null and get a coherent fully-failing report; every `RunRecord` carries
+  a `gates` field, even a crashed cell.
+- **Lint bans non-null assertions (`!`)** (`@typescript-eslint/no-non-null-assertion` is an
+  *error*, not a warning). In tests, narrow with a `must(v)` helper or cast `as number` after
+  a `typeof` check — never `value!`. Caught 6 lint errors on first pass; baseline is 0 errors.
+
 ## Corrected assumptions
 
 Record any case where a measurement contradicted something written in the plan or the

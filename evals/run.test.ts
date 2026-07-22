@@ -2,17 +2,27 @@ import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import {
   cellIsDone,
+  describeGateFailures,
   driveConversation,
+  evaluateGates,
   extractSection,
+  gatedOutcomes,
   listPersonaFiles,
   loadAllPersonas,
   loadPersonaSheet,
   parsePersonaSheet,
   renderOracleTurn,
   runFileName,
+  type GateInput,
   type OracleStepResult,
 } from "./run";
-import type { ExperienceProfile } from "@/lib/types";
+import { crosswordBank } from "@/data/crosswordBank";
+import { buildGamePayload } from "@/lib/game";
+import type {
+  CrosswordEntry,
+  ExperienceProfile,
+  PlacedWord,
+} from "@/lib/types";
 
 const PERSONAS_DIR = join(import.meta.dir, "personas");
 
@@ -214,5 +224,144 @@ describe("resumability helpers", () => {
     expect(cellIsDone(import.meta.dir, "does-not-exist__baseline__run1.json")).toBe(
       false,
     );
+  });
+});
+
+// Real bank entries for uncut-gems — 10 of them, spanning easy/medium/hard, so a
+// synthetic "all placed from selected film" grid passes every gate by construction.
+const UNCUT_GEMS = crosswordBank.filter((e) => e.filmId === "uncut-gems");
+
+/** Narrow away null without a forbidden `!` assertion (lint bans non-null assertions). */
+function must<T>(value: T | null | undefined): T {
+  if (value == null) throw new Error("expected a non-null value in the test fixture");
+  return value;
+}
+
+/** Build a synthetic finished-run gate input from a list of resolved bank entries. */
+function gateInputFrom(
+  entries: CrosswordEntry[],
+  selectedFilmIds: string[],
+): GateInput {
+  const words: PlacedWord[] = entries.map((e, i) => ({
+    id: e.id,
+    answer: e.word,
+    clue: e.clue,
+    startx: 1,
+    starty: i + 1,
+    orientation: "across",
+    position: i + 1,
+  }));
+  return {
+    finalized: true,
+    profile: {
+      selectedFilmIds,
+      moods: [],
+      crosswordWordIds: entries.map((e) => e.id),
+      locationIds: [],
+    },
+    crossword: { rows: 20, cols: 20, words, droppedIds: [] },
+    crosswordWords: entries,
+  };
+}
+
+describe("evaluateGates", () => {
+  test("a full, on-topic, mixed-difficulty grid passes every gate", () => {
+    const report = evaluateGates(gateInputFrom(UNCUT_GEMS, ["uncut-gems"]));
+    expect(report.passed).toBe(true);
+    for (const { outcome } of gatedOutcomes(report)) {
+      expect(outcome.pass).toBe(true);
+    }
+    // Density is recorded (occupied cells / rows*cols) and lies in (0, 1].
+    const density = report.gridFillDensity;
+    expect(typeof density).toBe("number");
+    expect(density as number).toBeGreaterThan(0);
+    expect(density as number).toBeLessThanOrEqual(1);
+  });
+
+  test("no finalize fails the finalize gate and the whole report", () => {
+    const report = evaluateGates({
+      finalized: false,
+      profile: null,
+      crossword: null,
+      crosswordWords: [],
+    });
+    expect(report.finalizeCalled.pass).toBe(false);
+    expect(report.passed).toBe(false);
+    expect(report.gridFillDensity).toBeNull();
+  });
+
+  test("a returned id that is not in the bank fails the ids-exist gate", () => {
+    const input = gateInputFrom(UNCUT_GEMS, ["uncut-gems"]);
+    const profile = must(input.profile);
+    profile.crosswordWordIds = [...profile.crosswordWordIds, "cw-not-a-real-id"];
+    const report = evaluateGates(input);
+    expect(report.idsExistInBank.pass).toBe(false);
+    expect(report.idsExistInBank.detail).toContain("cw-not-a-real-id");
+    expect(report.passed).toBe(false);
+  });
+
+  test("fewer than 8 placed words fails the words-placed gate", () => {
+    const report = evaluateGates(
+      gateInputFrom(UNCUT_GEMS.slice(0, 5), ["uncut-gems"]),
+    );
+    expect(report.wordsPlaced.pass).toBe(false);
+    expect(report.passed).toBe(false);
+  });
+
+  test("a repeated id among placed words fails the duplicate gate", () => {
+    const input = gateInputFrom(UNCUT_GEMS, ["uncut-gems"]);
+    const words = must(input.crossword).words;
+    words.push({ ...words[0], starty: 15 });
+    const report = evaluateGates(input);
+    expect(report.noDuplicateIds.pass).toBe(false);
+    expect(report.passed).toBe(false);
+  });
+
+  test("under 60% of placed words from selected films fails the share gate", () => {
+    // Placed words are all uncut-gems, but the user selected a different film.
+    const report = evaluateGates(gateInputFrom(UNCUT_GEMS, ["good-time"]));
+    expect(report.selectedFilmShare.pass).toBe(false);
+    expect(report.passed).toBe(false);
+  });
+
+  test("a single difficulty level fails the difficulty-mix gate", () => {
+    const flattened = UNCUT_GEMS.map((e) => ({ ...e, difficulty: "easy" as const }));
+    const report = evaluateGates(gateInputFrom(flattened, ["uncut-gems"]));
+    expect(report.distinctDifficulty.pass).toBe(false);
+    expect(report.passed).toBe(false);
+  });
+
+  test("describeGateFailures lists only the failed gates by label", () => {
+    const report = evaluateGates(gateInputFrom(UNCUT_GEMS, ["good-time"]));
+    const summary = describeGateFailures(report);
+    expect(summary).toContain("selected-share");
+    expect(summary).not.toContain("finalize (");
+    expect(summary).not.toContain("words-placed");
+  });
+});
+
+describe("evaluateGates on a real generated grid", () => {
+  test("a profile requesting 10 uncut-gems ids passes the structural gates", () => {
+    const profile: ExperienceProfile = {
+      selectedFilmIds: ["uncut-gems"],
+      moods: ["anxious"],
+      crosswordWordIds: UNCUT_GEMS.map((e) => e.id),
+      locationIds: [],
+    };
+    const payload = buildGamePayload(profile);
+    const report = evaluateGates({
+      finalized: true,
+      profile,
+      crossword: payload.crossword,
+      crosswordWords: payload.crosswordWords,
+    });
+    // >= 10 requested reliably lands >= 8 (RALPH_NOTES fuzz measurement).
+    expect(report.wordsPlaced.pass).toBe(true);
+    expect(report.noDuplicateIds.pass).toBe(true);
+    expect(report.selectedFilmShare.pass).toBe(true);
+    const density = report.gridFillDensity;
+    expect(typeof density).toBe("number");
+    expect(density as number).toBeGreaterThan(0);
+    expect(density as number).toBeLessThanOrEqual(1);
   });
 });
