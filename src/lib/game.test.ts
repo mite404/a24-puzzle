@@ -69,8 +69,8 @@ describe("buildGamePayload", () => {
  * `resolveCrosswordEntries` is not exported; `buildGamePayload` surfaces its result
  * as `payload.crosswordWords`. These characterization tests pin down the resolve +
  * top-up behaviour recorded in RALPH_NOTES.md: it tops up only when fewer than 4 ids
- * resolve, walking the bank in order up to 8 entries, and it neither validates ids
- * (unknown ones are silently dropped) nor removes duplicates.
+ * resolve, walking the bank in order up to 8 entries. It does not validate ids (unknown
+ * ones are silently dropped) but it does dedupe by id (Phase 2 R3 fix).
  */
 describe("buildGamePayload — resolveCrosswordEntries via crosswordWords", () => {
   test("zero ids tops up to the first 8 bank entries, in bank order", () => {
@@ -106,10 +106,18 @@ describe("buildGamePayload — resolveCrosswordEntries via crosswordWords", () =
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  test("duplicate ids are preserved, not deduped (>= 4 entries, so no top-up)", () => {
-    const ids = ["cw-sandler", "cw-sandler", "cw-opal", "cw-howard"];
+  test("duplicate ids are deduped to their first occurrence (Phase 2 R3 fix)", () => {
+    // One repeat among five distinct ids collapses to the four uniques, in first-seen
+    // order. Four uniques is still >= 4, so no top-up fires. (Was previously preserved
+    // as duplicates; see the R3 defect fix in IMPLEMENTATION_PLAN.md Phase 2.)
+    const ids = ["cw-sandler", "cw-sandler", "cw-opal", "cw-howard", "cw-garnett"];
     const payload = buildGamePayload(baseProfile({ crosswordWordIds: ids }));
-    expect(payload.crosswordWords.map((e) => e.id)).toEqual(ids);
+    expect(payload.crosswordWords.map((e) => e.id)).toEqual([
+      "cw-sandler",
+      "cw-opal",
+      "cw-howard",
+      "cw-garnett",
+    ]);
   });
 });
 

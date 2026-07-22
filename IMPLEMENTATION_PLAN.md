@@ -106,8 +106,20 @@ anything in this phase.
       full 14-entry bank drops nothing, so `droppedIds` is `[]`. Failing test committed
       first (field absent → undefined), then the fix.
 
-- [ ] Fix any other defect Phase 1 documented. One defect per iteration, each with its
+- [x] Fix any other defect Phase 1 documented. One defect per iteration, each with its
       failing test committed first.
+      **Defect fixed: duplicate `crosswordWordIds` violated R3.** Phase 1's
+      characterization test (`game.test.ts`, "duplicate ids are preserved, not deduped")
+      documented that `resolveCrosswordEntries` kept duplicate ids. Measured consequence:
+      a profile requesting the same id twice placed it twice, so two grid words shared one
+      id — a direct spec `crossword-layout.md` R3 violation (verified by probe: `has dup
+      placed: true`). Nothing validates against duplicates (`validateExperienceProfile`
+      only checks existence), so the oracle can trigger this. Fix: `resolveCrosswordEntries`
+      now dedupes by id as it resolves, with a single `have` set shared by the top-up loop,
+      so neither `crosswordWords` nor the placed layout can carry a duplicate id. Failing
+      R3 test (2 assertions) committed first; then the fix + updated the now-stale Phase 1
+      characterization test to assert dedup (5 ids w/ one repeat → 4 uniques, no top-up).
+      Fuzz placement numbers unchanged (draws are already duplicate-free). All four pass.
 
 ## Phase 3 — Expand the bank
 

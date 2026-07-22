@@ -69,8 +69,15 @@ Fill these in as they are measured. Later phases depend on them.
   why the fuzz per-size mean placed (e.g. 7.55 at 8) is below the count.
 - `resolveCrosswordEntries` only tops up the entry list when fewer than **4** ids
   resolve. Five valid ids therefore yields a five-word puzzle.
+- `resolveCrosswordEntries` **dedupes by id** (Phase 2 R3 fix). It used to preserve
+  duplicate ids, which placed the same word twice → two grid words sharing one id, a spec
+  R3 violation. Dedup is counted *before* the top-up threshold: e.g. 5 ids with one repeat
+  = 4 uniques (no top-up); 4 ids with one repeat = 3 uniques (**top-up fires**, pads to 8).
+  The `have` set is shared with the top-up loop so it can't re-introduce a duplicate.
 - `validateExperienceProfile` checks that ids *exist*. It does not check how many there
-  are, nor reject duplicates.
+  are, nor reject duplicates — so duplicate-id input can reach `buildGamePayload`. That is
+  why the dedup lives in `resolveCrosswordEntries` (defence at the layout boundary), not in
+  validation.
 - The `finalizeExperience` tool description asks for 6-10 ids; the layout is what
   decides how many actually reach the grid. These are different numbers.
 - Four films have no bank entries and two of them (`ex-machina`,

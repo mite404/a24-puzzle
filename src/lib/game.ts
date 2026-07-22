@@ -74,17 +74,28 @@ function buildCrosswordLayout(entries: CrosswordEntry[]): CrosswordLayout {
 
 /** Resolves crossword ids from the profile, falling back to a sensible default set. */
 function resolveCrosswordEntries(ids: string[]): CrosswordEntry[] {
-  const resolved = ids
-    .map((id) => getCrosswordEntry(id))
-    .filter((e): e is CrosswordEntry => Boolean(e));
+  // Dedupe by id as we resolve: a repeated id must not become two grid words sharing
+  // one id (spec crossword-layout.md R3). `have` is the single source of truth for
+  // "already chosen", reused by the top-up below so it can't re-add a duplicate either.
+  const have = new Set<string>();
+  const resolved: CrosswordEntry[] = [];
+  for (const id of ids) {
+    const entry = getCrosswordEntry(id);
+    if (entry && !have.has(entry.id)) {
+      have.add(entry.id);
+      resolved.push(entry);
+    }
+  }
 
   if (resolved.length >= 4) return resolved;
 
   // Top up with bank entries not already chosen, until we have a playable puzzle.
-  const have = new Set(resolved.map((e) => e.id));
   for (const entry of crosswordBank) {
     if (resolved.length >= 8) break;
-    if (!have.has(entry.id)) resolved.push(entry);
+    if (!have.has(entry.id)) {
+      have.add(entry.id);
+      resolved.push(entry);
+    }
   }
   return resolved;
 }
