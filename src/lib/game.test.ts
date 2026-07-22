@@ -266,8 +266,12 @@ describe("buildGamePayload — dropped words observable (crossword-layout.md R6)
   });
 
   test("droppedIds is empty when every requested word is placed", () => {
-    // the whole bank places all 14 (measured), so nothing is dropped.
-    const payload = fullBankPayload();
+    // The original 14 bank entries (slice 0..14) are measured to interlock fully, so
+    // nothing is dropped. NOTE: since the bank was expanded past 14, the *whole* bank in
+    // natural order drops one word (cw-matchmaker at 53 entries), so this test pins a set
+    // measured to place fully rather than the full bank. See RALPH_NOTES "Known constraints".
+    const ids = crosswordBank.slice(0, 14).map((e) => e.id);
+    const payload = buildGamePayload(baseProfile({ crosswordWordIds: ids }));
     expect(payload.crossword?.droppedIds).toEqual([]);
   });
 });

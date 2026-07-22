@@ -52,10 +52,13 @@ Fill these in as they are measured. Later phases depend on them.
   drops even at max. This is the number Phase 5's `crosswordWordIds` count is derived from.
   NOTE: this is the *current 14-entry* bank; Phase 3 expands the bank and Phase 2 task says
   to re-measure — a larger/longer-word bank should raise the rate and lower the id count.
-- **Placement rate (expanded bank):** partial — bank is now **32 entries** (moonlight/
-  hereditary/midsommar mined to 7 each). Fuzz (seed 0x51ac, 64 trials/size, sizes 4–16)
-  reports **97.7% overall**, with P(>=8 placed): 73% at size 8, 98% at 9, **100% at >= 10**.
-  Not the final number — Phase 3's last task re-measures against the full ~70-entry bank.
+- **Placement rate (expanded bank):** partial — bank is now **53 entries** (moonlight/
+  hereditary/midsommar at 7 each; lady-bird 7, materialists 7, the-witch 8). Fuzz (seed
+  0x51ac, 64 trials/size, sizes 4–16) reports **97.7% overall** (8127/8320), with
+  P(>=8 placed): 88% at size 8, 88% at 9, **100% at >= 10**. Still not the final number —
+  Phase 3's last task re-measures against the full ~70-entry bank once good-time/uncut-gems/
+  the-backrooms are brought to >= 6 each. Reading holds: request **>= 10 ids** for a
+  reliable >= 8 placed.
 - **Fuzz sweep is now capped at maxSize 16**, not the whole bank. The generator cost grows
   superlinearly with word count; sweeping all 32 entries took ~110s and timed out the 20s
   bound (and would only get worse toward ~70). Sizes 4–16 cover the entire Phase-5 decision
@@ -67,12 +70,15 @@ Fill these in as they are measured. Later phases depend on them.
 
 ## Known constraints
 
-- `game.test.ts` "droppedIds is empty when every requested word is placed" asserts the
-  **full bank in natural (array) order places every entry**. Held at 14; still holds at 32.
-  This is input-order dependent and measured, not guaranteed — a future bank addition could
-  make the generator drop one in natural order and legitimately turn this test red. If that
-  happens, don't weaken it: switch it to an id set that is measured to place fully, or
-  update the expected `droppedIds`, and record the new measurement here.
+- `game.test.ts` "droppedIds is empty when every requested word is placed" used to assert
+  the **full bank in natural (array) order places every entry** (held at 14 and 32). At
+  **53 entries the full bank in natural order drops one word: `cw-matchmaker` (MATCHMAKER,
+  10 letters) — 52 placed, 1 dropped.** As foreseen, this turned the test red. Not weakened:
+  the test was repointed at `crosswordBank.slice(0, 14)` (the original 14 entries, measured
+  to still place all 14, `droppedIds: []`), preserving the "empty when all placed" intent.
+  The separate R6 "every requested word accounted for" test still uses the full bank and
+  passes (52 + 1 === 53). If the first 14 ever stop placing fully, repoint again to another
+  measured-full set and record it here.
 
 - `buildCrosswordLayout` (`src/lib/game.ts`) used to silently drop any word the generator
   could not interlock. **Fixed (Phase 2, R6):** `CrosswordLayout` now carries

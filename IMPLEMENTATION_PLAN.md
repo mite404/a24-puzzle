@@ -154,7 +154,17 @@ accuracy rule. `pdftotext` is installed.
       region, where P(>=8) already saturates). See RALPH_NOTES. Bank integrity test
       (crosswordBank.test.ts) validates the new entries; all four validations pass.
 
-- [ ] Mine `lady-bird`, `materialists`, `the-witch` to at least 6 entries each.
+- [x] Mine `lady-bird`, `materialists`, `the-witch` to at least 6 entries each.
+      lady-bird +7 (SACRAMENTO/MARION/CHRISTINE/JULIE/KYLE/DANNY/RONAN), materialists +7
+      (LUCY/MATCHMAKER/HARRY/JOHN/PASCAL/JOHNSON/SONG), the-witch +7 (THOMASIN/WILLIAM/
+      KATHERINE/CALEB/PHILLIP/MERCY/JONAS) on top of the existing EGGERS = 8. Character
+      names/prominence taken from the shooting-script ALL-CAPS frequency counts (mining
+      method in the spec); actors/roles only where I'm confident (Materialists role→actor
+      mapping: Johnson=Lucy, Pascal=Harry, Evans=John). Bank now 53 entries. Collateral:
+      the full-bank-natural-order "droppedIds is empty" test went red — the 53-entry bank
+      drops cw-matchmaker (MATCHMAKER, 10 letters) in natural order. Repointed that test at
+      crosswordBank.slice(0,14) (measured to place fully), per the RALPH_NOTES guidance not
+      to weaken it. All four validations pass.
 
 - [ ] Bring `good-time`, `uncut-gems`, `the-backrooms` to at least 6 entries each,
       leaving out anything you are not confident is accurate.
