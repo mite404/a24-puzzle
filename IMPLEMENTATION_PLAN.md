@@ -35,8 +35,12 @@ Write tests that document what the code does **today**. If behaviour looks wrong
 assert the current behaviour, and add a task to Phase 2 describing the bug. Do not fix
 anything in this phase.
 
-- [ ] Create `src/lib/game.test.ts` covering `buildGamePayload`: it returns a profile,
+- [x] Create `src/lib/game.test.ts` covering `buildGamePayload`: it returns a profile,
       locations, a crossword layout, and `crosswordWords`.
+      Four characterization tests: profile returned by identity (`toBe`), each location
+      question has 4 options incl. the correct film id, crossword has numeric rows/cols +
+      words array, and `crosswordWords` are the resolved bank entries for the requested
+      ids. Used a 5-valid-id / 3-valid-location profile so neither top-up path fires.
 
 - [ ] Add tests for `resolveCrosswordEntries` behaviour via `buildGamePayload`:
       zero ids, 5 valid ids, unknown ids, duplicate ids. Note the top-up threshold is
