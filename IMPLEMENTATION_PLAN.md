@@ -250,7 +250,20 @@ See `specs/eval-harness.md`. Build the pipeline before spending any API budget.
       targeted failure per gate (synthetic inputs from real uncut-gems bank entries) and one
       integration check against a real `buildGamePayload` grid. No API spend — all pure.
 
-- [ ] Write `evals/blind.ts` — salted hash, `key.json`, judge never sees identity.
+- [x] Write `evals/blind.ts` — salted hash, `key.json`, judge never sees identity.
+      Stage 2: `runs/*.json` -> `blind/<blindId>.json` + `blind/key.json`. `blindId` is a
+      salted SHA-256 of the run's identity (its filename), first 12 hex chars — deterministic
+      given the salt (so re-blinding is idempotent/resumable) but non-reversible without it.
+      The salt is minted once and persisted in `key.json`; `loadOrCreateSalt` reuses it on
+      re-run so ids stay stable. The blinded record carries ONLY what RUBRIC.md lets the judge
+      see: transcript, the placed word set, numbered clues, ASCII grid. It deliberately drops
+      persona/axis/arm/runIndex AND each word's `filmId`+`difficulty` (that would hand over the
+      c1/c3/c5 ground truth). Blinded files are named by hash, so even the directory listing
+      order leaks no identity. `key.json` holds the real mapping and is never opened by the
+      judge. Pure helpers (`computeBlindId`, `renderAsciiGrid`, `blindClues`, `buildBlindRecord`,
+      `planBlinding`) are exported and tested; FS/CLI run only under `import.meta.main` (no
+      spend). 19 tests in `blind.test.ts` incl. a serialised-record leak scan and a collision
+      guard. All four validations pass (98 tests).
 
 - [ ] Write `evals/judge.ts` — scores one blinded puzzle at a time via `claude -p`,
       resumable, absolute scoring only.

@@ -280,6 +280,30 @@ out of scope for Phase 0.)
   *error*, not a warning). In tests, narrow with a `must(v)` helper or cast `as number` after
   a `typeof` check — never `value!`. Caught 6 lint errors on first pass; baseline is 0 errors.
 
+## Phase 4 — eval `blind.ts` (done)
+
+- **Blinding is by run *filename*, not a content hash.** `computeBlindId(salt, identity)`
+  hashes `runFileName(persona, arm, runIndex)` (the cell's unique identity) with a salt,
+  SHA-256, first 12 hex chars. Deterministic given the salt → re-running `blind.ts` is
+  idempotent and resumable; the blinded file is skipped if it already exists but `key.json`
+  is always rebuilt from the current `runs/` set.
+- **The salt is persisted in `key.json` and reused** (`loadOrCreateSalt`). If it were
+  re-minted each run, every blindId would churn and the judge's `scores/*` (keyed by blindId)
+  would stop matching. Mint once, reuse forever. `randomBytes(16)` → 32-hex-char salt.
+- **What the blinded record excludes is the whole point.** It carries transcript + placed
+  words + numbered clues + ASCII grid, and NOTHING else. Dropped on purpose: persona/axis/
+  arm/runIndex (identity) AND per-word `filmId` + `difficulty`. filmId/difficulty are the
+  c1/c3/c5 ground truth — handing them to the judge would let it pass those checks without
+  actually reading the clues. `blind.test.ts` scans the serialised record to prove none of
+  those strings leak.
+- **Blinded files are named `<blindId>.json`**, so `readdirSync` order is hash order, not
+  identity order — the directory listing itself can't leak which persona came first. Verified
+  in a round-trip test.
+- **`planBlinding` throws on a blindId collision** (defensive: distinct filenames should never
+  collide, but a silent collision would drop a cell from the report). Grid render uses the
+  generator coord convention (startx=col, starty=row, 1-indexed); crossing cells overwrite
+  deterministically to the same letter in a valid puzzle.
+
 ## Corrected assumptions
 
 Record any case where a measurement contradicted something written in the plan or the
