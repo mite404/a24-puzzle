@@ -25,9 +25,6 @@ export const TV_GLASS_MAP = {
   height: TV_GLASS_DETECTED.height,
 } as const;
 
-/** Alias — chat content is clipped inside the same CRT bounds as the glass. */
-const TV_SCREEN_MAP = TV_GLASS_MAP;
-
 /** Keep phosphor copy off the curved CRT corners. */
 const TV_CONTENT_INSET = {
   top: 9,

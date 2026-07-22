@@ -20,22 +20,6 @@ const VALENCE_MAX_CLIP_SECONDS = 15;
  */
 const VALENCE_CONFIDENCE_GATE = 0.38;
 
-const VALENCE_DEFAULT_EMOTIONS = [
-  "angry",
-  "happy",
-  "neutral",
-  "sad",
-] as const;
-
-const VALENCE_EXTENDED_EMOTIONS = [
-  "surprised",
-  "disgusted",
-  "nervous",
-  "irritated",
-  "excited",
-  "sleepy",
-] as const;
-
 export interface VocalEmotionResult {
   emotion: string;
   confidence: number;

@@ -24,5 +24,7 @@ describe("pickQuip", () => {
   test(`When random resolves to 0.9 and the pool is ["A", "B", "C"], pickQuip should return "C"`, () => {
     const pool = ["A", "B", "C"];
     const mockRandom: () => number = () => 0.9;
+    // index = floor(0.9 * 3) = 2 → the last entry.
+    expect(pickQuip(pool, undefined, mockRandom)).toBe("C");
   });
 });

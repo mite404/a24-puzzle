@@ -7,6 +7,19 @@ tracks **shop.a24films.com** more closely: generous gutters, centered content co
 mark in the header, PREORDER-style meta type, still captions **below** photos, and a decorative
 black footer.
 
+### New chapter — the crossword goes into QC
+
+The crossword was the one feature nobody had ever _screened_. It looked done, but the code that
+turns a list of film-trivia words into a playable grid had zero tests.
+
+This chapter is the **post-production QC pass** on that feature. We measured how many words
+actually land on the grid, fixed three real defects the measurement exposed, expanded the clue
+bank to 68 entries, and built a four-stage **blind test-screening room** that scores each puzzle
+against a fixed rubric — the way a studio runs a focus group before release.
+
+The headline finding: the grid-building is solid, but the oracle **drifts off-topic** — it pads
+puzzles with films the user never asked for. More on what that number means at the end.
+
 ---
 
 ## Cast & Crew (Architecture)
@@ -322,6 +335,66 @@ cycle per clue; everything yields while the oracle is already speaking.
 **Non-telegraphing rule:** correctness is computed only in `check()`. The voice must never behave
 differently for right vs. wrong words.
 
+### The QC screening room — crossword eval harness
+
+Deterministic tests can prove a grid is _structurally_ sound (words fit, crossings agree). They
+**cannot** tell you whether the puzzle is _about the right films_ for the conversation that made it.
+
+That question needs a judge. So the eval harness is a **four-stage post-production pipeline** — the
+same shape as prepping a cut for a test screening, scoring it, and reading the cards.
+
+| Stage        | File                | Post-production analogy                                                              |
+| ------------ | ------------------- | ----------------------------------------------------------------------------------- |
+| **1. run**   | `evals/run.ts`      | Shoot the dailies — drive the real oracle prompt + tools through a scripted user     |
+| **2. blind** | `evals/blind.ts`    | Strike an anonymous screening print — salted hash, identity hidden in `key.json`     |
+| **3. judge** | `evals/judge.ts`    | Hand out scorecards — one puzzle at a time, absolute scoring, never pairwise         |
+| **4. score** | `evals/score.ts`    | Read the cards — unblind, aggregate per-check, flag any saturated (CEILING) block    |
+
+Each stage is a **separate resumable script** that reads the previous stage's folder and writes its
+own. Like film cans moving down the hall: `runs/` → `blind/` → `scores/` → printed report. An
+interrupted sweep resumes cheaply because every finished cell is already a file on disk.
+
+**Stage 1 — run (`run.ts`).** The system under test is the _real_ oracle: `buildSystemPrompt()` +
+`oracleTools`, one step per turn, exactly the cadence `/api/chat` uses. A second model role-plays a
+**persona sheet** (the scripted "test audience") and answers the oracle until it calls
+`finalizeExperience` — or a turn cap trips, which counts as a failure.
+
+The pure conversation logic is split from the model wiring, so `run.test.ts` exercises it with fakes
+and **spends zero API budget**. Real OpenRouter calls only fire when you run the CLI.
+
+**Stage 2 — blind (`blind.ts`).** The judge must never know which persona or arm it is scoring —
+otherwise it grades the reputation, not the puzzle. `blind.ts` renames each run to a **salted
+SHA-256 hash** and writes the real mapping to `key.json`, which the judge never opens. The blinded
+record carries only what the rubric lets the judge see: transcript, placed words, numbered clues, an
+ASCII grid. It deliberately **drops** the per-word `filmId` and `difficulty` — those are the answer
+key for the on-topic and difficulty checks, so handing them over would let the judge pass without
+reading anything.
+
+**Stage 3 — judge (`judge.ts`).** Scores one blinded puzzle against `evals/RUBRIC.md` — five binary
+checks (c1 on-topic, c2 solvable, c3 mixed difficulty, c4 no near-duplicates, c5 factually correct).
+Absolute scoring only, one puzzle at a time. A garbled reply **throws** (retriable) rather than
+being silently recorded as five fails — "couldn't parse" and "all false" are different states, and
+conflating them would poison the c5 rate.
+
+**Stage 4 — score (`score.ts`).** The one stage allowed to read `key.json`. It re-attaches identity,
+then reports a pass rate **per check, per arm** — never one combined headline number. When a check
+passes on every run it prints a **`CEILING`** warning (borrowed from the reference `adhd-eval`
+harness): a saturated block can no longer tell a good arm from a bad one, so it is _uninformative,
+not a win_.
+
+```mermaid
+flowchart LR
+  P[persona sheet] --> R[run.ts<br/>real oracle + tools]
+  R -->|runs/*.json| B[blind.ts<br/>salted hash]
+  B -->|blind/*.json| J[judge.ts<br/>RUBRIC c1..c5]
+  B -.->|key.json<br/>never opened by judge| S
+  J -->|scores/*.json| S[score.ts<br/>unblind + per-block]
+  S --> Report[per-check, per-arm<br/>+ CEILING flags]
+```
+
+**Read the diagram:** the print (`blind/`) and the key (`key.json`) travel down separate hallways.
+The judge only ever touches the anonymous print; `score.ts` is the only room that holds both.
+
 ---
 
 ## Behind the Scenes (Decisions)
@@ -364,6 +437,31 @@ none` so Kimi K2.6 returns spoken text, not thinking tokens only. Any route erro
   internally. Public `PaletteCardProps` has no `variant` field — that key exists only on the
   internal type. Same file, same module — wrappers aren't a separate package unless the base
   outgrows the file.
+- **Measure before you set the number** — the oracle's "how many ids to request" was not guessed,
+  it was _measured_. A seeded fuzz test (`crossword-fuzz.test.ts`) drew thousands of random id sets
+  and reported the placement rate. The bank grew from 14 → 68 entries and the headline rate rose
+  96.4% → 97.4%, but the gating metric is **P(≥8 placed)**: it only reaches 100% at **≥ 10 ids**
+  requested (92% at 9, 70% at 8). So the tool description and the validator both say **10–14**. The
+  spec's "≥ 8 words placed" rule is a promise; the fuzz number is what makes it keepable.
+- **Dedup at the layout boundary, not in validation** — duplicate ids are removed inside
+  `resolveCrosswordEntries`, not in `validateExperienceProfile`. Validation only checks that ids
+  _exist_; the real defence against two grid words sharing one id lives where the grid is actually
+  built, so nothing downstream can smuggle a duplicate past it.
+- **Blind the judge, and drop the answer key** — the judge sees transcript, words, clues, and grid,
+  but never the persona, arm, run index, or a word's `filmId`/`difficulty`. Those last two _are_ the
+  ground truth for c1/c3/c5; giving them to the judge would let it pass those checks without reading
+  the clues. A test scans the serialized blind record to prove none of that leaks.
+- **Take the id from us, not the model's echo** — the judge's verdict is keyed by the `blindId`
+  _we_ handed it, never the id the model copies into its own JSON. The judge only ever knows one
+  puzzle, so trusting our own value means a hallucinated echo can't attach a score to the wrong
+  puzzle when we unblind.
+- **CEILING is a warning, not a trophy** — a check that passes on every run (c2, c3 in this sweep)
+  is flagged `CEILING`, because a saturated block can't discriminate between a good arm and a bad
+  one. Reporting it as a "100% pass" would read as success when it actually means "this check told
+  us nothing yet."
+- **Keep the cheap gate _and_ the expensive judge** — the deterministic ≥ 60%-selected gate and the
+  c1 on-topic judge measure different things (33/33 vs 16/33 in this sweep). The gate is a coarse
+  floor computed for free; c1 is the stricter, human-aligned read. Neither replaces the other.
 
 ---
 
@@ -424,6 +522,53 @@ FloatingComposerProps["errors"]` in the parent (same beat as `micState`), use `m
   restore a private `PaletteCardBase`, export thin wrappers (`CrtPaletteCard`, `PaletteCard`), remove
   `variant="crt"` from `tv-oracle-feed.tsx`. Same lesson as the composer: **rename the export is not
   the refactor — the wrapper + private base + call-site cleanup ship together.**
+
+### Crossword QC bloopers
+
+These four came out of the eval work. The first three are the defects the measurement exposed; each
+landed **test-first** (a red test committed before the fix, the way a bug report should read).
+
+- **Words vanished off the grid with no record** (spec R6). `buildCrosswordLayout` filtered out any
+  word the generator couldn't interlock (`orientation === "none"`) and threw it away **silently**.
+  Ten requested ids could become six placed words with no error, no warning, nothing. That is the
+  footage that got cut in the edit but never logged on the shot list — you only notice the scene is
+  missing when the audience does. **Root cause:** the placed/dropped split existed only implicitly,
+  as a filter. **Fix:** add `droppedIds: string[]` to `CrosswordLayout` (`types.ts:85`), populated
+  from the same `layout.result` on one `isPlaced` predicate so placed + dropped stay exhaustive
+  (`words.length + droppedIds.length === requested`). Now the caller can _see_ what didn't make it.
+
+- **The same word placed twice, sharing one id** (spec R3). If the oracle returned a duplicate id,
+  `resolveCrosswordEntries` kept both copies, and two grid words ended up carrying the same bank id.
+  **Root cause:** nothing deduped. `validateExperienceProfile` only checked that each id _exists_,
+  not that ids were unique — so a duplicate sailed straight through to the layout. **Fix:** dedup by
+  id _inside_ `resolveCrosswordEntries`, with a single `have` set shared by the top-up loop so the
+  padding step can't re-introduce a duplicate either. Deduping in the validator would have been the
+  wrong room — the defence belongs where the grid is actually assembled.
+
+- **The oracle asked for too few words to hit the floor.** The tool description said "6–10 ids," but
+  the fuzz measured that at 8 requested only **70%** of grids reach the spec's ≥ 8-placed floor
+  (some ids always fail to interlock). So a perfectly obedient oracle could still hand the user a
+  6-word puzzle. **Root cause:** the requested count was picked before anyone measured the placement
+  rate. **Fix:** raise it to **10–14** in two places — the `finalizeExperience.crosswordWordIds`
+  description _and_ a new count gate in `validateExperienceProfile` (`length` must be 10–14). The
+  full sweep confirmed it: the oracle now requests 12–14 and every one of 33 puzzles cleared ≥ 8.
+
+- **A retriable error got baked in as permanent.** During the sweep, `cellIsDone` treated _any_
+  parseable file in `runs/` as "done." But `runCell` writes a record even when it **catches an
+  exception** (empty transcript, `error` set). So a transient `Invalid JSON response` from the API
+  was frozen on disk forever and never retried — and it would have surfaced in the report as a
+  genuine all-failing cell, quietly poisoning the per-block rates. That's a bad take marked "print"
+  on the log — it goes into the assembly as if it were good. **Root cause:** "file exists" was
+  conflated with "cell succeeded." **Fix:** `cellIsDone` now returns false when the record's `error`
+  is non-null (so it re-runs), while a clean cap-tripped run stays done. Two transient cells retried
+  clean on the next pass, proving the fix.
+
+- **A spawned CLI hid its own error message** (diagnosis blooper). When `claude -p` failed, the code
+  reported `stderr` only — but the CLI writes "Not logged in" to **stdout**, so the real cause showed
+  up as "(no stderr)." Half an hour of "why is the judge silent?" **Root cause:** the assumption that
+  errors always go to stderr. **Fix:** extract and test `describeClaudeFailure(code, stdout, stderr)`
+  — try stderr, then stdout, then a marker. Lesson for any spawned tool: on a non-zero exit, surface
+  stdout too, because not every program is polite about where it complains.
 
 ---
 
@@ -1176,3 +1321,98 @@ flowchart TD
 Read the diagram top to bottom: the test creates `controller`, the inline mock **closes over** it,
 `fetchOracleQuipLine` calls the mock, and the mock reaches back into the test's scope to fire
 `abort()` — simulating cancellation mid-flight.
+
+---
+
+### What an eval number actually _means_ (the crossword sweep)
+
+**One-line rule:** a green gate and a passing judge check are not the same claim — the gate says
+"structurally legal," the judge says "actually good," and the gap between them is the real finding.
+
+The full sweep was **11 personas × 3 runs = 33 puzzles**, one arm (`baseline`), oracle and scripted
+user both `kimi-k2.6`. Two very different-looking scoreboards came out of it.
+
+**Scoreboard 1 — the deterministic gates (computed for free, no model):**
+
+| Gate                                    | Result       |
+| --------------------------------------- | ------------ |
+| finalize called                         | 33/33        |
+| all returned ids in bank                | 33/33        |
+| ≥ 8 words placed (R1)                   | 33/33        |
+| 0 duplicate placed ids (R3)             | 33/33        |
+| ≥ 60% of words from the selected films  | 33/33        |
+| ≥ 2 distinct difficulty levels          | 33/33        |
+
+Every gate green. ids requested averaged **13.24**, words placed **13.09**, never below 8. The
+Phase 2/3 fuzz work and the "request 10–14" fix did exactly their job. **The grid-building half of
+the system is solid.**
+
+**Scoreboard 2 — the blind judge (RUBRIC c1–c5):**
+
+| Check                                 | baseline      | Note                          |
+| ------------------------------------- | ------------- | ----------------------------- |
+| c1 — on-topic                         | **16/33 (48%)** | the real signal             |
+| c2 — solvable                         | 33/33         | **CEILING** — uninformative   |
+| c3 — mixed difficulty                 | 33/33         | **CEILING** — uninformative   |
+| c4 — no near-duplicates               | 32/33         | one role↔actor mirror-clue    |
+| c5 — factually correct (NEVER DROP)   | 32/33         | one burden-of-proof failure   |
+
+Now the story changes. **c1 on-topic passes only 48% of the time.** The oracle builds a valid,
+solvable, difficulty-mixed puzzle — and then pads the spare grid slots with words from films the
+user _never raised_, sometimes from films the user **explicitly rejected**. One blind rationale:
+_"user engaged ONLY with The Witch and expressly refused Hereditary/Backrooms, yet 6 of 14 words are
+from those films."_ The judge never saw the persona — it just read the transcript and the clues.
+
+**Why the two scoreboards disagree — and which one to believe:**
+
+```ts
+// The GATE (evals/run.ts) — a coarse, free floor:
+//   "are at least 60% of the PLACED words from selectedFilmIds?"
+const onTopicShare = placedFromSelected / placedTotal; // ≥ 0.60 ? pass
+//   A puzzle can be 60% about your films and 40% about films you rejected → still PASSES.
+
+// The JUDGE (evals/RUBRIC.md, c1) — a human-aligned read:
+//   "is this puzzle RECOGNISABLY about the films this user engaged with?"
+//   40% off-topic words fails this the way a real player would feel it. → FAILS.
+```
+
+```mermaid
+flowchart TD
+  Puzzle[one finalized puzzle] --> Gate{≥60% placed<br/>from selected films?}
+  Gate -->|yes, 33/33| GatePass[deterministic gate: PASS]
+  Puzzle --> Judge{recognisably<br/>ABOUT the user's films?}
+  Judge -->|only 16/33| JudgeReal[c1: on-topic]
+  Judge -->|17/33| JudgeDrift[c1: DRIFT — padded with<br/>unrelated / rejected films]
+  GatePass -.same puzzle,<br/>different question.-> Judge
+```
+
+**Read the diagram:** the same puzzle answers two different questions. The gate asks a lenient
+arithmetic question and passes everything; the judge asks the question a real player would ask and
+fails half. **The gap _is_ the result** — it tells you the cheap check is not a proxy for quality,
+and that the oracle's weak point is topic discipline, not grid-building.
+
+**Two more numbers you must read correctly, or you'll misreport the sweep:**
+
+- **CEILING (c2, c3 at 100%)** is _not_ a win. A check every puzzle passes can't tell a good arm
+  from a bad one — it's a light meter pinned at the top of its range, reading nothing. It needs
+  harder personas or a second (ablated) arm before it means anything. Reporting "c2: 100% ✅" would
+  be lying with a true number.
+- **c5 = 32/33 is a _flag_, not a rate.** c5 (factual correctness) is the never-drop check, so its
+  single failure gets a full unblinded audit rather than being averaged into a tidy 97%. That one
+  failure was a **burden-of-proof** miss — a MATCHMAKER clue the blind judge couldn't verify from the
+  transcript alone. Absence of evidence is treated as a fail here _on purpose_: it's the check meant
+  to catch a hallucinated character or a misattributed actor, so it errs strict.
+
+**Film-set analogy:** the deterministic gates are the **QC checklist at the lab** — is the print in
+focus, is the audio in sync, are there 8 reels. All boxes ticked. The judge is the **test-screening
+audience** — did the movie hold together, was it about what the trailer promised. The lab can pass a
+print the audience walks out on. When those two disagree, **you believe the audience** — and this
+sweep's audience said the puzzle keeps wandering off the film you came to see.
+
+> [!NOTE]
+> **Caveat, stated honestly.** `claude -p` wasn't logged in in this container, so judging ran
+> through a blind-subagent bridge (each puzzle scored by a separate Claude that saw _only_ the
+> blinded prompt). It's a genuine blind judgment and schema-identical to the CLI path, but it is a
+> substitution — a logged-in CLI can re-judge the same blinded artifacts later for zero extra spend.
+> Also: one arm, small N (33), and the same model on both sides of the conversation. Treat c4/c5's
+> single failures as things to _inspect_, not as calibrated rates.

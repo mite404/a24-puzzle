@@ -11,8 +11,6 @@ import { DEFAULT_PERSONA_ID, getOraclePersona, type OraclePersonaId } from "@/li
 
 export type OracleChatStatus = "ready" | "submitted" | "streaming" | "error";
 
-const ORACLE_OPENING_LINE = getOraclePersona(DEFAULT_PERSONA_ID).openingLine;
-
 function extractFinalizedProfile(messages: Array<OracleUIMessage>): ExperienceProfile | undefined {
   for (const message of messages) {
     for (const part of message.parts) {

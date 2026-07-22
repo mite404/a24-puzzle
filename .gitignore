@@ -39,3 +39,20 @@ next-env.d.ts
 # rumdl
 .rumdl_cache
 .fallow/
+
+# eval harness artifacts — reproducible sweep outputs, not source
+/evals/runs/
+/evals/blind/
+/evals/scores/
+/evals/judge-prompts/
+/evals/judge-replies/
+/evals/*.log
+/evals/*.out
+
+# Ralph supervisor artifacts — harness logs, not source
+/ralph.log
+/ralph-supervisor.log
+/ralph-unbounded.log
+/ralph-supervisor.sh
+/evals/rejudge-prompts/
+/evals/rejudge-scores/

@@ -6,6 +6,12 @@ export interface Film {
   year: number;
   director: string;
   genres: string[];
+  /**
+   * Principal cast (actor names), so a puzzle can be built around a shared actor,
+   * not only a shared film — see spec `crossword-bank.md` R8. Omitted for films with
+   * no named ensemble (e.g. `the-backrooms`).
+   */
+  cast?: string[];
 }
 
 export interface Swatch {
@@ -48,6 +54,13 @@ export interface CrosswordEntry {
   word: string;
   clue: string;
   difficulty: Difficulty;
+  /**
+   * Marks a role/actor mirror pair: a character entry and the actor-name entry whose
+   * clues restate the same fact (e.g. HARRY "played by Pedro Pascal" / PASCAL "Pedro who
+   * plays Harry"). Two entries sharing a `pairId` are near-duplicates — `resolveCrosswordEntries`
+   * keeps at most one in a single puzzle so the grid never carries both (RUBRIC c4).
+   */
+  pairId?: string;
 }
 
 /** A single location-quiz question: one location plus 4 film options to choose from. */
@@ -71,6 +84,12 @@ export interface CrosswordLayout {
   rows: number;
   cols: number;
   words: PlacedWord[];
+  /**
+   * Bank ids of requested entries the generator could not interlock (returned with
+   * `orientation: "none"`). Empty when every requested word reached the grid. Makes the
+   * silent drop observable to the caller — see spec `crossword-layout.md` R6.
+   */
+  droppedIds: string[];
 }
 
 /** Structured output of the conversation, emitted by Claude via finalizeExperience. */

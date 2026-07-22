@@ -41,45 +41,69 @@ function buildCrosswordLayout(entries: CrosswordEntry[]): CrosswordLayout {
     console.log = originalLog;
   }
 
-  const words: PlacedWord[] = layout.result
-    .filter(
-      (w) =>
-        w.orientation !== "none" &&
-        typeof w.startx === "number" &&
-        typeof w.starty === "number" &&
-        typeof w.position === "number",
-    )
-    .map((w) => {
-      const entry =
-        entries.find((e) => e.word.toUpperCase() === w.answer && e.clue === w.clue) ??
-        entries.find((e) => e.word.toUpperCase() === w.answer);
-      return {
-        id: entry?.id ?? w.answer,
-        answer: w.answer,
-        clue: w.clue,
-        startx: w.startx as number,
-        starty: w.starty as number,
-        orientation: w.orientation as "across" | "down",
-        position: w.position as number,
-      };
-    });
+  // The generator returns *every* requested word in `layout.result`; the ones it could
+  // not interlock carry `orientation: "none"`. A placed word additionally needs valid
+  // numeric coords. Splitting on the same predicate keeps placed + dropped exhaustive.
+  const isPlaced = (w: (typeof layout.result)[number]) =>
+    w.orientation !== "none" &&
+    typeof w.startx === "number" &&
+    typeof w.starty === "number" &&
+    typeof w.position === "number";
 
-  return { rows: layout.rows, cols: layout.cols, words };
+  const idFor = (w: (typeof layout.result)[number]) =>
+    (
+      entries.find((e) => e.word.toUpperCase() === w.answer && e.clue === w.clue) ??
+      entries.find((e) => e.word.toUpperCase() === w.answer)
+    )?.id ?? w.answer;
+
+  const words: PlacedWord[] = layout.result.filter(isPlaced).map((w) => ({
+    id: idFor(w),
+    answer: w.answer,
+    clue: w.clue,
+    startx: w.startx as number,
+    starty: w.starty as number,
+    orientation: w.orientation as "across" | "down",
+    position: w.position as number,
+  }));
+
+  // R6: expose what fell off the grid instead of swallowing it silently.
+  const droppedIds = layout.result.filter((w) => !isPlaced(w)).map(idFor);
+
+  return { rows: layout.rows, cols: layout.cols, words, droppedIds };
 }
 
 /** Resolves crossword ids from the profile, falling back to a sensible default set. */
 function resolveCrosswordEntries(ids: string[]): CrosswordEntry[] {
-  const resolved = ids
-    .map((id) => getCrosswordEntry(id))
-    .filter((e): e is CrosswordEntry => Boolean(e));
+  // Two exclusion rules applied as we resolve, both keeping the first-seen entry:
+  //   `have`       — dedupe by id, so a repeated id can't place the same word twice
+  //                  (spec crossword-layout.md R3).
+  //   `havePairs`  — dedupe by `pairId`, so a role/actor mirror pair (e.g. HARRY/PASCAL)
+  //                  can't put two clues restating one fact on the same grid (RUBRIC c4).
+  // Both sets are the single source of truth, reused by the top-up below so it can't
+  // re-introduce a duplicate id or a mirror half either.
+  const have = new Set<string>();
+  const havePairs = new Set<string>();
+  const resolved: CrosswordEntry[] = [];
+  const admit = (entry: CrosswordEntry): boolean => {
+    if (have.has(entry.id)) return false;
+    if (entry.pairId !== undefined && havePairs.has(entry.pairId)) return false;
+    have.add(entry.id);
+    if (entry.pairId !== undefined) havePairs.add(entry.pairId);
+    resolved.push(entry);
+    return true;
+  };
+
+  for (const id of ids) {
+    const entry = getCrosswordEntry(id);
+    if (entry) admit(entry);
+  }
 
   if (resolved.length >= 4) return resolved;
 
   // Top up with bank entries not already chosen, until we have a playable puzzle.
-  const have = new Set(resolved.map((e) => e.id));
   for (const entry of crosswordBank) {
     if (resolved.length >= 8) break;
-    if (!have.has(entry.id)) resolved.push(entry);
+    admit(entry);
   }
   return resolved;
 }
