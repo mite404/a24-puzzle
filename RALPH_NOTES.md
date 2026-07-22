@@ -331,6 +331,32 @@ out of scope for Phase 0.)
   `blind/` dir as the records; filtering `f !== "key.json"` keeps the judge from ever
   reading identity, enforced by a test that plants a key.json and asserts it's excluded.
 
+## Phase 4 — eval `score.ts` (done)
+
+- **A "block" is one rubric check (c1..c5), not a persona group.** The reporting rule in
+  RUBRIC.md ("per-block pass rates for each check") and `specs/eval-harness.md` both use
+  block = check. `score.ts` reports, for each check, a pass rate PER ARM — never a single
+  combined headline number. That is the whole point of the reporting discipline.
+- **CEILING = every arm with runs passed the check on every run.** A saturated block no
+  longer discriminates between arms, so it is uninformative, not a win — `formatReport`
+  prints an explicit `CEILING` line for it (mirrors adhd-eval's score.py). This holds for a
+  single arm too: one arm at 100% still means the check isn't discriminating, so it earns the
+  warning. `ceiling` is false when there are zero cells (nothing to saturate). The spec text
+  says "if both arms max out"; the general condition (all arms with runs at 100%) covers the
+  one-arm case honestly and was chosen deliberately.
+- **`score.ts` is the ONE stage allowed to read `blind/key.json`.** blind.ts writes it,
+  judge.ts explicitly skips it, score.ts reads it to unblind. `joinScores` is pure (no FS);
+  the key read + CLI live under `import.meta.main`, so no spend on import.
+- **Coverage is reported honestly, never silently dropped.** A score whose blindId has no
+  key entry -> `unmatchedScores` (a WARNING line); a key entry with no score -> `unjudged`
+  (a count line). This makes an interrupted/partial judging pass visible in the report rather
+  than looking complete.
+- **c5 gets an unblinded audit list.** Because c5 (factually correct) is the never-drop
+  check, `formatReport` lists every c5 failure with its restored identity (persona/axis/arm/
+  run + rationale) so a human can spot-check the most consequential verdicts by hand.
+- The `must(v)` helper (throws on undefined) is used in `score.test.ts` in place of
+  `find(...)!` — lint bans non-null assertions as an error (see the gates note above).
+
 ## Corrected assumptions
 
 Record any case where a measurement contradicted something written in the plan or the

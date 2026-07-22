@@ -281,8 +281,20 @@ See `specs/eval-harness.md`. Build the pipeline before spending any API budget.
       `scoreIsDone` gives resumability. 19 tests in `judge.test.ts`, no CLI spend. All four
       validations pass (117 tests, tsc clean, 0 lint errors).
 
-- [ ] Write `evals/score.ts` — unblind, aggregate, per-block reporting, with an explicit
+- [x] Write `evals/score.ts` — unblind, aggregate, per-block reporting, with an explicit
       CEILING warning when a block saturates.
+      Stage 4: `scores/*.json` + `blind/key.json` -> printed report. This is the one stage
+      allowed to read `key.json` (the unblinding step). Pure core: `joinScores` restores
+      identity by matching each verdict's `blindId` to its key entry — a score with no key
+      entry lands in `unmatchedScores` and a key entry with no score in `unjudged`, so
+      coverage is stated honestly, never silently dropped. `aggregateChecks` emits one
+      `CheckReport` per rubric check (the "block"), each with a per-ARM pass rate — never a
+      single combined headline, per RUBRIC's reporting rule. `ceiling` is set when every arm
+      with runs passed the check on every run (saturated => non-discriminating), and
+      `formatReport` prints the mandated `CEILING` line for it. c5 (never-drop) additionally
+      gets an unblinded audit list of every failure for human spot-checking. FS/CLI run only
+      under `import.meta.main` (no spend). 18 tests in `score.test.ts` (135 total). All four
+      validations pass.
 
 - [ ] Do a single smoke sweep: 2 personas x 1 run, to prove the pipeline end to end
       before any full sweep.
