@@ -376,3 +376,16 @@ See `specs/eval-harness.md`. Build the pipeline before spending any API budget.
       correctly, and the honest judge-substitution caveat. All numbers cross-checked against
       RESULTS.md and the live fuzz output. All four validations pass (144 tests, tsc clean,
       0 lint errors). Plan complete.
+
+## Follow-up cleanups (post-plan)
+
+Plan is complete; these are deferred engineering-excellence items the plan itself flagged.
+
+- [x] Remove the unreachable `variant === "default"` dead code in
+      `src/components/intake/palette-card.tsx` (flagged as a cleanup candidate in the
+      Phase 0 lint notes). `CrtPaletteCard` is the only export and always passed
+      `variant="crt"` (sole external ref: `tv-oracle-feed.tsx`), so the `variant` union,
+      the `PaletteCardInternalProps` type, and the default-variant JSX were all dead.
+      Folded the live crt path into `CrtPaletteCard` and dropped the rest. Pure dead-code
+      removal, no behavioral change; all 144 tests, tsc, and lint stayed green. See
+      RALPH_NOTES.md.

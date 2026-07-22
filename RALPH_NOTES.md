@@ -187,8 +187,13 @@ there were exactly 12. How each was fixed (all by deleting dead code except the 
   `floor(0.9 * 3) = 2` → `"C"`. Better than deleting a test that documents real behaviour.
 - `palette-card.tsx` — deleted unused `PaletteCard` (default variant). Only
   `CrtPaletteCard` is imported anywhere. NOTE: the `variant === "default"` branch in
-  `PaletteCardBase` is now unreachable dead code; left in place to keep this task minimal,
-  a candidate for later cleanup.
+  `PaletteCardBase` was left as unreachable dead code back in Phase 0.
+  **Follow-up (done after plan complete):** since `CrtPaletteCard` is the sole export and
+  always passes `variant="crt"` (only external ref: `tv-oracle-feed.tsx`), folded
+  `PaletteCardBase` + the `variant` union into `CrtPaletteCard` and dropped the unreachable
+  default-variant JSX. Pure dead-code removal, no behavioral change — all 144 tests, tsc,
+  and lint stayed green. Not a bug fix, so no test-first (behavior preserved, existing
+  suite verifies).
 - `use-debug-voice.ts` — **refactor.** The voice-off flag is a localStorage value that
   changes via a window event → an external store. Replaced the `useState` +
   `setState`-in-effect with `useSyncExternalStore(subscribe, getSnapshot, () => false)`.
