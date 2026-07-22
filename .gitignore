@@ -54,3 +54,5 @@ next-env.d.ts
 /ralph-supervisor.log
 /ralph-unbounded.log
 /ralph-supervisor.sh
+/evals/rejudge-prompts/
+/evals/rejudge-scores/
