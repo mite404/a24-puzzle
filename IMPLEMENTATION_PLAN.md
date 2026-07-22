@@ -219,8 +219,21 @@ See `specs/eval-harness.md`. Build the pipeline before spending any API budget.
       per the honesty rule — an inaccurate persona would poison the c5 judge). No source code
       touched; all four validations still pass (55 tests, tsc clean, 0 lint errors).
 
-- [ ] Write `evals/run.ts`: scripted conversation against the real prompt and tools,
+- [x] Write `evals/run.ts`: scripted conversation against the real prompt and tools,
       resumable, one JSON per run in `evals/runs/`.
+      `run.ts` drives an ORACLE (real `buildSystemPrompt()` + real `oracleTools`,
+      `stopWhen: stepCountIs(1)` — the same one-step-per-turn cadence as `/api/chat`)
+      against a scripted USER model that role-plays a persona sheet. The persona's
+      `## Opening message` is user turn 1 verbatim; the loop alternates until the oracle
+      calls `finalizeExperience` or `turn_cap` trips (a failure). On finalize it builds the
+      grid via `buildGamePayload` and records `crossword` + `crosswordWords` for the
+      downstream gates/judge. One JSON per cell in `evals/runs/`, named
+      `<persona>__<arm>__run<n>.json`; resumable via `cellIsDone` (skip any parseable
+      existing file). Model wiring lives behind `makeOracleStep`/`makeUserStep`; the pure
+      persona parser + conversation state machine are unit-tested in `evals/run.test.ts`
+      (15 tests, **no API spend** — CLI runs only under `import.meta.main`). All four
+      validations pass (70 tests). No sweep was run — that needs OpenRouter budget and is a
+      later task.
 
 - [ ] Add the deterministic gates from the spec to `run.ts` and record pass/fail per run.
       These need no judge and no extra API spend.

@@ -226,6 +226,38 @@ out of scope for Phase 0.)
   so c1's ground truth is whichever palette the oracle shows that the user warms to —
   determined at run time, not fixed in the sheet.
 
+## Phase 4 — eval `run.ts` (done)
+
+- **`run.ts` is split pure-vs-impure so it is testable with zero API spend.** The persona
+  parser (`parsePersonaSheet`, `extractSection`) and the conversation state machine
+  (`driveConversation`, injectable `oracleStep`/`userStep`) are pure and exported;
+  `evals/run.test.ts` (15 tests) drives them with fakes. The real model wiring
+  (`makeOracleStep`/`makeUserStep` via `@ai-sdk/openai` → OpenRouter) and the sweep loop
+  run **only under `import.meta.main`**, so importing the module in a test never calls the
+  API. Do not move logic that needs testing into the model-backed factories.
+- **Oracle cadence mirrors `/api/chat`:** `generateText({ tools: oracleTools, stopWhen:
+  stepCountIs(1) })` — one step per turn. Read tool calls off `result.toolCalls`;
+  `call.input` is `unknown` under the `TypedToolCall` union once you compare `toolName` to
+  a literal (the `DynamicToolCall` member keeps `toolName: string`), so cast via
+  `as unknown as <Input>`. `finalizeExperience` input's `selectedFilmIds` is `string[]` and
+  must be cast to `FilmId[]` for `ExperienceProfile`.
+- **The persona `## Opening message` is user turn 1, verbatim** — it is NOT produced by the
+  user model. The scripted user only generates turns 2..N. `makeUserStep` seeds the user
+  model's history with the opening message as an `assistant` message so it has continuity.
+  From the user model's side the roles are swapped: oracle turns are `user`, the persona's
+  own turns are `assistant`.
+- **Resumability contract:** one file per cell, `<persona>__<arm>__run<n>.json` in
+  `evals/runs/`. `cellIsDone` skips any file that exists and JSON-parses. `arm` defaults to
+  `"baseline"` (the spec's blind stage distinguishes arms; only one arm exists so far).
+  CLI flags: `--runs=N` (default 3), `--arm=NAME`, `--only=id1,id2`.
+- **`run.ts` records `crossword` + `crosswordWords` from `buildGamePayload(profile)`**, not
+  just the finalize input — the deterministic gates (next task) need the *placed* grid, and
+  `buildGamePayload` is where top-up/resolve/layout actually happen. Note `buildGamePayload`
+  uses `Math.random` for **location** distractors only; the crossword layout is
+  deterministic (see the generator note above), so re-running a cell reproduces the grid.
+- The run record does **not** yet compute gate pass/fail or a judge score — that is the
+  next two tasks. `run.ts` is deliberately just the generator stage.
+
 ## Corrected assumptions
 
 Record any case where a measurement contradicted something written in the plan or the
