@@ -52,10 +52,27 @@ Fill these in as they are measured. Later phases depend on them.
   drops even at max. This is the number Phase 5's `crosswordWordIds` count is derived from.
   NOTE: this is the *current 14-entry* bank; Phase 3 expands the bank and Phase 2 task says
   to re-measure — a larger/longer-word bank should raise the rate and lower the id count.
-- **Placement rate (expanded bank):** not yet measured — Phase 3.
-- **Ids to request for >= 8 placed words:** not yet derived — Phase 5.
+- **Placement rate (expanded bank):** partial — bank is now **32 entries** (moonlight/
+  hereditary/midsommar mined to 7 each). Fuzz (seed 0x51ac, 64 trials/size, sizes 4–16)
+  reports **97.7% overall**, with P(>=8 placed): 73% at size 8, 98% at 9, **100% at >= 10**.
+  Not the final number — Phase 3's last task re-measures against the full ~70-entry bank.
+- **Fuzz sweep is now capped at maxSize 16**, not the whole bank. The generator cost grows
+  superlinearly with word count; sweeping all 32 entries took ~110s and timed out the 20s
+  bound (and would only get worse toward ~70). Sizes 4–16 cover the entire Phase-5 decision
+  region (P(>=8) saturates to 100% by size 10), so nothing the gate needs was lost. Only
+  invariants are asserted, so the cap does not weaken any assertion. The headline-rate
+  re-measure against the final bank is the dedicated last Phase 3 task.
+- **Ids to request for >= 8 placed words:** not yet derived — Phase 5. Current (32-entry)
+  reading still points to **>= 10** for a reliable >= 8 placed.
 
 ## Known constraints
+
+- `game.test.ts` "droppedIds is empty when every requested word is placed" asserts the
+  **full bank in natural (array) order places every entry**. Held at 14; still holds at 32.
+  This is input-order dependent and measured, not guaranteed — a future bank addition could
+  make the generator drop one in natural order and legitimately turn this test red. If that
+  happens, don't weaken it: switch it to an id set that is measured to place fully, or
+  update the expected `droppedIds`, and record the new measurement here.
 
 - `buildCrosswordLayout` (`src/lib/game.ts`) used to silently drop any word the generator
   could not interlock. **Fixed (Phase 2, R6):** `CrosswordLayout` now carries

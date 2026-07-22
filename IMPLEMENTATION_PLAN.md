@@ -143,7 +143,16 @@ accuracy rule. `pdftotext` is installed.
       are deliberately NOT asserted yet — the bank is still being mined; those land after
       the mining tasks below. These integrity checks must hold on every entry ever added.
 
-- [ ] Mine `moonlight`, `hereditary`, `midsommar` to at least 6 entries each.
+- [x] Mine `moonlight`, `hereditary`, `midsommar` to at least 6 entries each.
+      Each now has 7 (the seed entry + 6 new): moonlight (JUAN/KEVIN/PAULA/TERESA/BLACK/
+      LITTLE), hereditary (ANNIE/PETER/CHARLIE/STEVE/JOAN/MINIATURES), midsommar (DANI/
+      CHRISTIAN/PELLE/SWEDEN/HARGA/SOLSTICE). Character names/prominence confirmed against
+      the shooting-script frequency counts (mining method in the spec); actors/setting from
+      general knowledge, only facts I'm confident of. Difficulty per R7: leads easy, deep
+      cuts hard. Collateral fix: the Phase 2 fuzz test swept sizes 4..bank-length, which
+      timed out once the bank passed 30 entries — capped the sweep at 16 (the Phase-5
+      region, where P(>=8) already saturates). See RALPH_NOTES. Bank integrity test
+      (crosswordBank.test.ts) validates the new entries; all four validations pass.
 
 - [ ] Mine `lady-bird`, `materialists`, `the-witch` to at least 6 entries each.
 

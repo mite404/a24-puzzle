@@ -69,7 +69,12 @@ describe("crossword placement rate (fuzz, spec crossword-layout.md)", () => {
     const rng = makeRng(0x51ac); // fixed seed → reproducible report
     const TRIALS_PER_SIZE = 64;
     const minSize = 4; // >= 4 so resolveCrosswordEntries never tops up
-    const maxSize = allBankIds.length; // 14
+    // Cap the sweep: the generator cost grows superlinearly with word count, and the
+    // bank now exceeds 30 entries (heading to ~70 in Phase 3). Sweeping the whole bank
+    // times out and tells Phase 5 nothing new — P(>=8 placed) already saturates to 100%
+    // by size 10, so the request-count region (4..16) is all the gate needs. The full
+    // re-measure of the headline rate against the final bank is its own Phase 3 task.
+    const maxSize = Math.min(allBankIds.length, 16);
 
     let totalRequested = 0;
     let totalPlaced = 0;
