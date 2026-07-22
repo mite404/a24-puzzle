@@ -389,3 +389,59 @@ Plan is complete; these are deferred engineering-excellence items the plan itsel
       Folded the live crt path into `CrtPaletteCard` and dropped the rest. Pure dead-code
       removal, no behavioral change; all 144 tests, tsc, and lint stayed green. See
       RALPH_NOTES.md.
+
+## Phase 6 — Act on the c1 finding (BLOCKED: needs a design decision + sweep budget)
+
+The plan above is complete and every validation passes.
+The full sweep's one discriminating result is **c1 on-topic 16/33 (48%)** — the oracle
+drifts off the films the user actually chose (`evals/RESULTS.md`).
+This phase records the discovered work so a future iteration can pick it up.
+It is NOT started, on purpose — see the blocker below.
+
+### Root cause (code-grounded, not a guess)
+
+The drift is manufactured by the oracle's own instructions, in three reinforcing places:
+
+- `src/lib/oracle-personas.ts:27` (SHARED_ORACLE_RULES) — finalize only "once **at least
+  3 films** clearly resonate."
+- `src/lib/oracle-tools.ts:51` — `selectedFilmIds` description asks for "**3-6 film ids**."
+- `src/lib/oracle-tools.ts:60` + `oracle-personas.ts:32` — `crosswordWordIds` "**10-14**,
+  weighted toward selected films," while every approved film except `uncut-gems` has only
+  **7-8** bank entries.
+
+So a genuine single-film user cannot get an on-topic puzzle.
+The rules forbid finalizing on one film, and 10-14 crossword ids can't be drawn from one
+7-entry film — off-topic words are structurally mandated, not a model whim.
+This matches the RESULTS rationales exactly (e.g. single-film-the-witch: 6 of 14 words
+from rejected films).
+
+### Why this is a tension, not a clean bug
+
+The palette feature is *designed* to broaden taste — `oracle-personas.ts:25` picks a film
+"whose colors might **test or expand** their stated mood."
+On-topic fidelity (what c1 rewards) and taste-expansion (what the product intends) pull in
+opposite directions.
+Deciding which wins is a product-owner call, not something an autonomous loop should settle
+by unilaterally rewriting the prompt.
+
+### Blocker
+
+1. A design decision from the user: prioritize staying on the user's chosen films, or keep
+   the "at least 3 films / expand taste" behavior?
+2. Any change here is a prompt change — its effect on c1 can only be proven by a **fresh
+   full sweep**, ideally with a **second (ablated) arm** so the c1 block stops being a
+   single-arm number. That needs OpenRouter budget and the multi-iteration sweep dance
+   documented in RALPH_NOTES Phase 5.
+
+### Candidate sub-tasks (once unblocked)
+
+- [ ] Relax the "at least 3 films" rule so a narrow-taste user can finalize on 1-2 films;
+      make `crosswordWordIds` count adaptive to how many on-topic entries actually exist,
+      rather than a flat 10-14. Keep the ">= 8 placed" reliability floor.
+- [ ] If staying-on-topic wins: mine each approved film to >= 10 bank entries (only
+      `uncut-gems` has 10 today) so a single-film puzzle can hit 10-14 ids without leaving
+      the film. Accuracy rule in `specs/crossword-bank.md` still binds.
+- [ ] Add the ablated prompt as a second arm in the sweep (`--arm=`), re-run, and report
+      c1 per-arm so CEILING/discrimination is meaningful.
+- [ ] Fix the c4 mirror-clue case: instruct the oracle not to place both halves of a
+      role/actor pair (e.g. HARRY + PASCAL) in the same grid (RESULTS c4, terse-one-word).

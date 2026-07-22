@@ -412,6 +412,31 @@ out of scope for Phase 0.)
   pair). c5 32/33 (one burden-of-proof failure — a Materialists clue unverifiable from the
   transcript; audited in RESULTS.md).
 
+### c1 drift is manufactured by the instructions (root cause, Phase 6)
+
+The sweep's one discriminating result — **c1 on-topic 48%** — is not random model
+misbehavior. It is forced by the oracle's own instructions, in three places:
+
+- `oracle-personas.ts:27` — finalize only "once **at least 3 films** clearly resonate."
+- `oracle-tools.ts:51` — `selectedFilmIds` "**3-6 film ids**."
+- `oracle-tools.ts:60` / `oracle-personas.ts:32` — `crosswordWordIds` "**10-14**, weighted
+  toward selected films," while every approved film but `uncut-gems` has only **7-8** bank
+  entries (measured: uncut-gems 10, the-witch 8, good-time 8, the rest 7).
+
+Consequence: a genuine single-film user **cannot** get an on-topic puzzle. The rules forbid
+finalizing on one film, and 10-14 crossword ids can't come from one 7-entry film, so
+off-topic words are structurally mandated. The Phase-5 "request 10-14 ids" fix (which made
+the placement gates pass 33/33) is in direct tension with c1 for narrow-taste users.
+
+**This is a product-design tension, not a bug I can fix autonomously.** The palette feature
+is *designed* to broaden taste (`oracle-personas.ts:25`, "test or expand their stated
+mood"), so on-topic fidelity and taste-expansion genuinely conflict. Which one wins is a
+user decision. And any prompt change's effect on c1 is unmeasurable without a fresh sweep
+(needs OpenRouter budget + ideally a 2nd arm). So Phase 6 is recorded and left BLOCKED, not
+started — see IMPLEMENTATION_PLAN.md Phase 6. The validator already allows `selectedFilmIds
+>= 1` (`validate-experience.ts:12`), so only the prompt/tool text, not the validator, drives
+the "3 films" floor.
+
 ### Prior in-progress notes (kept for context)
 
 
