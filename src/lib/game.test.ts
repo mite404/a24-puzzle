@@ -199,6 +199,32 @@ describe("buildGamePayload — grid integrity (crossword-layout.md R2–R5)", ()
 });
 
 /**
+ * R3 (spec `crossword-layout.md`): "No duplicate ids may appear in a single layout."
+ * The oracle may hand `buildGamePayload` a profile whose `crosswordWordIds` repeats an id
+ * (nothing validates against it — see RALPH_NOTES). Before the fix, `resolveCrosswordEntries`
+ * preserved those duplicates, so the repeated id was placed twice and two grid words shared
+ * one id — a direct R3 violation. Deduping at resolve time keeps both `crosswordWords` and
+ * the placed layout free of duplicate ids by construction.
+ */
+describe("buildGamePayload — duplicate ids never reach the layout (crossword-layout.md R3)", () => {
+  test("a profile with a repeated id yields no duplicate placed ids", () => {
+    const ids = ["cw-sandler", "cw-sandler", "cw-opal", "cw-howard", "cw-garnett", "cw-safdie"];
+    const payload = buildGamePayload(baseProfile({ crosswordWordIds: ids }));
+    const crossword = payload.crossword;
+    if (!crossword) throw new Error("crossword layout was null");
+    const placedIds = crossword.words.map((w) => w.id);
+    expect(new Set(placedIds).size).toBe(placedIds.length);
+  });
+
+  test("crosswordWords resolved from duplicate ids carry no duplicate id", () => {
+    const ids = ["cw-sandler", "cw-sandler", "cw-opal", "cw-howard", "cw-garnett", "cw-safdie"];
+    const payload = buildGamePayload(baseProfile({ crosswordWordIds: ids }));
+    const resolvedIds = payload.crosswordWords.map((e) => e.id);
+    expect(new Set(resolvedIds).size).toBe(resolvedIds.length);
+  });
+});
+
+/**
  * R6 (spec `crossword-layout.md`): the number of dropped words must be observable by the
  * caller, not silently swallowed. The generator returns every requested word in
  * `layout.result` — the ones it could not interlock carry `orientation: "none"`. Before
