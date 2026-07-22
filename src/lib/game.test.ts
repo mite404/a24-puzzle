@@ -60,3 +60,51 @@ describe("buildGamePayload", () => {
     }
   });
 });
+
+/**
+ * `resolveCrosswordEntries` is not exported; `buildGamePayload` surfaces its result
+ * as `payload.crosswordWords`. These characterization tests pin down the resolve +
+ * top-up behaviour recorded in RALPH_NOTES.md: it tops up only when fewer than 4 ids
+ * resolve, walking the bank in order up to 8 entries, and it neither validates ids
+ * (unknown ones are silently dropped) nor removes duplicates.
+ */
+describe("buildGamePayload — resolveCrosswordEntries via crosswordWords", () => {
+  test("zero ids tops up to the first 8 bank entries, in bank order", () => {
+    const payload = buildGamePayload(baseProfile({ crosswordWordIds: [] }));
+    expect(payload.crosswordWords).toEqual(crosswordBank.slice(0, 8));
+  });
+
+  test("five valid ids resolve to exactly those five, with no top-up", () => {
+    const ids = ["cw-sandler", "cw-opal", "cw-howard", "cw-garnett", "cw-safdie"];
+    const payload = buildGamePayload(baseProfile({ crosswordWordIds: ids }));
+    expect(payload.crosswordWords.map((e) => e.id)).toEqual(ids);
+  });
+
+  test("unknown ids are dropped, then the empty set tops up to 8 bank entries", () => {
+    const payload = buildGamePayload(
+      baseProfile({ crosswordWordIds: ["nope", "still-not-real", "ghost"] }),
+    );
+    expect(payload.crosswordWords).toEqual(crosswordBank.slice(0, 8));
+  });
+
+  test("valid ids below the top-up threshold are kept, then padded to 8", () => {
+    const payload = buildGamePayload(
+      baseProfile({ crosswordWordIds: ["cw-eggers", "made-up-id", "cw-paimon"] }),
+    );
+    const ids = payload.crosswordWords.map((e) => e.id);
+    // the two resolvable ids survive; the unknown one is gone
+    expect(ids).toContain("cw-eggers");
+    expect(ids).toContain("cw-paimon");
+    expect(ids).not.toContain("made-up-id");
+    // fewer than 4 resolved, so top-up fills to 8
+    expect(payload.crosswordWords).toHaveLength(8);
+    // top-up never re-adds an id already present
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  test("duplicate ids are preserved, not deduped (>= 4 entries, so no top-up)", () => {
+    const ids = ["cw-sandler", "cw-sandler", "cw-opal", "cw-howard"];
+    const payload = buildGamePayload(baseProfile({ crosswordWordIds: ids }));
+    expect(payload.crosswordWords.map((e) => e.id)).toEqual(ids);
+  });
+});

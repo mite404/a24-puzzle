@@ -42,9 +42,15 @@ anything in this phase.
       words array, and `crosswordWords` are the resolved bank entries for the requested
       ids. Used a 5-valid-id / 3-valid-location profile so neither top-up path fires.
 
-- [ ] Add tests for `resolveCrosswordEntries` behaviour via `buildGamePayload`:
+- [x] Add tests for `resolveCrosswordEntries` behaviour via `buildGamePayload`:
       zero ids, 5 valid ids, unknown ids, duplicate ids. Note the top-up threshold is
       `< 4`, so 5 valid ids yields a 5-word puzzle.
+      Five tests in `game.test.ts`: zero ids and all-unknown ids both top up to the
+      first 8 bank entries in bank order (`crosswordBank.slice(0, 8)`); 5 valid ids
+      return exactly those 5; below-threshold valid+unknown keeps the valid ids, drops
+      the unknown, and pads to 8 with no duplicate re-adds; duplicate ids are preserved
+      (no dedup) when there are already >= 4 entries. Confirmed: resolve does not
+      validate ids and does not dedupe — matches the RALPH_NOTES constraints.
 
 - [ ] Add grid integrity tests: every placed word is in bounds (R4), crossing letters
       agree (R5), no duplicate ids (R3), every placed word carries its bank id (R2).
