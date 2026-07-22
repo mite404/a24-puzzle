@@ -195,19 +195,26 @@ while true; do
   # Run single iteration in Docker. The container runs ONE task, commits, exits.
   # Next iteration starts with completely fresh context.
   # Note: MODEL is already validated against the whitelist above.
-  if docker run --rm \
+  # NOTE: `if cmd | tee` tests tee's exit status, NOT the command's — tee always
+  # succeeds, so every failure reads as success. That bug spun this loop 4000+
+  # times at ~1/sec when Docker Desktop was paused. Capture PIPESTATUS[0] instead.
+  docker run --rm \
     -v "$PROJECT_DIR:/workspace" \
     -w /workspace \
     "${ENV_ARGS[@]}" \
     "$IMAGE_NAME" \
     bash -c "cat '$PROMPT_FILE' | claude --model '$MODEL' -p --dangerously-skip-permissions --output-format text" \
-    2>&1 | tee -a "$LOG_FILE"; then
+    2>&1 | tee -a "$LOG_FILE"
+  RUN_STATUS=${PIPESTATUS[0]}
 
+  if [ "$RUN_STATUS" -eq 0 ]; then
     echo "Iteration $ITERATION complete"
   else
-    echo "Claude exited with error"
+    echo "Iteration failed (docker/claude exit $RUN_STATUS)"
     exit 1
   fi
 
-  sleep 1
+  # Floor on iteration time. Even if something fails instantly, this caps a
+  # runaway at 12/min rather than 60/sec.
+  sleep 5
 done
