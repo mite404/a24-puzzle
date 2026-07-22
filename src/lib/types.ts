@@ -6,6 +6,12 @@ export interface Film {
   year: number;
   director: string;
   genres: string[];
+  /**
+   * Principal cast (actor names), so a puzzle can be built around a shared actor,
+   * not only a shared film — see spec `crossword-bank.md` R8. Omitted for films with
+   * no named ensemble (e.g. `the-backrooms`).
+   */
+  cast?: string[];
 }
 
 export interface Swatch {

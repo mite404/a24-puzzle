@@ -7,6 +7,14 @@ export const films: Film[] = [
     year: 2019,
     director: "Josh & Benny Safdie",
     genres: ["Thriller", "Drama"],
+    cast: [
+      "Adam Sandler",
+      "Julia Fox",
+      "Lakeith Stanfield",
+      "Kevin Garnett",
+      "Idina Menzel",
+      "Eric Bogosian",
+    ],
   },
   {
     id: "good-time",
@@ -14,6 +22,14 @@ export const films: Film[] = [
     year: 2017,
     director: "Josh & Benny Safdie",
     genres: ["Crime", "Thriller"],
+    cast: [
+      "Robert Pattinson",
+      "Benny Safdie",
+      "Jennifer Jason Leigh",
+      "Taliah Webster",
+      "Buddy Duress",
+      "Barkhad Abdi",
+    ],
   },
   {
     id: "the-backrooms",
@@ -28,6 +44,16 @@ export const films: Film[] = [
     year: 2016,
     director: "Barry Jenkins",
     genres: ["Drama"],
+    cast: [
+      "Mahershala Ali",
+      "Naomie Harris",
+      "Trevante Rhodes",
+      "Ashton Sanders",
+      "Alex Hibbert",
+      "André Holland",
+      "Janelle Monáe",
+      "Jharrel Jerome",
+    ],
   },
   {
     id: "hereditary",
@@ -35,6 +61,13 @@ export const films: Film[] = [
     year: 2018,
     director: "Ari Aster",
     genres: ["Horror"],
+    cast: [
+      "Toni Collette",
+      "Alex Wolff",
+      "Milly Shapiro",
+      "Gabriel Byrne",
+      "Ann Dowd",
+    ],
   },
   {
     id: "midsommar",
@@ -42,6 +75,13 @@ export const films: Film[] = [
     year: 2019,
     director: "Ari Aster",
     genres: ["Horror"],
+    cast: [
+      "Florence Pugh",
+      "Jack Reynor",
+      "William Jackson Harper",
+      "Will Poulter",
+      "Vilhelm Blomgren",
+    ],
   },
   {
     id: "the-witch",
@@ -49,6 +89,12 @@ export const films: Film[] = [
     year: 2015,
     director: "Robert Eggers",
     genres: ["Horror"],
+    cast: [
+      "Anya Taylor-Joy",
+      "Ralph Ineson",
+      "Kate Dickie",
+      "Harvey Scrimshaw",
+    ],
   },
   {
     id: "lady-bird",
@@ -56,6 +102,14 @@ export const films: Film[] = [
     year: 2017,
     director: "Greta Gerwig",
     genres: ["Drama", "Comedy"],
+    cast: [
+      "Saoirse Ronan",
+      "Laurie Metcalf",
+      "Tracy Letts",
+      "Lucas Hedges",
+      "Timothée Chalamet",
+      "Beanie Feldstein",
+    ],
   },
   {
     id: "ex-machina",
@@ -77,6 +131,7 @@ export const films: Film[] = [
     year: 2025,
     director: "Celine Song",
     genres: ["Romance", "Comedy"],
+    cast: ["Dakota Johnson", "Chris Evans", "Pedro Pascal"],
   },
 ];
 

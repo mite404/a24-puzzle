@@ -126,8 +126,14 @@ anything in this phase.
 See `specs/crossword-bank.md` for the approved film list, the mining method, and the
 accuracy rule. `pdftotext` is installed.
 
-- [ ] Add `cast?: string[]` to the `Film` interface in `src/lib/types.ts` and populate it
+- [x] Add `cast?: string[]` to the `Film` interface in `src/lib/types.ts` and populate it
       for the approved films, omitting `the-backrooms`.
+      Added the optional field (documented against R8) and populated principal cast for
+      all 8 approved films: uncut-gems (6), good-time (6), moonlight (8), hereditary (5),
+      midsommar (5), the-witch (4), lady-bird (6), materialists (3). `the-backrooms` left
+      with no `cast` (no named ensemble, per spec). `ex-machina` / `everything-everywhere`
+      are not approved films, so they keep no cast. Only well-established leads/principals
+      included per the accuracy rule; walk-ons left out. All four validations pass.
 
 - [ ] Add a bank integrity test: single alphabetic token, length > 1, uppercase, no
       duplicate answers, no duplicate ids, every `filmId` exists in `films.ts`.

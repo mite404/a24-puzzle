@@ -153,3 +153,15 @@ specs. The measurement wins; note what changed and why.
 - Plan (Phase 0 task 1) enumerated 9 lint errors but said "12". `bun run lint` measured
   12. The extra 3 (`experience.tsx` + `use-debug-voice.ts` set-state-in-effect, unused
   `PaletteCard`) were not in the prose list. Measurement won; all 12 fixed.
+
+## Phase 3 — `cast?` field (done)
+
+`Film.cast?: string[]` added and populated for the 8 approved films only. Per the
+accuracy rule, cast lists are **principals only**, not full credits — deliberately
+conservative where I was not 100% sure of a name:
+- `the-witch` has only 4 (Taylor-Joy, Ineson, Dickie, Scrimshaw); the twins Mercy/Jonas
+  (Ellie Grainger / Lucas Dawson) were left out — plausible but not confirmed here.
+- `the-backrooms` has **no** `cast` by spec (no named ensemble).
+- `ex-machina` / `everything-everywhere` are excluded from expansion, so no cast added.
+These are intentional gaps, not oversights; a future iteration confident in more names
+can extend the lists. `cast` is optional, so absence never breaks a build.
