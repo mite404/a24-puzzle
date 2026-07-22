@@ -44,4 +44,7 @@ next-env.d.ts
 /evals/runs/
 /evals/blind/
 /evals/scores/
+/evals/judge-prompts/
+/evals/judge-replies/
 /evals/*.log
+/evals/*.out

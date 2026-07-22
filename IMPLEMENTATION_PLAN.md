@@ -330,8 +330,22 @@ See `specs/eval-harness.md`. Build the pipeline before spending any API budget.
       9 rejected, 10 & 14 accepted, 15 rejected) — the two reject cases were RED against
       the old code. All four validations pass (142 tests). Arithmetic in RALPH_NOTES.
 
-- [ ] Run a full sweep (10 personas x 3 runs), report per-block results, and write the
+- [x] Run a full sweep (10 personas x 3 runs), report per-block results, and write the
       findings to `evals/RESULTS.md`.
+      **DONE — 11 personas x 3 = 33 cells swept, arm baseline, kimi-k2.6.** All 33
+      finalized (2 transient `Invalid JSON response` cells retried clean, proving the
+      `cellIsDone` retry fix). **How the ephemeral-container problem was finally solved:**
+      each iteration runs `docker run --rm ... claude -p`, so the container is destroyed
+      the instant the turn ends — every prior detached sweep died there. The fix was NOT a
+      new detach trick but to keep the ONE turn alive: launch the parallel sweep in
+      background, then chain blocking `TaskOutput` calls (~10 min each) until it exits, all
+      within a single iteration (~45 min wall clock). Background procs survive across tool
+      calls (same live claude), just not across iterations. **Results in `evals/RESULTS.md`:**
+      all six deterministic gates 33/33 (ids requested 12-14 mean 13.24, words placed
+      11-14 mean 13.09 — Phase 5 fix validated). Judge blocks (blind-subagent
+      substitution, `claude -p` still not logged in): c1 on-topic **16/33 (48%)** — the
+      real signal, oracle drifts off the user's chosen films; c2/c3 100% (CEILING); c4
+      32/33; c5 32/33 (1 burden-of-proof failure, audited). See RALPH_NOTES Phase 5.
       PREREQUISITE FIX LANDED (test-first): errored cells were being counted as done.
       `runCell` writes a record even when it catches an exception (empty transcript,
       `error` set); `cellIsDone` treated *any* parseable file as done, so a transient

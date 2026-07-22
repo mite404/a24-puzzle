@@ -369,7 +369,46 @@ out of scope for Phase 0.)
 - The `must(v)` helper (throws on undefined) is used in `score.test.ts` in place of
   `find(...)!` — lint bans non-null assertions as an error (see the gates note above).
 
-## Phase 5 — full sweep (IN PROGRESS — read this first on a fresh iteration)
+## Phase 5 — full sweep (DONE — read this first on a fresh iteration)
+
+- **THE FULL SWEEP RAN AND IS COMPLETE. 33/33 cells, results in `evals/RESULTS.md`.**
+  Do not re-run it unless RESULTS.md is gone. The findings, not the JSON, are the record
+  (artifacts gitignored).
+- **The container-death riddle solved — the fix is behavioural, not a detach trick.**
+  Each iteration is `docker run --rm ... claude --model opus -p`. `claude -p` is one-shot:
+  it exits the moment the turn's final message is produced, and `--rm` then destroys the
+  container, killing every background process inside. That is why EVERY prior detached
+  sweep died at the iteration boundary with `runs/` empty — including iteration 1839, which
+  launched a bg task and *said* "the harness re-invokes me when it exits." In `-p` mode
+  nothing re-invokes; the turn just ended. **The only thing that works: keep the single
+  turn alive until the cells are on disk.** Launch the parallel sweep in background, then
+  chain blocking `TaskOutput(task_id, block=true, timeout=600000)` calls (10 min max each)
+  until the task reports `completed`. Background procs DO survive across tool calls within
+  one live claude process — they only die when claude exits. Full 33-cell sweep + downstream
+  fit in ~45 min of one iteration this way. `sleep` in a foreground Bash is blocked; use
+  the blocking TaskOutput (or Monitor) to wait.
+- **Measured sweep latency:** 11-wide parallel (per-persona, `parallel-sweep.sh`), each
+  worker `--runs=3` sequential. Wall clock ~45 min end-to-end for all 33 (slowest persona
+  gates it). 2 cells hit transient `Invalid JSON response`; the `cellIsDone` fix retried
+  ONLY those (re-run `--only=<persona>` skips the finalized runs). OpenRouter fine with 11
+  concurrent oracle+user streams.
+- **Judge bridge worked as designed.** `judge-subagent.ts --dump` → 33 blind prompts →
+  33 blind Claude subagents (each read only its `judge-prompts/<id>.txt`, wrote
+  `judge-replies/<id>.txt`) → `--ingest` → `scores/*.json` → `score.ts`. Genuinely blind
+  (subagents never saw identity/filmId/difficulty). Still a substitution for `claude -p`;
+  documented in RESULTS.md. A logged-in CLI can re-judge the same blinded files free later.
+- **Headline result: deterministic gates 33/33, but judged c1 (on-topic) only 48%.** The
+  generator/placement half is solid (Phase 5 id-count fix validated: ids 12-14, words
+  placed 11-14, always >= 8). The oracle's weak point is TOPIC DISCIPLINE: it pads grids
+  with words from films the user never raised or explicitly rejected. The >= 60%-selected
+  *gate* passes 33/33 while the c1 *judge bar* passes 16/33 — proof the cheap gate and the
+  human-aligned judge measure different things; keep both. c2/c3 saturated (CEILING,
+  uninformative until a 2nd arm or harder personas). c4 32/33 (a role↔actor mirror-clue
+  pair). c5 32/33 (one burden-of-proof failure — a Materialists clue unverifiable from the
+  transcript; audited in RESULTS.md).
+
+### Prior in-progress notes (kept for context)
+
 
 - **Bug fixed (test-first): errored cells were counted as done, blocking retry.**
   `runCell` catches any exception and returns a record with `error` set + empty
