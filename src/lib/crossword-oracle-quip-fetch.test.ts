@@ -1,8 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { CROSSWORD_ORACLE_QUIPS } from "@/lib/crossword-oracle-quips";
 import { fetchOracleQuipLine, resolveIdle45Line } from "@/lib/crossword-oracle-quip-fetch";
-import { URL } from "node:url";
-import { error } from "node:console";
+import type { URL } from "node:url";
 
 describe("resolveIdle45Line", () => {
   const bank = CROSSWORD_ORACLE_QUIPS.witch.idle45;

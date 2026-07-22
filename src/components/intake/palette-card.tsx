@@ -68,7 +68,3 @@ function PaletteCardBase({ filmId, promptText, variant }: PaletteCardInternalPro
 export function CrtPaletteCard(props: PaletteCardProps) {
   return <PaletteCardBase variant="crt" {...props} />;
 }
-
-function PaletteCard(props: PaletteCardProps) {
-  return <PaletteCardBase variant="default" {...props} />;
-}

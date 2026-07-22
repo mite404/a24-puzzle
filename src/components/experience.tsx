@@ -131,7 +131,10 @@ export function Experience() {
     const target = parseDebugJumpTarget(window.location.search);
     if (!target) return;
     debugUrlHandled.current = true;
-    jumpToDebug(target);
+    // Defer past the initial commit: the jump seeds state from the URL (an external
+    // source read only on the client), so it must not run synchronously during the
+    // mount effect.
+    queueMicrotask(() => jumpToDebug(target));
   }, [jumpToDebug]);
 
   const intakeActive = phase === "intake";

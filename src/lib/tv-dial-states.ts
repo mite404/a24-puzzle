@@ -1,4 +1,3 @@
-import type { TvDialState } from "@/lib/tv-screen-map";
 import {
   TV_DIAL_STATE_02,
   TV_DIAL_STATE_03,

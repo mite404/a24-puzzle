@@ -13,11 +13,15 @@ One task per iteration. Top-down.
 Nothing below can be validated until `bun run lint` passes, because `PROMPT_build.md`
 forbids committing with failing validation.
 
-- [ ] Fix the 12 pre-existing lint errors so `bun run lint` exits 0
+- [x] Fix the 12 pre-existing lint errors so `bun run lint` exits 0
       (unused vars in `valence.ts`, `tv-screen-map.ts`, `tv-dial-states.ts`,
       `use-oracle-chat.ts`, and two test files; one `import type` violation).
       Delete genuinely dead code rather than prefixing with `_`. Verify the 4 warnings
       that remain are acceptable, and record that decision in `RALPH_NOTES.md`.
+      NOTE: the enumerated list above only covered 9 of the 12; the other 3 were
+      two `react-hooks/set-state-in-effect` errors (`experience.tsx`,
+      `use-debug-voice.ts`) and one unused `PaletteCard` in `palette-card.tsx`.
+      All 12 now cleared. See `RALPH_NOTES.md` for how each was fixed.
 
 - [ ] Pin `crossword-layout-generator` and `valenceai` to exact versions in
       `package.json` (drop the `^`), then run `bun install` to update the lockfile.
