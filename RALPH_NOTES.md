@@ -86,9 +86,21 @@ Fill these in as they are measured. Later phases depend on them.
   region (P(>=8) saturates to 100% by size 10), so nothing the gate needs was lost. Only
   invariants are asserted, so the cap does not weaken any assertion. The headline-rate
   re-measure against the final bank is the dedicated last Phase 3 task.
-- **Ids to request for >= 8 placed words:** not yet derived (formalised in Phase 5). The
-  final 68-entry re-measure confirms **>= 10** for a reliable (100% at this seed) >= 8
-  placed; 9 → 92%, 8 → 70%.
+- **Ids to request for >= 8 placed words: 10-14 (Phase 5, done).** Arithmetic: spec
+  crossword-layout.md R1 requires **>= 8** words placed. The 68-entry fuzz measured
+  **P(>=8 placed)** as a function of ids requested — it is 70% at 8, 92% at 9, and the
+  first size to reach **100% (across this seed)** is **10**. So 10 is the reliability
+  floor: below it, a normal profile can fail R1 outright (at 8 requested, ~30% of grids
+  place < 8). Upper bound **14** is a deliberate ceiling — still 100% placement, keeps
+  the grid to a sane size, and matches the whole original 14-entry bank. Applied in two
+  places (the task named both): (1) `finalizeExperience.crosswordWordIds` description in
+  `oracle-tools.ts` "6-10" → "10-14, request at least 10 so >= 8 reliably interlock";
+  (2) a new **count gate** in `validateExperienceProfile` — `crosswordWordIds.length`
+  must be in [10, 14], else an error. Before this, validation only checked that each id
+  *exists*, never how many; so the oracle could return 6 and silently produce a < 8-word
+  grid. This gate is defence-in-depth behind the prompt: the description steers the model,
+  the validator rejects a non-conforming finalize. Note the smoke sweep oracle requested
+  **9** and got lucky (all placed) — exactly the borderline the gate now forecloses.
 
 ## Known constraints
 

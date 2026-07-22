@@ -315,11 +315,20 @@ See `specs/eval-harness.md`. Build the pipeline before spending any API budget.
 
 ## Phase 5 — Close the loop
 
-- [ ] Using the placement rate measured in Phase 2 and re-measured in Phase 3, set the
+- [x] Using the placement rate measured in Phase 2 and re-measured in Phase 3, set the
       number of ids the oracle should request so that >= 8 words reliably land on the
       grid. Update the `crosswordWordIds` description in `src/lib/oracle-tools.ts` and
       the count validation in `src/lib/validate-experience.ts`. State the arithmetic in
       `RALPH_NOTES.md`.
+      **Set to 10-14.** The 68-entry fuzz (RALPH_NOTES) shows P(>=8 placed) hits 100%
+      only at >= 10 requested (92% at 9, 70% at 8), so 10 is the reliability floor for
+      spec R1 (>= 8 placed); 14 is a sane ceiling still measured at 100%. Added a count
+      gate to `validateExperienceProfile` (`crosswordWordIds` length must be 10-14,
+      previously only existence was checked) and changed the `finalizeExperience`
+      tool description from "6-10" to "10-14, request at least 10 so >= 8 reliably
+      interlock". Failing test committed first (`validate-experience.test.ts`, 4 tests:
+      9 rejected, 10 & 14 accepted, 15 rejected) — the two reject cases were RED against
+      the old code. All four validations pass (142 tests). Arithmetic in RALPH_NOTES.
 
 - [ ] Run a full sweep (10 personas x 3 runs), report per-block results, and write the
       findings to `evals/RESULTS.md`.

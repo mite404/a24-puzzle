@@ -57,7 +57,7 @@ export const oracleTools = {
       crosswordWordIds: z
         .array(z.string())
         .describe(
-          "6-10 crossword entry ids from the bank, weighted toward the selected films.",
+          "10-14 crossword entry ids from the bank, weighted toward the selected films. Request at least 10 so that at least 8 words reliably interlock onto the grid (some ids always fail to place).",
         ),
       locationIds: z
         .array(z.string())
