@@ -69,8 +69,15 @@ anything in this phase.
       the top-up **reuses excluded ids** (exclude is best-effort, not honoured once < 4
       remain); excluding the entire bank still returns 8 valid ids. See RALPH_NOTES.md.
 
-- [ ] Add tests for `rebuildCrosswordPayload`: preserves `locations`, replaces the
+- [x] Add tests for `rebuildCrosswordPayload`: preserves `locations`, replaces the
       crossword, returns the payload unchanged when `profile` is null.
+      Four tests in `game.test.ts`. Null profile short-circuits and returns the *same*
+      payload reference (`toBe`), no rebuild attempted. `locations` is carried through by
+      reference (spread of `...payload`), never rebuilt. `crossword`/`crosswordWords` are
+      replaced with the layout for the new ids (used a 5-valid non-uncut-gems id set so
+      the result is clearly distinct and no top-up fires). Profile is a fresh object with
+      `crosswordWordIds` overridden and the other three fields preserved; the original
+      profile object is not mutated. Phase 1 characterization complete.
 
 ## Phase 2 — Measure, then fix
 

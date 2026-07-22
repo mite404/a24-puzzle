@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { crosswordBank, getCrosswordEntry } from "@/data/crosswordBank";
-import type { ExperienceProfile, PlacedWord } from "@/lib/types";
-import { buildGamePayload, pickAlternateCrosswordIds } from "@/lib/game";
+import type { ExperienceProfile, GamePayload, PlacedWord } from "@/lib/types";
+import {
+  buildGamePayload,
+  pickAlternateCrosswordIds,
+  rebuildCrosswordPayload,
+} from "@/lib/game";
 
 /**
  * Characterization tests: these document what `buildGamePayload` does *today*.
@@ -271,5 +275,68 @@ describe("pickAlternateCrosswordIds", () => {
     for (const id of picked) {
       expect(getCrosswordEntry(id)).toBeDefined();
     }
+  });
+});
+
+/**
+ * `rebuildCrosswordPayload` is used to regenerate only the crossword half of an existing
+ * payload (e.g. when the player asks for a different puzzle) while leaving the location
+ * quiz alone. It runs the same `resolveCrosswordEntries` + `buildCrosswordLayout` path as
+ * `buildGamePayload`, so those behaviours are already pinned above; here we characterize
+ * only what rebuild adds:
+ *   - a null `profile` short-circuits: the exact same payload object is returned, untouched.
+ *   - `locations` is carried through by reference (the quiz is never rebuilt).
+ *   - `crossword` and `crosswordWords` are replaced with the layout for the new ids.
+ *   - a fresh `profile` is returned with `crosswordWordIds` overridden and its other
+ *     fields preserved; the original profile object is not mutated.
+ */
+describe("rebuildCrosswordPayload", () => {
+  // five valid ids from films other than baseProfile's uncut-gems, so the rebuilt
+  // puzzle is clearly distinct and no top-up (< 4) fires.
+  const newIds = ["cw-connie", "cw-queens", "cw-chiron", "cw-maypole", "cw-paimon"];
+
+  test("returns the same payload object, unchanged, when profile is null", () => {
+    const payload: GamePayload = {
+      profile: null,
+      locations: [],
+      crossword: null,
+      crosswordWords: [],
+    };
+    const result = rebuildCrosswordPayload(payload, newIds);
+    // short-circuit: identical reference, no rebuild attempted
+    expect(result).toBe(payload);
+    expect(result.crossword).toBeNull();
+    expect(result.crosswordWords).toEqual([]);
+  });
+
+  test("carries the location quiz through by reference (locations are not rebuilt)", () => {
+    const payload = buildGamePayload(baseProfile());
+    const rebuilt = rebuildCrosswordPayload(payload, newIds);
+    expect(rebuilt.locations).toBe(payload.locations);
+  });
+
+  test("replaces crossword and crosswordWords with the layout for the new ids", () => {
+    const payload = buildGamePayload(baseProfile());
+    const rebuilt = rebuildCrosswordPayload(payload, newIds);
+    // crosswordWords now resolve to exactly the requested ids...
+    expect(rebuilt.crosswordWords.map((e) => e.id)).toEqual(newIds);
+    // ...which differ from the original uncut-gems set...
+    expect(rebuilt.crosswordWords).not.toEqual(payload.crosswordWords);
+    // ...and a freshly built layout replaces the old one.
+    expect(rebuilt.crossword).not.toBe(payload.crossword);
+    expect(rebuilt.crossword?.words.length).toBeGreaterThan(0);
+  });
+
+  test("returns a fresh profile with crosswordWordIds overridden, other fields preserved", () => {
+    const profile = baseProfile();
+    const payload = buildGamePayload(profile);
+    const rebuilt = rebuildCrosswordPayload(payload, newIds);
+    expect(rebuilt.profile).not.toBe(profile);
+    expect(rebuilt.profile?.crosswordWordIds).toEqual(newIds);
+    expect(rebuilt.profile?.selectedFilmIds).toEqual(profile.selectedFilmIds);
+    expect(rebuilt.profile?.moods).toEqual(profile.moods);
+    expect(rebuilt.profile?.locationIds).toEqual(profile.locationIds);
+    // the original profile object is left unmutated
+    expect(profile.crosswordWordIds).not.toEqual(newIds);
   });
 });
