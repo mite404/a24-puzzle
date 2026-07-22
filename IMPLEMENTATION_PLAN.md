@@ -81,9 +81,18 @@ anything in this phase.
 
 ## Phase 2 — Measure, then fix
 
-- [ ] Add a fuzz test that draws many random id sets from the bank and reports the
+- [x] Add a fuzz test that draws many random id sets from the bank and reports the
       observed **placement rate**. Write the measured number into `RALPH_NOTES.md`.
       This number gates Phase 5.
+      `src/lib/crossword-fuzz.test.ts`: a *seeded* (LCG) fuzz — the generator is already
+      deterministic, so seeding the id-set draw makes the reported number reproducible and
+      the test non-flaky. Draws sets of size 4–14 (>= 4 so no top-up pollutes "requested"),
+      64 trials/size. **Overall placement rate 96.4%.** The gating finding for Phase 5 is
+      P(>=8 placed): 0% at 8 requested is wrong — it's 64% at 8, 95% at 9, 100% at >= 10.
+      So the oracle must request **>= 10 ids** to reliably satisfy spec R1. Full per-size
+      table recorded in `RALPH_NOTES.md`. Only invariants (placed <= requested, rate in
+      (0,1]) are asserted; R1 is deliberately NOT asserted — measuring its failure is the
+      point of this phase.
 
 - [ ] Make dropped words observable (spec `crossword-layout.md` R6) — the caller must be
       able to tell that requested words did not make it onto the grid. Failing test first.

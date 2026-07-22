@@ -28,7 +28,30 @@ written here is lost.
 
 Fill these in as they are measured. Later phases depend on them.
 
-- **Placement rate (14-entry bank):** not yet measured — Phase 2.
+- **Placement rate (14-entry bank):** **96.4%** overall (placed/requested), measured by
+  `src/lib/crossword-fuzz.test.ts` (seeded fuzz, 64 trials/size, sizes 4–14). Per-size
+  breakdown below. The key gate for Phase 5 is not the headline rate but **P(>=8 placed)**:
+
+  | ids requested | mean placed | rate | P(>=8 placed) |
+  |---|---|---|---|
+  | 4 | 3.70 | 92.6% | 0% |
+  | 5 | 4.72 | 94.4% | 0% |
+  | 6 | 5.69 | 94.8% | 0% |
+  | 7 | 6.63 | 94.6% | 0% |
+  | 8 | 7.55 | 94.3% | **64%** |
+  | 9 | 8.52 | 94.6% | **95%** |
+  | 10 | 9.72 | 97.2% | **100%** |
+  | 11 | 10.70 | 97.3% | 100% |
+  | 12 | 11.77 | 98.0% | 100% |
+  | 13 | 12.69 | 97.6% | 100% |
+  | 14 | 13.75 | 98.2% | 100% |
+
+  Reading for Phase 5: to reliably land **>= 8** words (spec R1), the oracle must request
+  **>= 10 ids** — at 8 requested only 64% of grids reach 8 placed, at 9 it is 95%, at 10
+  it is 100% across this seed. At 14 (whole bank) ~13.75 of 14 place, so ~1 word still
+  drops even at max. This is the number Phase 5's `crosswordWordIds` count is derived from.
+  NOTE: this is the *current 14-entry* bank; Phase 3 expands the bank and Phase 2 task says
+  to re-measure — a larger/longer-word bank should raise the rate and lower the id count.
 - **Placement rate (expanded bank):** not yet measured — Phase 3.
 - **Ids to request for >= 8 placed words:** not yet derived — Phase 5.
 
