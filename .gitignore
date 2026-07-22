@@ -48,3 +48,9 @@ next-env.d.ts
 /evals/judge-replies/
 /evals/*.log
 /evals/*.out
+
+# Ralph supervisor artifacts — harness logs, not source
+/ralph.log
+/ralph-supervisor.log
+/ralph-unbounded.log
+/ralph-supervisor.sh
