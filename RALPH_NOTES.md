@@ -203,6 +203,29 @@ those methods — e.g. `chat.submit` — are plain functions in `use-oracle-chat
 memoized, so the memoization they feed is weaker than it looks. Potential future cleanup,
 out of scope for Phase 0.)
 
+## Phase 4 — eval persona sheets (done)
+
+- **No actor appears in two catalog films' `cast`.** Verified against `src/data/films.ts`
+  (uncut-gems, good-time, moonlight, hereditary, midsommar, the-witch, lady-bird,
+  materialists — the eight with cast). Every cast list is disjoint. So the spec's
+  "multi-film, one actor" axis **cannot** be a single actor spanning two catalog films.
+  Realised instead as: one actor → their one catalog film, with the actor's *other* films
+  listed in `offcatalog_mentions` as explicit c5 traps (the oracle must not fabricate the
+  actor into another catalog film). `actor-pattinson` (Good Time) and `actor-collette`
+  (Hereditary) both do this. If films.ts ever gains a cross-film actor, a genuinely
+  multi-film actor sheet becomes possible.
+- **Persona sheet contract** (defined here, consumed by the not-yet-written `run.ts`):
+  Markdown + YAML frontmatter. Frontmatter fields = `id`, `axis`, `anchor_films` (catalog
+  ids the persona genuinely engages — ground truth for c1 and the selectedFilmIds gate),
+  `offcatalog_mentions` (c5 traps), `style`, `turn_cap` (over it = run failure),
+  `expects_finalize` (true for all 11, adversarial included). Body = the scripted-user
+  system prompt, six fixed headings. `evals/personas/README.md` holds the schema + axis
+  coverage matrix. `run.ts` should parse frontmatter and pass the body verbatim to the
+  scripted-user model.
+- `anchor_films` is empty **on purpose** for `mood-led-no-film`: that persona names no film,
+  so c1's ground truth is whichever palette the oracle shows that the user warms to —
+  determined at run time, not fixed in the sheet.
+
 ## Corrected assumptions
 
 Record any case where a measurement contradicted something written in the plan or the

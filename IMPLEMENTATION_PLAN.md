@@ -202,7 +202,22 @@ See `specs/eval-harness.md`. Build the pipeline before spending any API budget.
       CEILING reporting rule that score.ts must honour. No code touched; all four validations
       still pass (55 tests).
 
-- [ ] Write at least 10 persona sheets in `evals/personas/` covering the required axes.
+- [x] Write at least 10 persona sheets in `evals/personas/` covering the required axes.
+      **11 sheets** written, all 8 required axes covered (some axis has two readings so the
+      sweep is not a single sample of it): single-film (`single-film-uncut-gems`,
+      `single-film-the-witch`), director (`director-ari-aster` = Hereditary+Midsommar,
+      `director-safdie` = Uncut Gems+Good Time), actor (`actor-pattinson`, `actor-collette`),
+      mood-led (`mood-led-no-film`), undecided (`undecided-contradicts`), adversarial
+      (`adversarial-off-topic`), terse (`terse-one-word`), effusive (`effusive-overlong`).
+      Each is Markdown + YAML frontmatter (`id`, `axis`, `anchor_films`, `offcatalog_mentions`,
+      `style`, `turn_cap`, `expects_finalize`) — the frontmatter is the structured contract
+      `run.ts` will parse, the body is the scripted-user system prompt. `evals/personas/README.md`
+      documents the format and the axis→sheet coverage matrix. Constraint discovered and
+      recorded in RALPH_NOTES: **no actor is in two catalog films' `cast`**, so the "multi-film,
+      one actor" axis is realised as one-actor / one-catalog-film with off-catalog films as
+      explicit c5 traps. All film facts in the sheets are well-established (no invented details,
+      per the honesty rule — an inaccurate persona would poison the c5 judge). No source code
+      touched; all four validations still pass (55 tests, tsc clean, 0 lint errors).
 
 - [ ] Write `evals/run.ts`: scripted conversation against the real prompt and tools,
       resumable, one JSON per run in `evals/runs/`.
