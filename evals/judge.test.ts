@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   buildJudgePrompt,
+  describeClaudeFailure,
   extractJson,
   loadBlindRecords,
   parseJudgeResponse,
@@ -55,6 +56,33 @@ function judgeJson(overrides: Partial<Record<string, unknown>> = {}): string {
     ...overrides,
   });
 }
+
+describe("describeClaudeFailure", () => {
+  // The smoke sweep surfaced this: `claude -p` prints "Not logged in · Please run
+  // /login" to STDOUT and exits 1, so an stderr-only error message reported
+  // "(no stderr)" and hid the real cause. The message must fall back to stdout.
+  test("includes stdout when stderr is empty", () => {
+    const msg = describeClaudeFailure(
+      1,
+      "Not logged in · Please run /login",
+      "",
+    );
+    expect(msg).toContain("exited 1");
+    expect(msg).toContain("Not logged in");
+  });
+
+  test("prefers stderr when present", () => {
+    const msg = describeClaudeFailure(2, "some stdout", "boom on stderr");
+    expect(msg).toContain("exited 2");
+    expect(msg).toContain("boom on stderr");
+  });
+
+  test("falls back to a marker when both streams are empty", () => {
+    const msg = describeClaudeFailure(1, "", "");
+    expect(msg).toContain("exited 1");
+    expect(msg).toContain("(no output)");
+  });
+});
 
 describe("buildJudgePrompt", () => {
   test("inlines the rubric, transcript, clues, and grid", () => {
