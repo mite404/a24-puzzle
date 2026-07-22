@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import { crosswordBank } from "@/data/crosswordBank";
+import { crosswordBank, getCrosswordEntry } from "@/data/crosswordBank";
 import type { ExperienceProfile, PlacedWord } from "@/lib/types";
-import { buildGamePayload } from "@/lib/game";
+import { buildGamePayload, pickAlternateCrosswordIds } from "@/lib/game";
 
 /**
  * Characterization tests: these document what `buildGamePayload` does *today*.
@@ -191,5 +191,85 @@ describe("buildGamePayload — grid integrity (crossword-layout.md R2–R5)", ()
     }
     // a connected puzzle of this size must actually have crossings, else R5 is vacuous
     expect(crossings).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * `pickAlternateCrosswordIds` is the *client-side* fallback used when the regenerate
+ * API is unavailable: given a profile, a set of ids to avoid, and a target `count`, it
+ * returns a fresh id set. Its only randomness is `shuffle` (Math.random), so these
+ * characterization tests assert only properties that hold for *every* shuffle outcome.
+ *
+ * Behaviour pinned down here (see RALPH_NOTES.md "Known constraints"):
+ *   - `excludeIds` is honoured while at least 4 non-excluded entries remain.
+ *   - entries whose `filmId` is in `profile.selectedFilmIds` are preferred: they sort
+ *     ahead of the rest, so they always land in the first `count` slots.
+ *   - when exclusion leaves fewer than 4 entries the top-up loop fills back up to
+ *     `count` from the *whole* bank, ignoring `excludeIds` — best-effort, not a guarantee.
+ *   - the result never contains duplicate ids.
+ */
+describe("pickAlternateCrosswordIds", () => {
+  const allBankIds = crosswordBank.map((e) => e.id);
+  // baseProfile.selectedFilmIds is ["uncut-gems"]; these are its five bank entries.
+  const uncutGemsIds = crosswordBank
+    .filter((e) => e.filmId === "uncut-gems")
+    .map((e) => e.id);
+
+  test("excluded ids do not reappear while enough entries remain", () => {
+    const excludeIds = ["cw-sandler", "cw-opal", "cw-howard"];
+    const picked = pickAlternateCrosswordIds(baseProfile(), excludeIds);
+    for (const id of excludeIds) {
+      expect(picked).not.toContain(id);
+    }
+    // 14 - 3 = 11 available, so the default count of 8 fills without top-up
+    expect(picked).toHaveLength(8);
+  });
+
+  test("returns no duplicate ids", () => {
+    const picked = pickAlternateCrosswordIds(baseProfile(), []);
+    expect(new Set(picked).size).toBe(picked.length);
+  });
+
+  test("prefers entries whose film is in selectedFilmIds", () => {
+    // count 5 == number of uncut-gems entries, so the slice is exactly the preferred set
+    const picked = pickAlternateCrosswordIds(baseProfile(), [], 5);
+    expect(picked).toHaveLength(5);
+    for (const id of picked) {
+      expect(getCrosswordEntry(id)?.filmId).toBe("uncut-gems");
+    }
+  });
+
+  test("preferred entries always land in the first count slots", () => {
+    // default count 8 > 5 preferred, so all five uncut-gems ids must appear
+    const picked = pickAlternateCrosswordIds(baseProfile(), []);
+    for (const id of uncutGemsIds) {
+      expect(picked).toContain(id);
+    }
+  });
+
+  test("degrades sanely when the bank is nearly exhausted", () => {
+    // exclude everything except two entries from films NOT in selectedFilmIds
+    const keep = ["cw-chiron", "cw-maypole"];
+    const excludeIds = allBankIds.filter((id) => !keep.includes(id));
+    const picked = pickAlternateCrosswordIds(baseProfile(), excludeIds);
+    // still returns a full playable set, top-up fills back to count
+    expect(picked).toHaveLength(8);
+    expect(new Set(picked).size).toBe(picked.length);
+    // the two survivors are present...
+    for (const id of keep) {
+      expect(picked).toContain(id);
+    }
+    // ...and the top-up ignores excludeIds, so previously-excluded ids reappear
+    const reused = picked.filter((id) => excludeIds.includes(id));
+    expect(reused.length).toBeGreaterThan(0);
+  });
+
+  test("excluding the entire bank still returns count valid ids (exclude is best-effort)", () => {
+    const picked = pickAlternateCrosswordIds(baseProfile(), allBankIds);
+    expect(picked).toHaveLength(8);
+    expect(new Set(picked).size).toBe(picked.length);
+    for (const id of picked) {
+      expect(getCrosswordEntry(id)).toBeDefined();
+    }
   });
 });

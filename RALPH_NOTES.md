@@ -48,6 +48,12 @@ Fill these in as they are measured. Later phases depend on them.
   the same id set always yields the same grid. Grid-integrity/fuzz tests need no seeding
   and are not flaky. The only randomness in `game.ts` is `shuffle`, used for location
   distractors, never for the crossword.
+- `pickAlternateCrosswordIds` (`game.ts:120`) honours `excludeIds` only while at least
+  **4** non-excluded entries survive. Below that, the top-up loop refills to `count` from
+  the *whole* bank and does **not** re-check `excludeIds`, so excluded ids can reappear.
+  Exclusion is best-effort, not a guarantee. Preferred entries (filmId in
+  `selectedFilmIds`) sort ahead of the rest, so they always occupy the first `count`
+  slots. Result is always de-duplicated by the top-up's `!picked.includes` check.
 - Placed-word coords (from the generator README): `startx` = column, `starty` = row, both
   **1-indexed**. `orientation: "across"` increments the column per letter; `"down"`
   increments the row. Letter *k* of a word sits at `(x = startx + (across?k:0), y = starty

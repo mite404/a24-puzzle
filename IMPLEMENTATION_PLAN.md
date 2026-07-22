@@ -60,8 +60,14 @@ anything in this phase.
       both 1-indexed; across increments x, down increments y. R5 also asserts
       `crossings > 0` so the invariant is not vacuously true. R1/R6 are Phase 2, not here.
 
-- [ ] Add tests for `pickAlternateCrosswordIds`: respects `excludeIds`, prefers entries
+- [x] Add tests for `pickAlternateCrosswordIds`: respects `excludeIds`, prefers entries
       from `selectedFilmIds`, degrades sanely when the bank is nearly exhausted.
+      Six tests in `game.test.ts`. Only randomness is `shuffle`, so assertions hold for
+      every shuffle: excluded ids stay out while >= 4 remain; result has no duplicate ids;
+      with `count`=5 the whole slice is the 5 uncut-gems (preferred) entries; default
+      `count`=8 always contains all 5 preferred; excluding all-but-2 still returns 8 and
+      the top-up **reuses excluded ids** (exclude is best-effort, not honoured once < 4
+      remain); excluding the entire bank still returns 8 valid ids. See RALPH_NOTES.md.
 
 - [ ] Add tests for `rebuildCrosswordPayload`: preserves `locations`, replaces the
       crossword, returns the payload unchanged when `profile` is null.
