@@ -369,6 +369,52 @@ out of scope for Phase 0.)
 - The `must(v)` helper (throws on undefined) is used in `score.test.ts` in place of
   `find(...)!` — lint bans non-null assertions as an error (see the gates note above).
 
+## Phase 5 — full sweep (IN PROGRESS — read this first on a fresh iteration)
+
+- **Bug fixed (test-first): errored cells were counted as done, blocking retry.**
+  `runCell` catches any exception and returns a record with `error` set + empty
+  transcript; the CLI writes that record to `runs/`. `cellIsDone` returned true for
+  *any* parseable file, so a transient API error (`Invalid JSON response` — observed
+  on `single-film-uncut-gems__baseline__run2.json`, 0 user turns) was baked in
+  permanently and never retried. That would have shown up in the sweep as a genuine
+  all-failing cell and poisoned the per-block rates. **Fix:** `cellIsDone` now returns
+  false when the record's `error` is non-null → the cell is retried next sweep. A clean
+  cap-tripped run (`error: null`, `finalized: false`) is a legitimate data point and
+  stays done. Failing test committed first (`run.test.ts`). Consequence for a fresh
+  iteration: any leftover errored `runs/*.json` will be re-run automatically — good, but
+  budget for it. If a cell keeps erroring, read its `error` field before assuming spend.
+
+- **CORRECTED latency: a single cell takes ~9 min, NOT 2–4 min.** Measured this iteration
+  (`single-film-uncut-gems` run1, wall 8m59s, finalized in 6 turns). The old 2–4 min note
+  was wrong. Consequence: a **sequential** 33-cell sweep is ~5 HOURS, longer than a Ralph
+  iteration lives — which is exactly why every prior detached sweep (`setsid`/`nohup`/tracked
+  bg) died at an iteration boundary with `runs/` still EMPTY. Do NOT relaunch a sequential
+  `bun evals/run.ts --runs=3` and wait; it will not finish in one iteration.
+- **Winning strategy: parallelize across personas.** `evals/parallel-sweep.sh` launches one
+  `bun evals/run.ts --runs=3 --only=<persona>` per persona (11 procs, one log each
+  `evals/psweep-<persona>.log`). Each proc writes its own resumable `runs/<cell>.json`
+  (distinct filenames → concurrency-safe, `cellIsDone` skips done cells). Wall clock collapses
+  from ~5h to ~max single-persona (3 cells ≈ 27 min, more if a persona hits its turn_cap).
+  OpenRouter tolerated 11 concurrent oracle+user streams fine.
+- **Resumability:** on a fresh iteration first run `ls evals/runs/*.json | wc -l` (target 33)
+  and check the psweep logs. Re-running `bash evals/parallel-sweep.sh` is safe — completed
+  cells are skipped. Do NOT run two sweeps of the SAME persona at once (double-spend).
+- **Judge bridge (claude -p still blocked):** `evals/judge-subagent.ts --dump` writes each
+  blinded puzzle's `buildJudgePrompt` to `evals/judge-prompts/<blindId>.txt` (fully blind);
+  hand each to a Claude subagent; save its JSON to `evals/judge-replies/<blindId>.txt`; then
+  `--ingest` runs the real `parseJudgeResponse` → schema-identical `scores/<blindId>.json`.
+  This is a genuinely blind judgment (subagent sees only RUBRIC+transcript/words/clues/grid),
+  stronger than the smoke sweep's self-judging, and must be documented as a substitution in
+  RESULTS.md.
+- `validateExperienceProfile` (Phase-5 10–14 gate) does **not** throw and is **not** called
+  by `run.ts`/`game.ts`, so a low-id finalize does not crash a cell — it just fails the
+  `>= 8 placed` deterministic gate. The gate is app-side defence only.
+- **The LLM judge (c1–c5) is still blocked** — `claude -p` is not logged in (confirmed
+  again this iteration: `Not logged in`, exit 0/1). So the sweep can produce runs + blinded
+  outputs + the six **deterministic** gate results, but NOT the five judge blocks. RESULTS.md
+  reports the deterministic gates and marks the judge blocks pending a logged-in `claude -p`;
+  the blinded artifacts are left in place so judging costs zero extra OpenRouter spend later.
+
 ## Phase 4 — smoke sweep (done)
 
 - **`claude -p` is NOT logged in in this container.** No `ANTHROPIC_API_KEY` in env; the

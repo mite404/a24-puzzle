@@ -571,13 +571,24 @@ export function runFileName(
   return `${persona}__${arm}__run${runIndex}.json`;
 }
 
-/** True if a cell already has a parseable, non-empty output file. */
+/**
+ * True if a cell already has a parseable output file that did NOT error.
+ *
+ * A cell whose `runCell` caught an exception is still written to disk (with its
+ * `error` message, empty transcript, all gates failing) so the failure is
+ * inspectable — but it is deliberately NOT counted as done, so a transient API
+ * error (e.g. "Invalid JSON response") is retried on the next sweep instead of
+ * being baked in permanently. A clean cap-tripped run (`error: null`,
+ * `finalized: false`) IS a legitimate completed data point and stays done.
+ */
 export function cellIsDone(runsDir: string, fileName: string): boolean {
   const path = join(runsDir, fileName);
   if (!existsSync(path)) return false;
   try {
     const parsed: unknown = JSON.parse(readFileSync(path, "utf8"));
-    return Boolean(parsed && typeof parsed === "object");
+    if (!parsed || typeof parsed !== "object") return false;
+    const error = (parsed as { error?: unknown }).error;
+    return error == null;
   } catch {
     return false;
   }

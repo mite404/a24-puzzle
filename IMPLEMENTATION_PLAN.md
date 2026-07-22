@@ -332,6 +332,17 @@ See `specs/eval-harness.md`. Build the pipeline before spending any API budget.
 
 - [ ] Run a full sweep (10 personas x 3 runs), report per-block results, and write the
       findings to `evals/RESULTS.md`.
+      PREREQUISITE FIX LANDED (test-first): errored cells were being counted as done.
+      `runCell` writes a record even when it catches an exception (empty transcript,
+      `error` set); `cellIsDone` treated *any* parseable file as done, so a transient
+      API error (`Invalid JSON response`, observed on a real cell) was baked in
+      permanently and never retried — it would have polluted the sweep's per-block
+      results as a false all-failing cell. Fix: `cellIsDone` now returns false when the
+      record's `error` is non-null (retriable), while a clean cap-tripped run
+      (`error: null`) stays done. Failing test committed first (`run.test.ts`, 2 tests:
+      errored → not done, clean cap-tripped → done). All four validations pass (144
+      tests). The sweep itself still needs OpenRouter budget across iterations + the
+      judge-subagent bridge; see RALPH_NOTES Phase 5.
 
 - [ ] Update `docs/FOR_ETHAN.md` per `AGENTS.md`: the story of this work, the bugs found
       with their root causes, and what the eval numbers actually mean.
