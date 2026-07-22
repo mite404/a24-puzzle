@@ -358,5 +358,21 @@ See `specs/eval-harness.md`. Build the pipeline before spending any API budget.
       tests). The sweep itself still needs OpenRouter budget across iterations + the
       judge-subagent bridge; see RALPH_NOTES Phase 5.
 
-- [ ] Update `docs/FOR_ETHAN.md` per `AGENTS.md`: the story of this work, the bugs found
+- [x] Update `docs/FOR_ETHAN.md` per `AGENTS.md`: the story of this work, the bugs found
       with their root causes, and what the eval numbers actually mean.
+      Added the crossword-eval chapter across all five FOR_ETHAN sections (never editing
+      AGENTS.md). **Story So Far:** a "goes into QC" chapter framing the eval as a
+      post-production screening pass. **Cast & Crew:** "The QC screening room" — the four
+      resumable stages (run→blind→judge→score) as a print-and-focus-group pipeline, with a
+      mermaid showing the print and `key.json` on separate hallways. **Behind the Scenes:**
+      7 decision bullets (measure-then-set-the-count, dedup at the layout boundary, blind
+      the judge + drop the answer key, take the id from us not the model, CEILING-is-a-
+      warning, keep-both-gate-and-judge). **Bloopers:** the three test-first defects with
+      root causes (silent dropped words → `droppedIds`; duplicate id → dedup in
+      `resolveCrosswordEntries`; too-few-ids → 10–14 in tool + validator) plus two process
+      bloopers (errored cell counted done; `claude -p` error hidden on stdout). **Director's
+      Commentary:** the capstone — two scoreboards (gates 33/33 vs c1 16/33), a snippet +
+      mermaid on why the 60% gate and the c1 judge disagree, CEILING and c5-as-a-flag read
+      correctly, and the honest judge-substitution caveat. All numbers cross-checked against
+      RESULTS.md and the live fuzz output. All four validations pass (144 tests, tsc clean,
+      0 lint errors). Plan complete.
