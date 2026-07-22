@@ -74,17 +74,28 @@ function buildCrosswordLayout(entries: CrosswordEntry[]): CrosswordLayout {
 
 /** Resolves crossword ids from the profile, falling back to a sensible default set. */
 function resolveCrosswordEntries(ids: string[]): CrosswordEntry[] {
-  // Dedupe by id as we resolve: a repeated id must not become two grid words sharing
-  // one id (spec crossword-layout.md R3). `have` is the single source of truth for
-  // "already chosen", reused by the top-up below so it can't re-add a duplicate either.
+  // Two exclusion rules applied as we resolve, both keeping the first-seen entry:
+  //   `have`       — dedupe by id, so a repeated id can't place the same word twice
+  //                  (spec crossword-layout.md R3).
+  //   `havePairs`  — dedupe by `pairId`, so a role/actor mirror pair (e.g. HARRY/PASCAL)
+  //                  can't put two clues restating one fact on the same grid (RUBRIC c4).
+  // Both sets are the single source of truth, reused by the top-up below so it can't
+  // re-introduce a duplicate id or a mirror half either.
   const have = new Set<string>();
+  const havePairs = new Set<string>();
   const resolved: CrosswordEntry[] = [];
+  const admit = (entry: CrosswordEntry): boolean => {
+    if (have.has(entry.id)) return false;
+    if (entry.pairId !== undefined && havePairs.has(entry.pairId)) return false;
+    have.add(entry.id);
+    if (entry.pairId !== undefined) havePairs.add(entry.pairId);
+    resolved.push(entry);
+    return true;
+  };
+
   for (const id of ids) {
     const entry = getCrosswordEntry(id);
-    if (entry && !have.has(entry.id)) {
-      have.add(entry.id);
-      resolved.push(entry);
-    }
+    if (entry) admit(entry);
   }
 
   if (resolved.length >= 4) return resolved;
@@ -92,10 +103,7 @@ function resolveCrosswordEntries(ids: string[]): CrosswordEntry[] {
   // Top up with bank entries not already chosen, until we have a playable puzzle.
   for (const entry of crosswordBank) {
     if (resolved.length >= 8) break;
-    if (!have.has(entry.id)) {
-      have.add(entry.id);
-      resolved.push(entry);
-    }
+    admit(entry);
   }
   return resolved;
 }

@@ -54,6 +54,13 @@ export interface CrosswordEntry {
   word: string;
   clue: string;
   difficulty: Difficulty;
+  /**
+   * Marks a role/actor mirror pair: a character entry and the actor-name entry whose
+   * clues restate the same fact (e.g. HARRY "played by Pedro Pascal" / PASCAL "Pedro who
+   * plays Harry"). Two entries sharing a `pairId` are near-duplicates — `resolveCrosswordEntries`
+   * keeps at most one in a single puzzle so the grid never carries both (RUBRIC c4).
+   */
+  pairId?: string;
 }
 
 /** A single location-quiz question: one location plus 4 film options to choose from. */

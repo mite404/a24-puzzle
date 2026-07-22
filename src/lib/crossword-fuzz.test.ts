@@ -18,9 +18,17 @@ import { buildGamePayload } from "@/lib/game";
  *
  * WHAT "requested" MEANS:
  *   We only draw sets of size >= 4, so `resolveCrosswordEntries` never tops up (its
- *   threshold is < 4). Requested count therefore equals the drawn set size, and
- *   placement rate = placed words / drawn size — the raw generator behaviour, not
- *   polluted by the top-up path.
+ *   threshold is < 4). Requested count therefore equals the drawn set size MINUS any
+ *   `pairId` collisions, and placement rate = placed words / resolved count — the raw
+ *   generator behaviour, not polluted by the top-up path.
+ *
+ * WHY THE DRAWN SIZE AND THE RESOLVED COUNT DIFFER:
+ *   `resolveCrosswordEntries` drops the second half of a role/actor mirror pair
+ *   (e.g. HARRY + PASCAL) so one grid never carries two clues restating the same fact
+ *   (RUBRIC c4). A random draw can contain both halves, so resolving N ids can legitimately
+ *   yield fewer than N entries. We compute the expected collision count from the drawn set
+ *   and assert the resolved count matches EXACTLY — a looser `<= size` would have let a
+ *   real regression in the resolver hide behind the dedup.
  */
 
 /** A tiny seeded LCG (numerical-recipes constants) → reproducible fuzz. */
@@ -43,6 +51,24 @@ function seededShuffle<T>(arr: T[], rng: () => number): T[] {
 }
 
 const allBankIds = crosswordBank.map((e) => e.id);
+const pairIdById = new Map(crosswordBank.map((e) => [e.id, e.pairId]));
+
+/**
+ * How many entries `resolveCrosswordEntries` will drop from this draw because a mirror
+ * pair's other half is already in it. Keeping the first-seen member of each pair means
+ * every member after the first is a drop.
+ */
+function expectedPairDrops(ids: string[]): number {
+  const seen = new Set<string>();
+  let drops = 0;
+  for (const id of ids) {
+    const pid = pairIdById.get(id);
+    if (pid === undefined) continue;
+    if (seen.has(pid)) drops++;
+    else seen.add(pid);
+  }
+  return drops;
+}
 
 function profileFor(ids: string[]): ExperienceProfile {
   return {
@@ -78,6 +104,9 @@ describe("crossword placement rate (fuzz, spec crossword-layout.md)", () => {
 
     let totalRequested = 0;
     let totalPlaced = 0;
+    // How many draws contained both halves of a mirror pair. Reported so the shrinkage
+    // between "ids drawn" and "entries resolved" is visible rather than mysterious.
+    let totalDrops = 0;
 
     // Per requested-set-size stats — Phase 5 derives the oracle's request count
     // from this table, so break the rate down by how many ids were asked for.
@@ -88,18 +117,25 @@ describe("crossword placement rate (fuzz, spec crossword-layout.md)", () => {
       let sizePlaced = 0;
       let sizeRequested = 0;
       let atLeast8 = 0;
+      let sizeDrops = 0;
       for (let t = 0; t < TRIALS_PER_SIZE; t++) {
         const ids = seededShuffle(allBankIds, rng).slice(0, size);
         const { requested, placed } = placement(ids);
         // invariant: you can never place more words than you fed the generator
         expect(placed).toBeLessThanOrEqual(requested);
-        expect(requested).toBe(size); // size >= 4, so no top-up
+        // The resolver drops mirror-pair duplicates and nothing else. Asserting the exact
+        // predicted count (rather than `<= size`) keeps this a real regression check: if
+        // the resolver ever started dropping or padding for any OTHER reason, this fails.
+        const drops = expectedPairDrops(ids);
+        expect(requested).toBe(size - drops);
+        sizeDrops += drops;
         sizePlaced += placed;
         sizeRequested += requested;
         if (placed >= 8) atLeast8++;
       }
       totalPlaced += sizePlaced;
       totalRequested += sizeRequested;
+      totalDrops += sizeDrops;
       bySize.push({
         size,
         meanPlaced: sizePlaced / TRIALS_PER_SIZE,
@@ -113,7 +149,8 @@ describe("crossword placement rate (fuzz, spec crossword-layout.md)", () => {
     // Report (captured into RALPH_NOTES.md — this is the gated Phase 2 number).
     const lines = [
       `\n=== Crossword placement rate (seed 0x51ac, ${TRIALS_PER_SIZE} trials/size) ===`,
-      `overall placement rate: ${(overallRate * 100).toFixed(1)}%  (${totalPlaced}/${totalRequested})`,
+      `overall placement rate: ${(overallRate * 100).toFixed(1)}%  (${totalPlaced}/${totalRequested})` +
+        `\nmirror-pair drops: ${totalDrops} (ids drawn but deduped before layout)`,
       "requested | mean placed | rate  | P(>=8 placed)",
       ...bySize.map(
         (r) =>

@@ -47,6 +47,7 @@ export const crosswordBank: CrosswordEntry[] = [
     word: "CONNIE",
     clue: "Pattinson's desperate bank robber",
     difficulty: "medium",
+    pairId: "pair-good-time-connie",
   },
   {
     id: "cw-queens",
@@ -290,6 +291,7 @@ export const crosswordBank: CrosswordEntry[] = [
     word: "LUCY",
     clue: "Dakota Johnson's matchmaker heroine",
     difficulty: "easy",
+    pairId: "pair-materialists-lucy",
   },
   {
     id: "cw-matchmaker",
@@ -304,6 +306,7 @@ export const crosswordBank: CrosswordEntry[] = [
     word: "HARRY",
     clue: "Wealthy suitor played by Pedro Pascal",
     difficulty: "medium",
+    pairId: "pair-materialists-harry",
   },
   {
     id: "cw-john",
@@ -318,6 +321,7 @@ export const crosswordBank: CrosswordEntry[] = [
     word: "PASCAL",
     clue: "Pedro who plays Harry",
     difficulty: "medium",
+    pairId: "pair-materialists-harry",
   },
   {
     id: "cw-johnson",
@@ -325,6 +329,7 @@ export const crosswordBank: CrosswordEntry[] = [
     word: "JOHNSON",
     clue: "Dakota who plays Lucy",
     difficulty: "medium",
+    pairId: "pair-materialists-lucy",
   },
   {
     id: "cw-song",
@@ -433,6 +438,7 @@ export const crosswordBank: CrosswordEntry[] = [
     word: "PATTINSON",
     clue: "Robert who plays Connie",
     difficulty: "easy",
+    pairId: "pair-good-time-connie",
   },
   {
     id: "cw-corey",
