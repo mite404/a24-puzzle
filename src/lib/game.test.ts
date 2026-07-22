@@ -199,6 +199,46 @@ describe("buildGamePayload — grid integrity (crossword-layout.md R2–R5)", ()
 });
 
 /**
+ * R6 (spec `crossword-layout.md`): the number of dropped words must be observable by the
+ * caller, not silently swallowed. The generator returns every requested word in
+ * `layout.result` — the ones it could not interlock carry `orientation: "none"`. Before
+ * this, `buildCrosswordLayout` filtered those out and kept no record. `crossword.droppedIds`
+ * now exposes the bank ids that did not reach the grid, so the count is `droppedIds.length`.
+ */
+describe("buildGamePayload — dropped words observable (crossword-layout.md R6)", () => {
+  test("every requested word is accounted for as either placed or dropped", () => {
+    // full 14-entry bank: whatever the generator does, nothing may vanish unaccounted.
+    const payload = fullBankPayload();
+    const crossword = payload.crossword;
+    expect(crossword).not.toBeNull();
+    if (!crossword) throw new Error("crossword layout was null");
+    expect(Array.isArray(crossword.droppedIds)).toBe(true);
+    expect(crossword.words.length + crossword.droppedIds.length).toBe(
+      payload.crosswordWords.length,
+    );
+  });
+
+  test("reports the id of a word the generator could not place", () => {
+    // The first 8 bank entries deterministically drop LIMINAL (cw-liminal): 7 placed, 1 dropped.
+    const ids = crosswordBank.slice(0, 8).map((e) => e.id);
+    const payload = buildGamePayload(baseProfile({ crosswordWordIds: ids }));
+    const crossword = payload.crossword;
+    if (!crossword) throw new Error("crossword layout was null");
+    expect(crossword.words).toHaveLength(7);
+    expect(crossword.droppedIds).toEqual(["cw-liminal"]);
+    // a dropped id is never also a placed id
+    const placedIds = crossword.words.map((w) => w.id);
+    expect(placedIds).not.toContain("cw-liminal");
+  });
+
+  test("droppedIds is empty when every requested word is placed", () => {
+    // the whole bank places all 14 (measured), so nothing is dropped.
+    const payload = fullBankPayload();
+    expect(payload.crossword?.droppedIds).toEqual([]);
+  });
+});
+
+/**
  * `pickAlternateCrosswordIds` is the *client-side* fallback used when the regenerate
  * API is unavailable: given a profile, a set of ids to avoid, and a target `count`, it
  * returns a fresh id set. Its only randomness is `shuffle` (Math.random), so these
