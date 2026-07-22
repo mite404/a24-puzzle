@@ -23,8 +23,11 @@ forbids committing with failing validation.
       `use-debug-voice.ts`) and one unused `PaletteCard` in `palette-card.tsx`.
       All 12 now cleared. See `RALPH_NOTES.md` for how each was fixed.
 
-- [ ] Pin `crossword-layout-generator` and `valenceai` to exact versions in
+- [x] Pin `crossword-layout-generator` and `valenceai` to exact versions in
       `package.json` (drop the `^`), then run `bun install` to update the lockfile.
+      Pinned to the already-installed versions `0.1.1` and `1.0.6`; `bun install`
+      reported "no changes" (resolved graph identical), only the manifest specifiers
+      lost their `^`. All four validation commands still pass.
 
 ## Phase 1 — Characterization tests, no fixes yet
 
