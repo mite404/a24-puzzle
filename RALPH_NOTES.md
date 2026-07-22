@@ -44,6 +44,14 @@ Fill these in as they are measured. Later phases depend on them.
   decides how many actually reach the grid. These are different numbers.
 - Four films have no bank entries and two of them (`ex-machina`,
   `everything-everywhere`) are excluded from expansion by user decision.
+- `crossword-layout-generator` is **deterministic** — no `Math.random` in its source, so
+  the same id set always yields the same grid. Grid-integrity/fuzz tests need no seeding
+  and are not flaky. The only randomness in `game.ts` is `shuffle`, used for location
+  distractors, never for the crossword.
+- Placed-word coords (from the generator README): `startx` = column, `starty` = row, both
+  **1-indexed**. `orientation: "across"` increments the column per letter; `"down"`
+  increments the row. Letter *k* of a word sits at `(x = startx + (across?k:0), y = starty
+  + (down?k:0))`. Used by the R4/R5 grid tests and needed again for the Phase 2 fuzz test.
 
 ## Phase 0 task 1 — the 12 lint errors (done)
 

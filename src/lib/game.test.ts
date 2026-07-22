@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { crosswordBank } from "@/data/crosswordBank";
-import type { ExperienceProfile } from "@/lib/types";
+import type { ExperienceProfile, PlacedWord } from "@/lib/types";
 import { buildGamePayload } from "@/lib/game";
 
 /**
@@ -106,5 +106,90 @@ describe("buildGamePayload — resolveCrosswordEntries via crosswordWords", () =
     const ids = ["cw-sandler", "cw-sandler", "cw-opal", "cw-howard"];
     const payload = buildGamePayload(baseProfile({ crosswordWordIds: ids }));
     expect(payload.crosswordWords.map((e) => e.id)).toEqual(ids);
+  });
+});
+
+/**
+ * Grid integrity: for whatever grid the (deterministic) generator produces, the placed
+ * words must be internally consistent. These pin spec `crossword-layout.md`:
+ *   R2 — every placed word carries the id of the bank entry it came from.
+ *   R3 — no duplicate ids in a single layout.
+ *   R4 — every placed word fits inside the reported rows x cols bounds.
+ *   R5 — where two words cross, both agree on the shared letter.
+ * (R1 "at least 8 placed" and R6 "dropped words observable" are Phase 2, not here.)
+ */
+
+/** The 1-indexed (col, row) cell each letter of a placed word occupies. */
+function cellsOf(word: PlacedWord): Array<{ x: number; y: number; letter: string }> {
+  return [...word.answer].map((letter, k) => ({
+    x: word.orientation === "across" ? word.startx + k : word.startx,
+    y: word.orientation === "down" ? word.starty + k : word.starty,
+    letter,
+  }));
+}
+
+/** A grid dense enough to force crossings: the whole 14-entry bank. */
+function fullBankPayload() {
+  return buildGamePayload(baseProfile({ crosswordWordIds: crosswordBank.map((e) => e.id) }));
+}
+
+describe("buildGamePayload — grid integrity (crossword-layout.md R2–R5)", () => {
+  test("R2: every placed word carries the id of a real bank entry with a matching answer", () => {
+    const payload = fullBankPayload();
+    const words = payload.crossword?.words ?? [];
+    expect(words.length).toBeGreaterThan(0);
+    for (const w of words) {
+      // the id must belong to an entry that was actually resolved into this puzzle...
+      const entry = payload.crosswordWords.find((e) => e.id === w.id);
+      expect(entry).toBeDefined();
+      // ...and that entry's answer must be the placed answer (no id/answer mismatch)
+      expect(entry?.word.toUpperCase()).toBe(w.answer);
+    }
+  });
+
+  test("R3: no duplicate ids appear in a single layout", () => {
+    const payload = fullBankPayload();
+    const ids = (payload.crossword?.words ?? []).map((w) => w.id);
+    expect(ids.length).toBeGreaterThan(0);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  test("R4: every placed word fits inside the reported rows x cols bounds", () => {
+    const payload = fullBankPayload();
+    const crossword = payload.crossword;
+    expect(crossword).not.toBeNull();
+    if (!crossword) throw new Error("crossword layout was null");
+    expect(crossword.words.length).toBeGreaterThan(0);
+    for (const w of crossword.words) {
+      for (const cell of cellsOf(w)) {
+        expect(cell.x).toBeGreaterThanOrEqual(1);
+        expect(cell.y).toBeGreaterThanOrEqual(1);
+        expect(cell.x).toBeLessThanOrEqual(crossword.cols);
+        expect(cell.y).toBeLessThanOrEqual(crossword.rows);
+      }
+    }
+  });
+
+  test("R5: where two words cross, both agree on the shared letter", () => {
+    const payload = fullBankPayload();
+    const words = payload.crossword?.words ?? [];
+    expect(words.length).toBeGreaterThan(0);
+    const occupied = new Map<string, string>();
+    let crossings = 0;
+    for (const w of words) {
+      for (const cell of cellsOf(w)) {
+        const key = `${cell.x},${cell.y}`;
+        const existing = occupied.get(key);
+        if (existing === undefined) {
+          occupied.set(key, cell.letter);
+        } else {
+          // a shared cell is a crossing (or an overlap); the letters must match
+          expect(cell.letter).toBe(existing);
+          crossings++;
+        }
+      }
+    }
+    // a connected puzzle of this size must actually have crossings, else R5 is vacuous
+    expect(crossings).toBeGreaterThan(0);
   });
 });

@@ -52,8 +52,13 @@ anything in this phase.
       (no dedup) when there are already >= 4 entries. Confirmed: resolve does not
       validate ids and does not dedupe — matches the RALPH_NOTES constraints.
 
-- [ ] Add grid integrity tests: every placed word is in bounds (R4), crossing letters
+- [x] Add grid integrity tests: every placed word is in bounds (R4), crossing letters
       agree (R5), no duplicate ids (R3), every placed word carries its bank id (R2).
+      Four tests in `game.test.ts` over the full 14-entry bank (dense enough to force
+      crossings). Generator confirmed deterministic (no `Math.random` in its source), so
+      no flakiness. Coord system from the generator README: `startx`=col, `starty`=row,
+      both 1-indexed; across increments x, down increments y. R5 also asserts
+      `crossings > 0` so the invariant is not vacuously true. R1/R6 are Phase 2, not here.
 
 - [ ] Add tests for `pickAlternateCrosswordIds`: respects `excludeIds`, prefers entries
       from `selectedFilmIds`, degrades sanely when the bank is nearly exhausted.
