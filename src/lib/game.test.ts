@@ -322,10 +322,21 @@ describe("pickAlternateCrosswordIds", () => {
   });
 
   test("preferred entries always land in the first count slots", () => {
-    // default count 8 > 5 preferred, so all five uncut-gems ids must appear
+    // default count is 8. Two regimes, depending on how many uncut-gems entries
+    // the bank carries:
+    //   - preferred >= count: every filled slot must be a preferred (uncut-gems) id.
+    //   - preferred <  count: every preferred id must appear among the picks.
+    // Deriving from uncutGemsIds.length keeps this correct as the bank grows.
+    const DEFAULT_COUNT = 8;
     const picked = pickAlternateCrosswordIds(baseProfile(), []);
-    for (const id of uncutGemsIds) {
-      expect(picked).toContain(id);
+    if (uncutGemsIds.length >= DEFAULT_COUNT) {
+      for (const id of picked) {
+        expect(getCrosswordEntry(id)?.filmId).toBe("uncut-gems");
+      }
+    } else {
+      for (const id of uncutGemsIds) {
+        expect(picked).toContain(id);
+      }
     }
   });
 

@@ -80,6 +80,19 @@ Fill these in as they are measured. Later phases depend on them.
   passes (52 + 1 === 53). If the first 14 ever stop placing fully, repoint again to another
   measured-full set and record it here.
 
+- **Bank is now 68 entries** (Phase 3 mining complete): good-time 8, uncut-gems 10,
+  the-backrooms 7 (motifs only — spec forbids cast for it), on top of the six scripted
+  films at 6-8 each. R2 (>= 6 per approved film) is now satisfied for all 8 approved films.
+- **`pickAlternateCrosswordIds` preference test is coupled to `selectedFilmIds` entry
+  count.** `baseProfile.selectedFilmIds` is `["uncut-gems"]`. The "preferred entries land
+  first" test used to assume 5 uncut-gems entries all fit in the default count of 8. After
+  mining, uncut-gems has 10 entries — more than the count — so not all can appear. The test
+  now branches on `uncutGemsIds.length` vs `DEFAULT_COUNT` (8): when preferred >= count,
+  assert *every picked slot is preferred*; else assert every preferred id appears. If a
+  future change makes uncut-gems the requested film with < 8 entries again, the else-branch
+  covers it. Not a code bug — the code prioritises preferred correctly; the test's constant
+  went stale with the data.
+
 - `buildCrosswordLayout` (`src/lib/game.ts`) used to silently drop any word the generator
   could not interlock. **Fixed (Phase 2, R6):** `CrosswordLayout` now carries
   `droppedIds: string[]` — the bank ids the generator returned with `orientation: "none"`.

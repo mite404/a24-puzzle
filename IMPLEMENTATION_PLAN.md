@@ -166,8 +166,18 @@ accuracy rule. `pdftotext` is installed.
       crosswordBank.slice(0,14) (measured to place fully), per the RALPH_NOTES guidance not
       to weaken it. All four validations pass.
 
-- [ ] Bring `good-time`, `uncut-gems`, `the-backrooms` to at least 6 entries each,
+- [x] Bring `good-time`, `uncut-gems`, `the-backrooms` to at least 6 entries each,
       leaving out anything you are not confident is accurate.
+      uncut-gems 5 -> 10 (+JULIA/ARNO/DEMANY/DINAH/CELTICS), good-time 2 -> 8
+      (+NICK/PATTINSON/COREY/CRYSTAL/RAY/NIKAS), the-backrooms 3 -> 7 motifs only
+      (+FLUORESCENT/YELLOW/FOOTAGE/ENTITY, no cast per spec). Bank now **68 entries**.
+      Cast names cross-checked against `films.ts` `cast`; only confident facts included
+      (e.g. the-backrooms has no named ensemble, so all four new entries are motifs from
+      the canonical 4chan description + Kane Parsons series lore). Collateral: the
+      `pickAlternateCrosswordIds` "preferred entries land first" test hard-coded "5
+      uncut-gems entries"; with 10 preferred vs default count 8 they no longer all fit.
+      Rewrote it to derive from `uncutGemsIds.length` (preferred >= count => every slot
+      preferred), preserving intent without weakening. See RALPH_NOTES.md.
 
 - [ ] Re-run the Phase 2 fuzz test against the expanded bank and update the recorded
       placement rate. A larger, longer-word bank should raise it.
