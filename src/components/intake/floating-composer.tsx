@@ -128,7 +128,7 @@ export function FloatingComposer({
                 aria-pressed={mic.listening}
                 aria-label={micLabel}
                 title={micLabel}
-                className={`oracle-tv-composer__mic inline-flex size-10 items-center justify-center rounded-full border border-[#f5e6c8]/20 text-[#f5e6c8]/80 transition-colors hover:border-[#9dff9d]/40 hover:text-[#9dff9d] disabled:cursor-not-allowed disabled:opacity-40${mic.listening ? " oracle-tv-composer__mic--listening" : ""}${mic.connecting ? " oracle-tv-composer__mic--connecting" : ""}`}
+                className={`oracle-tv-composer__mic inline-flex size-11 items-center justify-center rounded-full border border-[#f5e6c8]/20 text-[#f5e6c8]/80 transition-colors hover:border-[#9dff9d]/40 hover:text-[#9dff9d] disabled:cursor-not-allowed disabled:opacity-40${mic.listening ? " oracle-tv-composer__mic--listening" : ""}${mic.connecting ? " oracle-tv-composer__mic--connecting" : ""}`}
               >
                 {mic.connecting ? (
                   <Spinner

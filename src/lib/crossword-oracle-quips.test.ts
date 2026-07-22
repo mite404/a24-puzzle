@@ -20,4 +20,9 @@ describe("pickQuip", () => {
     expect(pickQuip(["Only"])).toBe("Only");
     expect(pickQuip(["Only"], "Only")).toBe("Only");
   });
+
+  test(`When random resolves to 0.9 and the pool is ["A", "B", "C"], pickQuip should return "C"`, () => {
+    const pool = ["A", "B", "C"];
+    const mockRandom: () => number = () => 0.9;
+  });
 });

@@ -3,11 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { OraclePersonaId } from "@/lib/oracle-personas";
 import type { PlacedWord } from "@/lib/types";
-import {
-  CROSSWORD_ORACLE_QUIPS,
-  formatClueRead,
-  pickQuip,
-} from "@/lib/crossword-oracle-quips";
+import { CROSSWORD_ORACLE_QUIPS, formatClueRead, pickQuip } from "@/lib/crossword-oracle-quips";
 import {
   applyDwellTierFired,
   createInitialTimingState,
@@ -19,16 +15,10 @@ import {
   onWordFilled,
   type DwellTier,
 } from "@/lib/crossword-oracle-timing";
-import {
-  fetchOracleQuipLine,
-  resolveIdle45Line,
-} from "@/lib/crossword-oracle-quip-fetch";
+import { fetchOracleQuipLine, resolveIdle45Line } from "@/lib/crossword-oracle-quip-fetch";
 import type { RefObject } from "react";
 
-type SpeakFn = (
-  text: string,
-  cacheKey?: string,
-) => Promise<boolean>;
+type SpeakFn = (text: string, cacheKey?: string) => Promise<boolean>;
 
 interface UseCrosswordOracleOptions {
   personaId: OraclePersonaId;
@@ -41,8 +31,9 @@ interface UseCrosswordOracleOptions {
 async function fetchIdle45Quip(
   personaId: OraclePersonaId,
   word: PlacedWord,
+  signal?: AbortSignal,
 ): Promise<string | null> {
-  return fetchOracleQuipLine(personaId, word);
+  return fetchOracleQuipLine(personaId, word, fetch, signal);
 }
 
 export function useCrosswordOracle({
@@ -57,6 +48,7 @@ export function useCrosswordOracle({
   const activeWordRef = useRef<PlacedWord | null>(null);
   const firstClueRef = useRef<PlacedWord | null>(null);
   const firstClueReadDoneRef = useRef(false);
+  const quipAbortControllerRef = useRef<AbortController | null>(null);
 
   const quips = CROSSWORD_ORACLE_QUIPS[personaId];
 
@@ -100,8 +92,11 @@ export function useCrosswordOracle({
     async (tier: DwellTier, word: PlacedWord) => {
       let line: string;
       if (tier === "idle45") {
+        quipAbortControllerRef.current?.abort();
+        quipAbortControllerRef.current = new AbortController();
+
         line = resolveIdle45Line(
-          await fetchIdle45Quip(personaId, word),
+          await fetchIdle45Quip(personaId, word, quipAbortControllerRef.current.signal),
           quips.idle45,
           lastQuipRef.current,
         );
@@ -109,10 +104,7 @@ export function useCrosswordOracle({
         line = pickQuip(quips.idle20, lastQuipRef.current);
       }
 
-      const completed = await speakLine(
-        line,
-        `crossword:${tier}:${word.id}:${Date.now()}`,
-      );
+      const completed = await speakLine(line, `crossword:${tier}:${word.id}:${Date.now()}`);
       if (completed) {
         timingRef.current = applyDwellTierFired(timingRef.current, tier);
       }
@@ -120,17 +112,11 @@ export function useCrosswordOracle({
     [personaId, quips.idle20, quips.idle45, speakLine],
   );
 
-  const handleActiveClueChange = useCallback(
-    (word: PlacedWord | null) => {
-      activeWordRef.current = word;
-      timingRef.current = onActiveClueChange(
-        timingRef.current,
-        word,
-        Date.now(),
-      );
-    },
-    [],
-  );
+  const handleActiveClueChange = useCallback((word: PlacedWord | null) => {
+    activeWordRef.current = word;
+    timingRef.current = onActiveClueChange(timingRef.current, word, Date.now());
+    quipAbortControllerRef.current?.abort();
+  }, []);
 
   const handleWordFilled = useCallback(
     (word: PlacedWord) => {
