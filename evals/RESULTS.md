@@ -23,9 +23,9 @@ not source. The findings below are the record.
 
 ## Judge substitution (must read)
 
-`claude -p` is **not logged in** in this container (no `ANTHROPIC_API_KEY`), so
-`judge.ts`'s real transport cannot run here.
-As documented in `RALPH_NOTES.md`, judging was done through the blind-subagent bridge.
+`claude -p` was **not logged in** in the container this sweep ran in (no
+`ANTHROPIC_API_KEY`), so `judge.ts`'s real transport could not be used.
+Judging was done through the blind-subagent bridge described below instead.
 
 Each puzzle's `buildJudgePrompt` output was handed to a separate Claude subagent.
 That prompt is fully blind — RUBRIC + transcript + placed words + clues + ASCII grid,

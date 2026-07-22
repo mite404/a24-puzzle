@@ -70,5 +70,5 @@ motifs make better clues and interlock better.
 ## Accuracy rule
 
 Never invent a fact to fill a slot. If you are not confident a name, actor, or plot
-detail is correct, leave it out and note the gap in `RALPH_NOTES.md`. A wrong clue in a
+detail is correct, leave it out and note the gap in a code comment beside the entry. A wrong clue in a
 puzzle aimed at superfans is worse than a smaller bank.

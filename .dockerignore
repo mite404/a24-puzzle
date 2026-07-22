@@ -1,4 +1,0 @@
-# Nothing is COPYed into the image — the repo arrives via bind mount at runtime.
-# Keeping the build context near-empty makes `docker build` instant.
-*
-!Dockerfile

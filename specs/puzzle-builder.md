@@ -25,6 +25,37 @@ and constraint problems belong in code.
 There was always enough material: 3 selected films yield 21-26 bank entries, and a puzzle
 needs 8-13. **The padding was never necessary.**
 
+### The drift is manufactured by the instructions, not by model whim
+
+This is the root cause, and it is the reason a prompt tweak cannot fix it. Three rules in
+the current design combine into a contradiction:
+
+- `oracle-personas.ts` — finalize only once **at least 3 films** clearly resonate.
+- `oracle-tools.ts` — `selectedFilmIds` must be **3-6 film ids**.
+- `oracle-tools.ts` / `oracle-personas.ts` — `crosswordWordIds` must be **10-14**, weighted
+  toward selected films — while every approved film except `uncut-gems` has only **7-8**
+  bank entries.
+
+A genuine single-film user therefore **cannot** receive an on-topic puzzle. The rules forbid
+finalizing on one film, and 10-14 ids cannot come from one 7-entry film. Off-topic words are
+structurally mandated. The Phase-5 "request 10-14 ids" change — which made the placement
+gates pass 33/33 — is in direct tension with on-topic fidelity for narrow-taste users.
+
+Note the validator already permits `selectedFilmIds >= 1`; only the prompt and tool text
+impose the 3-film floor. Removing that floor is part of this spec's job.
+
+### Inherited trapdoor: exclusion is currently best-effort
+
+`pickAlternateCrosswordIds` honours `excludeIds` **only while at least 4 non-excluded
+entries survive.** Below that threshold its top-up loop refills to `count` from the *whole*
+bank and does **not** re-check `excludeIds`, so excluded ids silently reappear.
+
+The builder must not inherit this. `excludeWordIds` and `rejectedFilmIds` are **hard
+filters at every rung**, and running out of material returns a shorter puzzle with
+`shortfall` set — it never relaxes a filter to hit a count. A user who replays and sees the
+same words back, or who is handed a film they refused, is exactly the failure this spec
+exists to prevent.
+
 ## The contract change
 
 `finalizeExperience` stops emitting words and emits taste:

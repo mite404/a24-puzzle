@@ -42,6 +42,19 @@ export function OracleTvScene({ onFinalize }: OracleTvSceneProps) {
 
   const chat = useOracleChat(onFinalize, personaId);
 
+  // The four `react-hooks/exhaustive-deps` warnings in this file are deliberate and
+  // `bun run lint` still exits 0 (they are warnings, not errors).
+  //
+  // Each of these callbacks/effects depends on a specific hook *method*
+  // (`chat.submit`, `chat.handleSubmit`, `voice.cancelSpeech`,
+  // `voice.consumePendingReplies`) rather than the whole `chat` / `voice` object, whose
+  // identity changes on every render. Depending on the object would defeat the
+  // memoisation entirely. Do not "fix" these by widening the dependency arrays.
+  //
+  // Caveat worth knowing before touching this: some of those methods (e.g. `chat.submit`)
+  // are plain functions in `use-oracle-chat`, not memoised — so the memoisation they feed
+  // is weaker than it looks. Memoising them at the source is the real fix, and it is
+  // riskier than it sounds because this is the live intake voice/chat path.
   const handleOracleSubmit = useCallback(
     (text: string, vocalEmotion?: VocalEmotionResult) => {
       setLastVocalEmotion(vocalEmotion ?? null);

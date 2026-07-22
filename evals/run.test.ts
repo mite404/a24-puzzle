@@ -397,7 +397,7 @@ describe("evaluateGates on a real generated grid", () => {
       crossword: payload.crossword,
       crosswordWords: payload.crosswordWords,
     });
-    // >= 10 requested reliably lands >= 8 (RALPH_NOTES fuzz measurement).
+    // >= 10 requested reliably lands >= 8 (specs/crossword-layout.md fuzz measurement).
     expect(report.wordsPlaced.pass).toBe(true);
     expect(report.noDuplicateIds.pass).toBe(true);
     expect(report.selectedFilmShare.pass).toBe(true);

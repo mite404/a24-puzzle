@@ -10,10 +10,10 @@ import { buildGamePayload } from "@/lib/game";
  *
  * WHY THIS IS DETERMINISTIC, NOT `Math.random`:
  *   The layout generator is deterministic (no `Math.random` in its source — see
- *   RALPH_NOTES.md), so a given id set always yields the same grid. The *only* source
+ *   specs/crossword-layout.md), so a given id set always yields the same grid. The *only* source
  *   of variation here is which id sets we draw. Seeding that draw with a fixed PRNG
  *   makes the whole measurement reproducible: the number reported below is stable
- *   across runs, which is exactly what a "measured number written into RALPH_NOTES.md"
+ *   across runs, which is exactly what a "measured number written into specs/crossword-layout.md"
  *   requires, and it keeps this test from being flaky.
  *
  * WHAT "requested" MEANS:
@@ -146,7 +146,7 @@ describe("crossword placement rate (fuzz, spec crossword-layout.md)", () => {
 
     const overallRate = totalPlaced / totalRequested;
 
-    // Report (captured into RALPH_NOTES.md — this is the gated Phase 2 number).
+    // Report (captured into specs/crossword-layout.md — this is the gated Phase 2 number).
     const lines = [
       `\n=== Crossword placement rate (seed 0x51ac, ${TRIALS_PER_SIZE} trials/size) ===`,
       `overall placement rate: ${(overallRate * 100).toFixed(1)}%  (${totalPlaced}/${totalRequested})` +

@@ -68,7 +68,7 @@ describe("buildGamePayload", () => {
 /**
  * `resolveCrosswordEntries` is not exported; `buildGamePayload` surfaces its result
  * as `payload.crosswordWords`. These characterization tests pin down the resolve +
- * top-up behaviour recorded in RALPH_NOTES.md: it tops up only when fewer than 4 ids
+ * top-up behaviour recorded in specs/crossword-layout.md: it tops up only when fewer than 4 ids
  * resolve, walking the bank in order up to 8 entries. It does not validate ids (unknown
  * ones are silently dropped) but it does dedupe by id (Phase 2 R3 fix).
  */
@@ -247,7 +247,7 @@ describe("buildGamePayload — grid integrity (crossword-layout.md R2–R5)", ()
 /**
  * R3 (spec `crossword-layout.md`): "No duplicate ids may appear in a single layout."
  * The oracle may hand `buildGamePayload` a profile whose `crosswordWordIds` repeats an id
- * (nothing validates against it — see RALPH_NOTES). Before the fix, `resolveCrosswordEntries`
+ * (nothing validates against it — see specs/crossword-layout.md). Before the fix, `resolveCrosswordEntries`
  * preserved those duplicates, so the repeated id was placed twice and two grid words shared
  * one id — a direct R3 violation. Deduping at resolve time keeps both `crosswordWords` and
  * the placed layout free of duplicate ids by construction.
@@ -307,7 +307,7 @@ describe("buildGamePayload — dropped words observable (crossword-layout.md R6)
     // The original 14 bank entries (slice 0..14) are measured to interlock fully, so
     // nothing is dropped. NOTE: since the bank was expanded past 14, the *whole* bank in
     // natural order drops one word (cw-matchmaker at 53 entries), so this test pins a set
-    // measured to place fully rather than the full bank. See RALPH_NOTES "Known constraints".
+    // measured to place fully rather than the full bank. See specs/crossword-layout.md "Measured behaviour".
     const ids = crosswordBank.slice(0, 14).map((e) => e.id);
     const payload = buildGamePayload(baseProfile({ crosswordWordIds: ids }));
     expect(payload.crossword?.droppedIds).toEqual([]);
@@ -320,7 +320,7 @@ describe("buildGamePayload — dropped words observable (crossword-layout.md R6)
  * returns a fresh id set. Its only randomness is `shuffle` (Math.random), so these
  * characterization tests assert only properties that hold for *every* shuffle outcome.
  *
- * Behaviour pinned down here (see RALPH_NOTES.md "Known constraints"):
+ * Behaviour pinned down here (see specs/crossword-layout.md "Measured behaviour"):
  *   - `excludeIds` is honoured while at least 4 non-excluded entries remain.
  *   - entries whose `filmId` is in `profile.selectedFilmIds` are preferred: they sort
  *     ahead of the rest, so they always land in the first `count` slots.
