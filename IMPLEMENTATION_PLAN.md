@@ -179,8 +179,15 @@ accuracy rule. `pdftotext` is installed.
       Rewrote it to derive from `uncutGemsIds.length` (preferred >= count => every slot
       preferred), preserving intent without weakening. See RALPH_NOTES.md.
 
-- [ ] Re-run the Phase 2 fuzz test against the expanded bank and update the recorded
+- [x] Re-run the Phase 2 fuzz test against the expanded bank and update the recorded
       placement rate. A larger, longer-word bank should raise it.
+      Ran `crossword-fuzz.test.ts` against the final **68-entry** bank (seed 0x51ac, 64
+      trials/size, sizes 4–16). **Overall placement rate 97.4%** (8100/8320) — up from the
+      original 14-entry bank's 96.4%, as predicted. P(>=8 placed): 70% at 8, 92% at 9,
+      **100% at >= 10**. The Phase-5 conclusion is unchanged: request **>= 10 ids** for a
+      reliable >= 8 placed. Full per-size table and the size-progression note (14 → 53 → 68)
+      are in `RALPH_NOTES.md`. Note the expansion raised the *headline* rate but did not
+      lift P(>=8) at borderline sizes 8–9 — that metric is noisier than the mean rate.
 
 ## Phase 4 — Eval harness
 

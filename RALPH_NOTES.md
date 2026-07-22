@@ -52,21 +52,43 @@ Fill these in as they are measured. Later phases depend on them.
   drops even at max. This is the number Phase 5's `crosswordWordIds` count is derived from.
   NOTE: this is the *current 14-entry* bank; Phase 3 expands the bank and Phase 2 task says
   to re-measure — a larger/longer-word bank should raise the rate and lower the id count.
-- **Placement rate (expanded bank):** partial — bank is now **53 entries** (moonlight/
-  hereditary/midsommar at 7 each; lady-bird 7, materialists 7, the-witch 8). Fuzz (seed
-  0x51ac, 64 trials/size, sizes 4–16) reports **97.7% overall** (8127/8320), with
-  P(>=8 placed): 88% at size 8, 88% at 9, **100% at >= 10**. Still not the final number —
-  Phase 3's last task re-measures against the full ~70-entry bank once good-time/uncut-gems/
-  the-backrooms are brought to >= 6 each. Reading holds: request **>= 10 ids** for a
-  reliable >= 8 placed.
+- **Placement rate (expanded bank, FINAL — 68 entries):** Phase 3 mining complete, bank
+  is **68 entries**. Fuzz (seed 0x51ac, 64 trials/size, sizes 4–16) reports **97.4%
+  overall** (8100/8320). Per-size P(>=8 placed): **70% at size 8, 92% at 9, 100% at >= 10**.
+
+  | ids requested | mean placed | rate | P(>=8 placed) |
+  |---|---|---|---|
+  | 4 | 3.78 | 94.5% | 0% |
+  | 5 | 4.69 | 93.8% | 0% |
+  | 6 | 5.72 | 95.3% | 0% |
+  | 7 | 6.70 | 95.8% | 0% |
+  | 8 | 7.61 | 95.1% | **70%** |
+  | 9 | 8.55 | 95.0% | **92%** |
+  | 10 | 9.78 | 97.8% | **100%** |
+  | 11 | 10.81 | 98.3% | 100% |
+  | 12 | 11.77 | 98.0% | 100% |
+  | 13 | 12.75 | 98.1% | 100% |
+  | 14 | 13.78 | 98.4% | 100% |
+  | 15 | 14.78 | 98.5% | 100% |
+  | 16 | 15.84 | 99.0% | 100% |
+
+  **Progression across bank sizes** (headline overall rate / P(>=8) at size 8):
+  14-entry → 96.4% / 64%; 53-entry (partial) → 97.7% / 88%; **68-entry (final) → 97.4% /
+  70%**. The overall rate did rise vs the original 14-entry bank (96.4% → 97.4%) as
+  predicted, but note the expansion did **not** raise P(>=8 placed) at the borderline
+  sizes 8–9 — it is noisier than the headline rate (70%/92% here vs 88%/88% at 53). The
+  robust conclusion is unchanged and is the number Phase 5 uses: **request >= 10 ids** to
+  reliably (100% across this seed) land >= 8 words. At 9 ids it is 92%, at 8 only 70% —
+  neither reliable. This supersedes the 14-entry and 53-entry readings above.
 - **Fuzz sweep is now capped at maxSize 16**, not the whole bank. The generator cost grows
   superlinearly with word count; sweeping all 32 entries took ~110s and timed out the 20s
   bound (and would only get worse toward ~70). Sizes 4–16 cover the entire Phase-5 decision
   region (P(>=8) saturates to 100% by size 10), so nothing the gate needs was lost. Only
   invariants are asserted, so the cap does not weaken any assertion. The headline-rate
   re-measure against the final bank is the dedicated last Phase 3 task.
-- **Ids to request for >= 8 placed words:** not yet derived — Phase 5. Current (32-entry)
-  reading still points to **>= 10** for a reliable >= 8 placed.
+- **Ids to request for >= 8 placed words:** not yet derived (formalised in Phase 5). The
+  final 68-entry re-measure confirms **>= 10** for a reliable (100% at this seed) >= 8
+  placed; 9 → 92%, 8 → 70%.
 
 ## Known constraints
 
