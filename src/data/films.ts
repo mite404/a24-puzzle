@@ -34,7 +34,7 @@ export const films: Film[] = [
   {
     id: "the-backrooms",
     title: "The Backrooms",
-    year: 2024,
+    year: 2026,
     director: "Kane Parsons",
     genres: ["Horror"],
   },

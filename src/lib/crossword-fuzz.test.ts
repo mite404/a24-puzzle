@@ -17,10 +17,13 @@ import { buildGamePayload } from "@/lib/game";
  *   requires, and it keeps this test from being flaky.
  *
  * WHAT "requested" MEANS:
- *   We only draw sets of size >= 4, so `resolveCrosswordEntries` never tops up (its
- *   threshold is < 4). Requested count therefore equals the drawn set size MINUS any
- *   `pairId` collisions, and placement rate = placed words / resolved count — the raw
- *   generator behaviour, not polluted by the top-up path.
+ *   We draw sets of size >= 4 and then SKIP any draw whose resolved count (size minus
+ *   `pairId` collisions) would fall below 4 — those trigger `resolveCrosswordEntries`'
+ *   top-up path (threshold < 4), which this test deliberately excludes to measure the
+ *   raw generator behaviour, not a padded set. For the draws we keep, requested count
+ *   equals size MINUS the `pairId` collisions, and placement rate = placed / resolved.
+ *   (Such degenerate draws — a full mirror pair inside a tiny set — are rare, but the
+ *   seeded shuffle can produce them once the bank grows, so we count and report them.)
  *
  * WHY THE DRAWN SIZE AND THE RESOLVED COUNT DIFFER:
  *   `resolveCrosswordEntries` drops the second half of a role/actor mirror pair
@@ -107,6 +110,8 @@ describe("crossword placement rate (fuzz, spec crossword-layout.md)", () => {
     // How many draws contained both halves of a mirror pair. Reported so the shrinkage
     // between "ids drawn" and "entries resolved" is visible rather than mysterious.
     let totalDrops = 0;
+    // Draws skipped because they would resolve below 4 and trip the top-up path.
+    let totalSkipped = 0;
 
     // Per requested-set-size stats — Phase 5 derives the oracle's request count
     // from this table, so break the rate down by how many ids were asked for.
@@ -118,15 +123,23 @@ describe("crossword placement rate (fuzz, spec crossword-layout.md)", () => {
       let sizeRequested = 0;
       let atLeast8 = 0;
       let sizeDrops = 0;
+      let sizeSkipped = 0;
       for (let t = 0; t < TRIALS_PER_SIZE; t++) {
         const ids = seededShuffle(allBankIds, rng).slice(0, size);
+        const drops = expectedPairDrops(ids);
+        // Skip draws that would resolve below 4: those trip resolveCrosswordEntries'
+        // top-up path, which pads with off-draw bank entries and would corrupt the raw
+        // placement measurement (and break the exact requested-count model below).
+        if (size - drops < 4) {
+          sizeSkipped++;
+          continue;
+        }
         const { requested, placed } = placement(ids);
         // invariant: you can never place more words than you fed the generator
         expect(placed).toBeLessThanOrEqual(requested);
         // The resolver drops mirror-pair duplicates and nothing else. Asserting the exact
         // predicted count (rather than `<= size`) keeps this a real regression check: if
         // the resolver ever started dropping or padding for any OTHER reason, this fails.
-        const drops = expectedPairDrops(ids);
         expect(requested).toBe(size - drops);
         sizeDrops += drops;
         sizePlaced += placed;
@@ -136,11 +149,13 @@ describe("crossword placement rate (fuzz, spec crossword-layout.md)", () => {
       totalPlaced += sizePlaced;
       totalRequested += sizeRequested;
       totalDrops += sizeDrops;
+      totalSkipped += sizeSkipped;
+      const kept = TRIALS_PER_SIZE - sizeSkipped;
       bySize.push({
         size,
-        meanPlaced: sizePlaced / TRIALS_PER_SIZE,
-        rate: sizePlaced / sizeRequested,
-        atLeast8: atLeast8 / TRIALS_PER_SIZE,
+        meanPlaced: kept > 0 ? sizePlaced / kept : 0,
+        rate: sizeRequested > 0 ? sizePlaced / sizeRequested : 0,
+        atLeast8: kept > 0 ? atLeast8 / kept : 0,
       });
     }
 
@@ -150,7 +165,8 @@ describe("crossword placement rate (fuzz, spec crossword-layout.md)", () => {
     const lines = [
       `\n=== Crossword placement rate (seed 0x51ac, ${TRIALS_PER_SIZE} trials/size) ===`,
       `overall placement rate: ${(overallRate * 100).toFixed(1)}%  (${totalPlaced}/${totalRequested})` +
-        `\nmirror-pair drops: ${totalDrops} (ids drawn but deduped before layout)`,
+        `\nmirror-pair drops: ${totalDrops} (ids drawn but deduped before layout)` +
+        `\nskipped draws (would top up): ${totalSkipped}`,
       "requested | mean placed | rate  | P(>=8 placed)",
       ...bySize.map(
         (r) =>

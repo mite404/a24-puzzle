@@ -8,9 +8,10 @@ import { films } from "@/data/films";
  *   R4 (no duplicate answers, no duplicate ids),
  *   and referential integrity (every `filmId` exists in `films.ts`).
  *
- * R1 (~70 entries) and R2 (>= 6 per approved film) are NOT asserted here: the bank
- * is still being mined (IMPLEMENTATION_PLAN.md Phase 3), so those come later. These
- * checks must hold on every entry the bank ever carries, current or added.
+ * R2 (>= 10 entries per mined film, issue #15) IS now asserted: the builder split
+ * (#16) relies on any single film supporting a ~9-word puzzle. This covers every film
+ * the bank actually mines — films left unbanked on purpose (ex-machina, EEAAO) are
+ * exempt, but once a film has any entry it must reach the floor.
  */
 
 const filmIds = new Set(films.map((f) => f.id));
@@ -38,5 +39,15 @@ describe("crosswordBank integrity", () => {
     for (const entry of crosswordBank) {
       expect(filmIds.has(entry.filmId)).toBe(true);
     }
+  });
+
+  test("R2 (#15): every mined film has >= 10 entries", () => {
+    const perFilm = new Map<string, number>();
+    for (const entry of crosswordBank) {
+      perFilm.set(entry.filmId, (perFilm.get(entry.filmId) ?? 0) + 1);
+    }
+    // Name the offenders on failure instead of an opaque number mismatch.
+    const belowFloor = [...perFilm.entries()].filter(([, count]) => count < 10);
+    expect(belowFloor).toEqual([]);
   });
 });
