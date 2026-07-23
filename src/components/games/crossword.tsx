@@ -341,7 +341,7 @@ export function Crossword({
         <div className="relative z-10 mx-auto w-full md:flex md:flex-1 md:items-start md:justify-center">
           <div
             ref={gridRef}
-            className="crossword-grid mx-auto grid aspect-square w-full max-w-[min(72vw,55dvh,28rem)]"
+            className="crossword-grid @container mx-auto grid aspect-square w-full max-w-[min(28rem,70dvh)]"
             style={{
               gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))`,
               gridTemplateRows: `repeat(${size}, minmax(0, 1fr))`,
@@ -370,7 +370,7 @@ export function Crossword({
                     className="crossword-letter-cell relative aspect-square min-h-0 w-full"
                   >
                     {cell.number !== undefined && (
-                      <span className="pointer-events-none absolute left-[8%] top-[6%] z-10 font-mono text-[clamp(0.4rem,18%,0.55rem)] leading-none text-black/60">
+                      <span className="pointer-events-none absolute left-[8%] top-[6%] z-10 font-mono text-[clamp(0.4rem,2.2cqi,0.55rem)] leading-none text-black/60">
                         {cell.number}
                       </span>
                     )}
@@ -543,7 +543,7 @@ function ClueList({
 
 function cellClass(isActive: boolean, inWord: boolean) {
   const base =
-    "aspect-square h-full min-h-0 w-full text-center font-mono text-[clamp(0.65rem,4vw,1rem)] font-semibold uppercase text-black caret-transparent outline-none";
+    "aspect-square h-full min-h-0 w-full text-center font-mono text-[clamp(0.65rem,6cqi,1rem)] font-semibold uppercase text-black caret-transparent outline-none";
   const bg = isActive ? "bg-amber-300" : inWord ? "bg-amber-100" : "bg-white";
   const focus = isActive
     ? "focus-visible:ring-2 focus-visible:ring-amber-600 focus-visible:z-10"
