@@ -468,7 +468,7 @@ export const crosswordBank: CrosswordEntry[] = [
     clue: "Surname of brothers Connie and Nick",
     difficulty: "hard",
   },
-  // --- the-backrooms (Kane Parsons, 2024) — motifs only, no named cast ---
+  // --- the-backrooms (Kane Parsons, 2026) — motifs only, no named cast ---
   {
     id: "cw-fluorescent",
     filmId: "the-backrooms",
@@ -496,6 +496,169 @@ export const crosswordBank: CrosswordEntry[] = [
     word: "ENTITY",
     clue: "Unseen creature stalking the empty halls",
     difficulty: "hard",
+  },
+  // === #15: mined every film to >= 10 entries ===
+  // --- good-time (Josh & Benny Safdie, 2017) ---
+  {
+    id: "cw-adventureland",
+    filmId: "good-time",
+    word: "ADVENTURELAND",
+    clue: "Long Island amusement park of the film's chaotic climax",
+    difficulty: "medium",
+  },
+  {
+    id: "cw-lopatin",
+    filmId: "good-time",
+    word: "LOPATIN",
+    clue: "Daniel ___ (Oneohtrix Point Never), whose score won a Cannes prize",
+    difficulty: "hard",
+  },
+  // --- the-witch (Robert Eggers, 2015) ---
+  {
+    id: "cw-samuel",
+    filmId: "the-witch",
+    word: "SAMUEL",
+    clue: "Infant snatched by the witch in the opening",
+    difficulty: "easy",
+  },
+  {
+    id: "cw-deliciously",
+    filmId: "the-witch",
+    word: "DELICIOUSLY",
+    clue: "\"Wouldst thou like to live ___?\"",
+    difficulty: "medium",
+  },
+  // --- the-backrooms (Kane Parsons) — motifs + crew only ---
+  {
+    id: "cw-labyrinth",
+    filmId: "the-backrooms",
+    word: "LABYRINTH",
+    clue: "Endless maze of rooms beyond reality",
+    difficulty: "medium",
+  },
+  {
+    id: "cw-parsons",
+    filmId: "the-backrooms",
+    word: "PARSONS",
+    clue: "Kane ___, the film's young director",
+    difficulty: "hard",
+  },
+  {
+    id: "cw-reality",
+    filmId: "the-backrooms",
+    word: "REALITY",
+    clue: "The Backrooms are a glitch in this",
+    difficulty: "medium",
+  },
+  // --- moonlight (Barry Jenkins, 2016) ---
+  {
+    id: "cw-miami",
+    filmId: "moonlight",
+    word: "MIAMI",
+    clue: "Florida city where Chiron grows up",
+    difficulty: "easy",
+  },
+  {
+    id: "cw-ocean",
+    filmId: "moonlight",
+    word: "OCEAN",
+    clue: "Where Juan teaches Chiron to swim",
+    difficulty: "easy",
+  },
+  {
+    id: "cw-jenkins",
+    filmId: "moonlight",
+    word: "JENKINS",
+    clue: "Barry who directed Moonlight",
+    difficulty: "medium",
+  },
+  // --- midsommar (Ari Aster, 2019) ---
+  {
+    id: "cw-mayqueen",
+    filmId: "midsommar",
+    word: "MAYQUEEN",
+    clue: "Floral title Dani is crowned with",
+    difficulty: "medium",
+  },
+  {
+    id: "cw-bear",
+    filmId: "midsommar",
+    word: "BEAR",
+    clue: "Animal whose hollowed skin holds Christian at the end",
+    difficulty: "hard",
+  },
+  {
+    id: "cw-attestupa",
+    filmId: "midsommar",
+    word: "ATTESTUPA",
+    clue: "Cliff ritual where two elders leap to their deaths",
+    difficulty: "hard",
+  },
+  // --- hereditary (Ari Aster, 2018) ---
+  {
+    id: "cw-treehouse",
+    filmId: "hereditary",
+    word: "TREEHOUSE",
+    clue: "Backyard structure of the film's cult climax",
+    difficulty: "medium",
+  },
+  {
+    id: "cw-seance",
+    filmId: "hereditary",
+    word: "SEANCE",
+    clue: "Ritual Joan teaches Annie to reach the dead",
+    difficulty: "medium",
+  },
+  {
+    id: "cw-ellen",
+    filmId: "hereditary",
+    word: "ELLEN",
+    clue: "Annie's late mother, whose funeral opens the film",
+    difficulty: "medium",
+  },
+  // --- lady-bird (Greta Gerwig, 2017) ---
+  {
+    id: "cw-gerwig",
+    filmId: "lady-bird",
+    word: "GERWIG",
+    clue: "Greta who wrote and directed Lady Bird",
+    difficulty: "medium",
+  },
+  {
+    id: "cw-catholic",
+    filmId: "lady-bird",
+    word: "CATHOLIC",
+    clue: "Kind of high school Lady Bird attends",
+    difficulty: "easy",
+  },
+  {
+    id: "cw-larry",
+    filmId: "lady-bird",
+    word: "LARRY",
+    clue: "Lady Bird's gentle father (Tracy Letts)",
+    difficulty: "medium",
+  },
+  // --- materialists (Celine Song, 2025) ---
+  {
+    id: "cw-manhattan",
+    filmId: "materialists",
+    word: "MANHATTAN",
+    clue: "Upscale New York borough of Lucy's dating world",
+    difficulty: "medium",
+  },
+  {
+    id: "cw-financier",
+    filmId: "materialists",
+    word: "FINANCIER",
+    clue: "Harry's wealthy Wall Street profession",
+    difficulty: "medium",
+  },
+  {
+    id: "cw-triangle",
+    filmId: "materialists",
+    word: "TRIANGLE",
+    clue: "The central love ___ among Lucy, Harry, and John",
+    difficulty: "easy",
   },
 ];
 

@@ -17,8 +17,9 @@ lands on those films cannot produce a relevant puzzle at all.
 
 ## Requirements
 
-- R1. The bank holds roughly **70 entries**.
-- R2. Every film in the approved list below has at least 6 entries.
+- R1. The bank holds roughly **90 entries** (raised from ~70 by issue #15).
+- R2. Every film in the approved list below has at least **10 entries** (issue #15 —
+  so any single approved film alone can support a ~9-word puzzle for the builder, #16).
 - R3. Every answer is a single alphabetic token, length > 1, uppercase.
 - R4. No duplicate answers, and no duplicate ids.
 - R5. Each entry keeps the existing shape: `id`, `filmId`, `word`, `clue`, `difficulty`.
@@ -70,5 +71,5 @@ motifs make better clues and interlock better.
 ## Accuracy rule
 
 Never invent a fact to fill a slot. If you are not confident a name, actor, or plot
-detail is correct, leave it out and note the gap in a code comment beside the entry. A wrong clue in a
-puzzle aimed at superfans is worse than a smaller bank.
+detail is correct, leave it out and note the gap in a code comment beside the entry.
+A wrong clue in a puzzle aimed at superfans is worse than a smaller bank.

@@ -38,43 +38,49 @@ This is the single most important untested behaviour in the repo.
 
 ---
 
-# Measured behaviour
+## Measured behaviour
 
 Everything below is measured by `src/lib/crossword-fuzz.test.ts`, not assumed. Re-run it
 after any change to the bank or the resolver, and update these numbers.
 
-## Placement rate — 68-entry bank
+### Placement rate — 90-entry bank
 
-Seed `0x51ac`, 64 trials per size. Overall **97.3%** (8021/8243).
+Seed `0x51ac`, 64 trials per size. Overall **98.2%** (8137/8289). (68-entry bank was
+97.3%.)
 
 | ids requested | mean placed | rate | P(>=8 placed) |
 |---|---|---|---|
-| 4 | 3.78 | 94.5% | 0% |
-| 5 | 4.69 | 94.0% | 0% |
-| 6 | 5.72 | 95.3% | 0% |
-| 7 | 6.61 | 95.7% | 0% |
-| 8 | 7.50 | 94.5% | **64%** |
-| 9 | 8.53 | 95.3% | **92%** |
-| 10 | 9.69 | 97.6% | **100%** |
-| 11 | 10.70 | 98.1% | 100% |
-| 12 | 11.69 | 98.2% | 100% |
-| 13 | 12.53 | 97.9% | 100% |
-| 14 | 13.66 | 98.5% | 100% |
-| 15 | 14.58 | 98.4% | 100% |
-| 16 | 15.66 | 99.0% | 100% |
+| 4 | 3.84 | 96.0% | 0% |
+| 5 | 4.70 | 94.1% | 0% |
+| 6 | 5.73 | 95.6% | 0% |
+| 7 | 6.63 | 95.1% | 0% |
+| 8 | 7.91 | 99.0% | **91%** |
+| 9 | 8.78 | 97.7% | **97%** |
+| 10 | 9.78 | 98.1% | **100%** |
+| 11 | 10.84 | 98.7% | 100% |
+| 12 | 11.75 | 98.4% | 100% |
+| 13 | 12.77 | 98.4% | 100% |
+| 14 | 13.88 | 99.2% | 100% |
+| 15 | 14.77 | 99.3% | 100% |
+| 16 | 15.83 | 99.4% | 100% |
 
 **Rule of thumb: request ≈ target + 1.** Roughly one word always fails to interlock.
 
+The bank now carries three `pairId` mirror pairs, so a small random draw can contain
+both halves and resolve below 4, which would trip the resolver's top-up path. The fuzz
+test **skips** those degenerate draws (1 at this seed) rather than measure a padded set,
+and reports the count so the exclusion is visible, not silent.
+
 **Bank growth did not help at the margin.** Across bank sizes the headline rate rose
-(14 entries → 96.4%, 68 → 97.3%) but `P(>=8)` at the borderline sizes 8–9 did **not**
-improve monotonically (64%/92% at 68 entries vs 88%/88% measured at 53). The headline rate
-is the stable number; `P(>=8)` at small sizes is noisy. Do not read a bank expansion as
-licence to request fewer ids.
+(14 entries → 96.4%, 68 → 97.3%, 90 → 98.2%) but `P(>=8)` at the borderline sizes 8–9 did
+**not** improve monotonically (size-8: 88% at 53 entries, 64% at 68, 91% at 90). The
+headline rate is the stable number; `P(>=8)` at small sizes is noisy. Do not read a bank
+expansion as licence to request fewer ids.
 
 The sweep is capped at size 16 deliberately — generator cost grows superlinearly, and
 `P(>=8)` saturates at 100% by size 10, so nothing the sizing decision needs lies above 16.
 
-## Four non-obvious properties of the generator
+### Four non-obvious properties of the generator
 
 1. **Placement is input-*order* dependent, not merely count dependent.** The full 14-entry
    bank places all 14, but `crosswordBank.slice(0, 8)` deterministically drops `LIMINAL` —
@@ -95,7 +101,7 @@ The sweep is capped at size 16 deliberately — generator cost grows superlinear
    ids the generator returned with `orientation: "none"`. Placed and dropped are split on one
    predicate, so they are exhaustive: `words.length + droppedIds.length === entries.length`.
 
-## Test couplings to preserve
+### Test couplings to preserve
 
 Two tests are deliberately pinned to measured data. If they go red after a bank change,
 **re-point them at a freshly measured set — do not weaken the assertion.**
