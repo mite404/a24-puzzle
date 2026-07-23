@@ -8,13 +8,22 @@ import { films } from "@/data/films";
  *   R4 (no duplicate answers, no duplicate ids),
  *   and referential integrity (every `filmId` exists in `films.ts`).
  *
- * R2 (>= 10 entries per mined film, issue #15) IS now asserted: the builder split
- * (#16) relies on any single film supporting a ~9-word puzzle. This covers every film
- * the bank actually mines — films left unbanked on purpose (ex-machina, EEAAO) are
- * exempt, but once a film has any entry it must reach the floor.
+ * R2 (>= 10 entries per APPROVED film, issue #15) IS now asserted: the builder split
+ * (#16) relies on any single approved film supporting a ~9-word puzzle. The approved set
+ * is derived from films.ts MINUS the two films crossword-bank.md excludes for lack of
+ * source material — so a genuinely-approved film left at zero entries FAILS, which a
+ * bank-only count would silently pass.
  */
 
 const filmIds = new Set(films.map((f) => f.id));
+
+// crossword-bank.md "Approved films": every film in films.ts EXCEPT the two excluded
+// by explicit decision for lack of source material. Derived from films.ts (not the
+// bank) on purpose, so the R2 floor test catches an approved film left at zero entries.
+const EXCLUDED_FROM_MINING = new Set(["ex-machina", "everything-everywhere"]);
+const approvedFilmIds = films
+  .map((f) => f.id)
+  .filter((id) => !EXCLUDED_FROM_MINING.has(id));
 
 describe("crosswordBank integrity", () => {
   test("R3: every answer is a single uppercase alphabetic token, length > 1", () => {
@@ -41,13 +50,14 @@ describe("crosswordBank integrity", () => {
     }
   });
 
-  test("R2 (#15): every mined film has >= 10 entries", () => {
+  test("R2 (#15): every approved film has >= 10 entries", () => {
     const perFilm = new Map<string, number>();
     for (const entry of crosswordBank) {
       perFilm.set(entry.filmId, (perFilm.get(entry.filmId) ?? 0) + 1);
     }
-    // Name the offenders on failure instead of an opaque number mismatch.
-    const belowFloor = [...perFilm.entries()].filter(([, count]) => count < 10);
+    // Iterate the APPROVED set, not just banked films: an approved film with zero
+    // entries (get() -> undefined -> 0) must fail. Names offenders on failure.
+    const belowFloor = approvedFilmIds.filter((id) => (perFilm.get(id) ?? 0) < 10);
     expect(belowFloor).toEqual([]);
   });
 });
