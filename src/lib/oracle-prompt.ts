@@ -1,7 +1,6 @@
 import { films } from "@/data/films";
 import { palettes } from "@/data/palettes";
 import { locations } from "@/data/locations";
-import { crosswordBank } from "@/data/crosswordBank";
 import {
   DEFAULT_PERSONA_ID,
   getOraclePersona,
@@ -24,10 +23,6 @@ export function buildCatalog(): string {
     .map((l) => `  - ${l.id}: ${l.neighborhood} (${l.filmId})`)
     .join("\n");
 
-  const crosswordLines = crosswordBank
-    .map((c) => `  - ${c.id}: ${c.word} (${c.filmId})`)
-    .join("\n");
-
   return [
     "FILMS (use these ids for selectedFilmIds and showPalette.filmId):",
     filmLines,
@@ -36,9 +31,6 @@ export function buildCatalog(): string {
     "",
     "LOCATIONS (use these ids for locationIds):",
     locationLines,
-    "",
-    "CROSSWORD WORDS (use these ids for crosswordWordIds):",
-    crosswordLines,
   ].join("\n");
 }
 
