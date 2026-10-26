@@ -338,7 +338,7 @@ analysis.
 The [Choosing an API](https://docs.getvalenceai.com/introduction#choosing-an-api) section only
 compares **two** products in its table. A third (**Streaming**) is mentioned in one sentence as
 "Coming soon" but has **no row, no doc page, and no OpenAPI entry**. The `[llms.txt`
-index](https://docs.getvalenceai.com/llms.txt) lists only Discrete + Asynch. The [OpenAPI
+index](<https://docs.getvalenceai.com/llms.txt>) lists only Discrete + Asynch. The [OpenAPI
 spec](https://docs.getvalenceai.com/api-reference/openapi.json) exposes a single REST path: `POST
 /emotionprediction` (Discrete only).
 
