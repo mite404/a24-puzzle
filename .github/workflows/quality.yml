@@ -25,6 +25,8 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun run typecheck
       - run: bun run lint
+      - run: bun run md:lint
+      - run: bun test
       - name: fallow audit
         if: github.event_name == 'pull_request'
         run: bunx fallow audit --base origin/${{ github.base_ref }} --worsened error

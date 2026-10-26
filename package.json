@@ -50,6 +50,7 @@
     "eslint-config-next": "16.2.7",
     "fallow": "3.36.0",
     "lefthook": "2.2.2",
+    "rumdl": "0.3.0",
     "typescript": "^5",
     "typescript-eslint": "^8.60.1"
   },
