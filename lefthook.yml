@@ -1,0 +1,8 @@
+pre-commit:
+  jobs:
+    - name: lint
+      glob: "*.{js,jsx,mjs,ts,tsx}"
+      run: bunx eslint --max-warnings 0 {staged_files}
+    # Advisory: `fallow review` always exits 0.
+    - name: fallow
+      run: bunx fallow review --quiet

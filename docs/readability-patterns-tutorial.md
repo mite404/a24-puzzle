@@ -65,6 +65,7 @@ const lastAssistant = [...messages]
 ```
 
 **What's wrong here:**
+
 - Two different implementations of the *same idea* (one uses `filter().at(-1)`, the other
 `[...].reverse().find()`)
 - The reader must parse array operations before understanding the *intent*: "find the last thing the
@@ -104,6 +105,7 @@ const lastAssistant = findLastAssistant(messages);
 > "It's only two lines. Is a function call really worth it?"
 >
 > Yes, because those two lines are *noise*. The reader's brain has to:
+>
 > 1. Recognize `.filter(...)` → "we're narrowing"
 > 2. Recognize `.at(-1)` → "we want the last one"
 > 3. Combine them → "we want the last assistant"
@@ -127,6 +129,7 @@ const micLabel = mic?.listening
 ```
 
 **What's wrong here:**
+
 - The second condition is indented *twice* — your eyes have to track a staircase
 - Each `?` and `:` is a branch point; mental stack depth increases with each level
 - Adding a fourth state makes it four levels deep
@@ -152,12 +155,14 @@ const micLabel = (() => {
 The `()()` at the end is the invoke — without it you'd assign a *function*, not a string.
 
 **Pros:**
+
 - Flat structure — each condition is at the same indentation
 - Early returns — no mental stack tracking
 - Easy to add logging or breakpoints between branches
 - Stays local — no new export when the logic is one-off to this component
 
 **Cons:**
+
 - Slightly unusual pattern for beginners
 - The `()()` syntax is noise
 - Wrong tool if the logic is reused or needs unit tests (use a named function instead)
@@ -194,6 +199,7 @@ function micLabel(mic: MicState | undefined): string {
 ```
 
 **When to use:**
+
 - IIFE → 3-5 branches, especially when the logic is one-off
 - Lookup map → 4+ branches, or when the same lookup is needed in multiple components
 - Named function → when the label logic needs to be unit tested or reused
@@ -345,6 +351,7 @@ useEffect(() => {
 ```
 
 **What's wrong here:**
+
 - The effect is 14 lines; 10 of them are search logic
 - The effect's *purpose* is "when we see a finalized profile, call onFinalize" — but you can't see
 that until you read the whole loop
@@ -440,6 +447,7 @@ if (part.type === "tool-showPalette") {
 ```
 
 **What's wrong here:**
+
 - Two anonymous boolean expressions — the reader must parse each one to understand the guard
 - The second condition duplicates part of the first (checking `output-available`)
 - No separation between "what I'm checking" and "what I do about it"
@@ -532,6 +540,7 @@ thought
 ```
 
 **What's wrong here:**
+
 - Same CSS classes, same flex layout, same dismiss button pattern — twice
 - If you change the error banner styling (margin, padding, font size), you change two places
 - The second banner has slightly different `role` and slightly different text color — easy to lose
@@ -619,6 +628,7 @@ tool.
 ### The Crossword Problem
 
 `crossword.tsx` is 548 lines. It contains:
+
 - Grid building logic (`buildGrid`)
 - Cell navigation (`nextCell`, `prevCell`)
 - Word tracking (`activeWordCells`, `activeWord`)
@@ -643,6 +653,7 @@ cut when the *location* or *time* changes. Same with code:
 | The sub-component needs different props from different callers | The sub-component is always called with the same props |
 
 `crossword.tsx` is large, but the pieces are **tightly coupled**:
+
 - `buildGrid` only makes sense with `CrosswordLayout`
 - `handleKeyDown` only makes sense with `grid`, `values`, and `directionRef`
 - `ClueList` only makes sense with `PlacedWord[]`
@@ -662,11 +673,13 @@ top-to-bottom flow, length is acceptable
 ### The Shot vs. The Sequence
 
 A 548-line component is like a **long take** — one continuous shot. It works when:
+
 - The action flows logically (grid → interaction → rendering)
 - You can follow it without jumping between files
 - The state is mostly local (not prop-drilled 4 levels)
 
 It fails when:
+
 - You have to scroll up and down to understand one interaction
 - State is split between 3 hooks in 3 files *because* of extraction
 - Adding one feature requires touching 5 files
@@ -687,6 +700,7 @@ Before any readability refactor, verify:
 - [ ] **Bundle size** — did you add a new module that gets imported everywhere?
 
 After extraction:
+
 - [ ] **Pure functions get unit tests** — `findLastAssistant`, `extractFinalizedProfile`,
 `micLabel`
 - [ ] **Sub-components get story/tests** — `DismissableAlert` with and without `onDismiss`
