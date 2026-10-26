@@ -1416,3 +1416,24 @@ sweep's audience said the puzzle keeps wandering off the film you came to see.
 > substitution — a logged-in CLI can re-judge the same blinded artifacts later for zero extra spend.
 > Also: one arm, small N (33), and the same model on both sides of the conversation. Treat c4/c5's
 > single failures as things to _inspect_, not as calibrated rates.
+
+### Results as a physical reveal
+
+The final score now arrives inside a charcoal A24 sleeve, inspired by Ethan's stationery photos.
+Clicking the sleeve slides the results paper into view.
+On narrow screens, the paper rests on top of the sleeve at a slight angle.
+The exposed charcoal edges and paper shadow make their stacking order visible.
+
+`EndScreen` still receives the same `Scores` object and restart callback.
+Think of scoring as the locked picture edit and the envelope as the delivery packaging.
+Changing the packaging does not change the edit, the tier thresholds, or the oracle's voice.
+
+One boolean records whether the envelope is open.
+CSS moves the paper and sleeve, with no animation dependency or timer to keep synchronized.
+The embossed mark uses the existing transparent A24 PNG as a mask, not a substitute font.
+Dark ink and a restrained edge highlight suggest a logo pressed into the charcoal cardboard.
+Closed results are hidden from assistive technology; a real button supports Enter and Space.
+Reduced-motion preferences disable the slide without removing the reveal.
+
+With the development server running, `bash scripts/verify-results-envelope.sh` checks keyboard
+opening and closing, score values, narrow-screen fit, reduced motion, and restart in Chromium.
