@@ -10,7 +10,6 @@
     "start": "next start",
     "lint": "eslint",
     "test": "bun test",
-    "doctor": "bunx react-doctor",
     "md:lint": "rumdl check .",
     "md:fmt": "rumdl fmt ."
   },
@@ -47,7 +46,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
-    "react-doctor": "^0.4.0",
     "typescript": "^5",
     "typescript-eslint": "^8.60.1"
   },
