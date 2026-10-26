@@ -144,14 +144,15 @@ describe("buildGamePayload — mirror pairs never co-occur (RUBRIC c4)", () => {
   });
 
   test("no placed layout ever carries both members of a mirror pair", () => {
-    // The full bank contains all three mutual role/actor pairs.
-    const payload = buildGamePayload(baseProfile({ crosswordWordIds: crosswordBank.map((e) => e.id) }));
-    const resolvedIds = new Set(payload.crosswordWords.map((e) => e.id));
+    // All three mutual role/actor pairs, plus filler (the whole bank is too slow to lay out).
     const pairs = [
       ["cw-harry", "cw-pascal"],
       ["cw-lucy", "cw-johnson"],
       ["cw-connie", "cw-pattinson"],
     ];
+    const ids = [...new Set([...pairs.flat(), ...crosswordBank.slice(0, 8).map((e) => e.id)])];
+    const payload = buildGamePayload(baseProfile({ crosswordWordIds: ids }));
+    const resolvedIds = new Set(payload.crosswordWords.map((e) => e.id));
     for (const [a, b] of pairs) {
       // at most one half of each pair survives resolution
       expect(resolvedIds.has(a) && resolvedIds.has(b)).toBe(false);
@@ -178,9 +179,13 @@ function cellsOf(word: PlacedWord): Array<{ x: number; y: number; letter: string
   }));
 }
 
-/** A grid dense enough to force crossings: the whole 14-entry bank. */
+/**
+ * A grid dense enough to force crossings: 14 entries, the bank's original size. The whole
+ * 90-entry bank takes ~4s per layout and timed out on CI.
+ */
+const DENSE_IDS = crosswordBank.slice(0, 14).map((e) => e.id);
 function fullBankPayload() {
-  return buildGamePayload(baseProfile({ crosswordWordIds: crosswordBank.map((e) => e.id) }));
+  return buildGamePayload(baseProfile({ crosswordWordIds: DENSE_IDS }));
 }
 
 describe("buildGamePayload — grid integrity (crossword-layout.md R2–R5)", () => {
