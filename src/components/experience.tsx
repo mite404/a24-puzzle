@@ -178,7 +178,7 @@ export function Experience() {
       )}
 
       {phase === "end" && (
-        <AppShell hero centered maxWidth="copy">
+        <AppShell centered maxWidth="game" className="py-16 sm:py-20">
           <EndScreenWithOracle scores={scores} onRestart={restart} />
         </AppShell>
       )}

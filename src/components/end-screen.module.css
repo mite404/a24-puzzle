@@ -1,0 +1,173 @@
+.results {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.intro {
+  font-size: clamp(1.25rem, 2.5vw, 1.75rem);
+  letter-spacing: -0.035em;
+}
+
+.stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  min-height: 440px;
+  margin-top: 24px;
+  isolation: isolate;
+}
+
+.paper,
+.sleeve {
+  grid-area: 1 / 1;
+  align-self: stretch;
+  width: 50%;
+  min-height: 330px;
+  transition: transform 1100ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.paper {
+  position: relative;
+  padding: 32px 36px 24px;
+  background: #fffefa;
+  color: #161616;
+  text-align: left;
+  box-shadow: 0 12px 28px rgb(0 0 0 / 0.12), inset 0 0 0 1px rgb(0 0 0 / 0.04);
+}
+
+.paperLabel {
+  font-size: 0.8rem;
+  color: #62625f;
+}
+
+.title {
+  margin-top: 10px;
+  font-size: clamp(1.65rem, 3vw, 2.5rem);
+  font-weight: 500;
+  line-height: 1.02;
+  letter-spacing: -0.055em;
+}
+
+.blurb {
+  margin-top: 18px;
+  max-width: 38ch;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 15px;
+  border-top: 1px solid #b9b9b5;
+}
+
+.stats dt {
+  font-size: 0.7rem;
+  color: #62625f;
+}
+
+.stats dd {
+  margin-top: 6px;
+  font-size: 1.65rem;
+  letter-spacing: -0.05em;
+}
+
+.signoff {
+  margin-top: 20px;
+  font-size: 0.75rem;
+}
+
+.sleeve {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 1px;
+  background: #202226;
+  background-image: linear-gradient(125deg, rgb(255 255 255 / 0.025), transparent 55%, rgb(0 0 0 / 0.16));
+  box-shadow: inset 1px 1px 0 rgb(255 255 255 / 0.1), inset -2px -1px 0 rgb(0 0 0 / 0.35);
+  filter: drop-shadow(0 14px 12px rgb(0 0 0 / 0.18));
+  mask-image: radial-gradient(circle 22px at 100% 50%, transparent 98%, #000 100%);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sleeve:focus-visible {
+  box-shadow: inset 0 0 0 3px #d0d2d6;
+}
+
+.logo {
+  width: 32%;
+  aspect-ratio: 2.85;
+  filter: drop-shadow(0 -1px 0 #050607) drop-shadow(0 1px 0 rgb(255 255 255 / 0.16));
+}
+
+.logo::before {
+  content: '';
+  display: block;
+  height: 100%;
+  background: linear-gradient(145deg, #08090a, #101114 48%, #050607);
+  mask: url('/a24-assets/A24-Films-Logo-Vector.png') center / contain no-repeat;
+}
+
+.results[data-open='true'] .paper {
+  transform: translateX(48%) rotate(0.6deg);
+}
+
+.results[data-open='true'] .sleeve {
+  transform: translateX(-48%) rotate(-0.8deg);
+}
+
+.actions {
+  display: flex;
+  min-height: 50px;
+  justify-content: center;
+  align-items: center;
+}
+
+.hint {
+  font-size: 0.875rem;
+  color: #62625f;
+}
+
+@media (max-width: 699px) {
+  .stage {
+    min-height: 370px;
+    transition: min-height 1100ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .paper,
+  .sleeve {
+    width: 100%;
+    min-height: 330px;
+  }
+
+  .paper {
+    padding: 28px 24px 24px;
+  }
+
+  .results[data-open='true'] .paper {
+    z-index: 2;
+    width: calc(100% - 18px);
+    transform: translate(-5px, -12px) rotate(-2deg);
+  }
+
+  .results[data-open='true'] .sleeve {
+    transform: translate(5px, 14px) rotate(2deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .paper,
+  .sleeve,
+  .stage {
+    transition: none;
+  }
+}
