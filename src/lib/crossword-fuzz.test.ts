@@ -92,11 +92,13 @@ function placement(ids: string[]): { requested: number; placed: number } {
 }
 
 describe("crossword placement rate (fuzz, spec crossword-layout.md)", () => {
-  // Generous timeout: this runs the layout generator ~700 times. It is CPU-bound and
-  // fully deterministic (seeded), so it cannot hang — the bound just leaves headroom.
+  // Runs the layout generator ~200 times. It is CPU-bound and fully deterministic
+  // (seeded), so it cannot hang — the timeout just leaves headroom on slow CI runners.
   test("draws many random id sets and reports the observed placement rate", () => {
     const rng = makeRng(0x51ac); // fixed seed → reproducible report
-    const TRIALS_PER_SIZE = 64;
+    // 64 trials took ~30s (a 16-word grid costs ~100ms). 16 keeps the suite fast; raise it
+    // temporarily when re-measuring the spec table for a smoother P(>=8) column.
+    const TRIALS_PER_SIZE = 16;
     const minSize = 4; // >= 4 so resolveCrosswordEntries never tops up
     // Cap the sweep: the generator cost grows superlinearly with word count, and the
     // bank now exceeds 30 entries (heading to ~70 in Phase 3). Sweeping the whole bank

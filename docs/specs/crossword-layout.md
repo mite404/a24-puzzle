@@ -47,6 +47,8 @@ after any change to the bank or the resolver, and update these numbers.
 
 Seed `0x51ac`, 64 trials per size. Overall **98.2%** (8137/8289). (68-entry bank was
 97.3%.)
+The fuzz test now runs 16 trials per size to keep `bun test` fast (98.4%, 2039/2073).
+Set `TRIALS_PER_SIZE` back to 64 temporarily to reproduce this table.
 
 | ids requested | mean placed | rate | P(>=8 placed) |
 |---|---|---|---|
