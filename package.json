@@ -9,9 +9,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "test": "bun test",
     "md:lint": "rumdl check .",
-    "md:fmt": "rumdl fmt ."
+    "md:fmt": "rumdl fmt .",
+    "prepare": "lefthook install"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.67",
@@ -46,6 +48,8 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.7",
+    "fallow": "3.36.0",
+    "lefthook": "2.2.2",
     "typescript": "^5",
     "typescript-eslint": "^8.60.1"
   },
